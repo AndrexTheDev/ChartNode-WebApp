@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NodeChart — The Decentralized TradingView Alternative</title>
+  <meta name="description" content="NodeChart: Free, decentralized crypto charting with live Binance streams, AI support/resistance, Fear &amp; Greed sentiment, and pro on-chain overlays. Zero tracking. Zero cost." />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #020409;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    /* ── Custom Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #020409; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #00f5ff, #a855f7);
+      border-radius: 3px;
+    }
+
+    /* ── Hide scrollbar utility ── */
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+    /* ── Animated background grid ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridDrift 20s linear infinite;
+    }
+    @keyframes gridDrift {
+      0%   { background-position: 0 0; }
+      100% { background-position: 60px 60px; }
+    }
+
+    /* ── Orb glows ── */
+    .orb {
+      position: fixed; border-radius: 50%; filter: blur(120px);
+      pointer-events: none; z-index: 0;
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: rgba(0,245,255,0.07);
+      top: -150px; left: -150px;
+      animation: orbFloat1 12s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 500px; height: 500px;
+      background: rgba(168,85,247,0.07);
+      top: 30%; right: -150px;
+      animation: orbFloat2 15s ease-in-out infinite;
+    }
+    .orb-3 {
+      width: 400px; height: 400px;
+      background: rgba(0,255,136,0.05);
+      bottom: 10%; left: 20%;
+      animation: orbFloat3 18s ease-in-out infinite;
+    }
+    @keyframes orbFloat1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,60px)} }
+    @keyframes orbFloat2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-50px,40px)} }
+    @keyframes orbFloat3 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-50px)} }
+
+    /* ── Navbar ── */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      background: rgba(2,4,9,0.7);
+      border-bottom: 1px solid rgba(0,245,255,0.08);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    .navbar.scrolled {
+      background: rgba(2,4,9,0.94);
+      border-bottom-color: rgba(0,245,255,0.16);
+    }
+    .logo-text {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700; font-size: 1.4rem;
+      background: linear-gradient(135deg, #00f5ff 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: #00ff88; border-radius: 50%;
+      margin-left: 3px; margin-bottom: 2px;
+      box-shadow: 0 0 8px #00ff88;
+      animation: pulseDot 2s ease-in-out infinite;
+      vertical-align: middle;
+    }
+    @keyframes pulseDot {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%     { opacity:0.5; transform:scale(0.75); }
+    }
+
+    /* ── Buttons ── */
+    .btn-neon {
+      position: relative; display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem;
+      letter-spacing: 0.3px; cursor: pointer; transition: transform 0.25s ease, box-shadow 0.25s ease;
+      background: linear-gradient(135deg, #00f5ff 0%, #0099cc 100%);
+      color: #020409; border: none; text-decoration: none;
+      box-shadow: 0 0 22px rgba(0,245,255,0.45), 0 4px 14px rgba(0,0,0,0.3);
+    }
+    .btn-neon:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 38px rgba(0,245,255,0.75), 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .btn-neon:active { transform: translateY(0); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+      background: transparent; color: #00f5ff;
+      border: 1px solid rgba(0,245,255,0.4); text-decoration: none;
+    }
+    .btn-ghost:hover {
+      background: rgba(0,245,255,0.08);
+      border-color: rgba(0,245,255,0.8);
+      box-shadow: 0 0 20px rgba(0,245,255,0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-donate {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.85rem;
+      cursor: pointer; transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+      background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(168,85,247,0.1));
+      color: #c084fc; border: 1px solid rgba(168,85,247,0.4); text-decoration: none;
+    }
+    .btn-donate:hover {
+      background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(168,85,247,0.2));
+      border-color: rgba(168,85,247,0.8);
+      box-shadow: 0 0 26px rgba(168,85,247,0.35);
+      transform: translateY(-1px);
+    }
+
+    /* ── Hero ── */
+    .hero-section {
+      min-height: 100vh; display: flex; align-items: center;
+      position: relative; z-index: 1; padding-top: 80px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25);
+      font-size: 0.78rem; font-weight: 600; color: #00ff88;
+      letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 28px;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; background: #00ff88;
+      border-radius: 50%; box-shadow: 0 0 6px #00ff88;
+      animation: pulseDot 1.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    .hero-headline {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2.2rem, 5.5vw, 4.8rem);
+      font-weight: 800; line-height: 1.1; letter-spacing: -1px;
+    }
+    .gradient-text-cyan {
+      background: linear-gradient(135deg, #00f5ff 0%, #00b8d9 50%, #a855f7 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-text-green {
+      background: linear-gradient(135deg, #00ff88 0%, #00d4aa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gradient-text-purple {
+      background: linear-gradient(135deg, #a855f7 0%, #c084fc 50%, #e879f9 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Typewriter cursor ── */
+    .typewriter-cursor { animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── Hero stat items ── */
+    .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .stat-value {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem; font-weight: 700;
+    }
+    .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Mockup frame ── */
+    .mockup-wrapper { position: relative; }
+    .mockup-glow {
+      position: absolute; inset: -20px;
+      background: radial-gradient(ellipse at center, rgba(0,245,255,0.1) 0%, rgba(168,85,247,0.05) 50%, transparent 70%);
+      border-radius: 32px; pointer-events: none; z-index: 0;
+    }
+    .mockup-frame {
+      position: relative; z-index: 1; border-radius: 16px;
+      background: linear-gradient(135deg, rgba(10,22,40,0.97) 0%, rgba(6,13,26,0.99) 100%);
+      border: 1px solid rgba(0,245,255,0.18);
+      box-shadow:
+        0 0 0 1px rgba(0,245,255,0.05),
+        0 0 60px rgba(0,245,255,0.1),
+        0 0 120px rgba(168,85,247,0.06),
+        0 40px 80px rgba(0,0,0,0.65);
+      overflow: hidden;
+    }
+    .mockup-frame::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,245,255,0.04) 0%, transparent 50%, rgba(168,85,247,0.04) 100%);
+      pointer-events: none; z-index: 2;
+    }
+    .mockup-topbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.35);
+      border-bottom: 1px solid rgba(0,245,255,0.1);
+    }
+    .dot-red    { width: 10px; height: 10px; border-radius: 50%; background: #ff5f56; flex-shrink: 0; }
+    .dot-yellow { width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e; flex-shrink: 0; }
+    .dot-green  { width: 10px; height: 10px; border-radius: 50%; background: #27c93f; flex-shrink: 0; }
+
+    /* SVG chart animations */
+    .chart-line {
+      stroke-dasharray: 1200;
+      stroke-dashoffset: 1200;
+      animation: drawLine 3s ease forwards 0.3s;
+    }
+    .chart-area {
+      stroke-dasharray: 1200;
+      stroke-dashoffset: 1200;
+      animation: drawLine 3s ease forwards 0.3s;
+    }
+    @keyframes drawLine { to { stroke-dashoffset: 0; } }
+
+    .candle {
+      transform-origin: bottom center;
+      animation: candleGrow 0.5s ease forwards;
+      opacity: 0;
+    }
+    @keyframes candleGrow {
+      from { opacity:0; transform:scaleY(0); }
+      to   { opacity:1; transform:scaleY(1); }
+    }
+    .zone-pulse { animation: zonePulse 3s ease-in-out infinite; }
+    @keyframes zonePulse { 0%,100%{opacity:0.4} 50%{opacity:0.75} }
+
+    /* Floating chips */
+    .chip-float {
+      position: absolute; z-index: 10;
+      background: #0a1628;
+      border-radius: 12px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .chip-float-tl {
+      top: -18px; right: -18px;
+      border: 1px solid rgba(0,245,255,0.25);
+      box-shadow: 0 0 20px rgba(0,245,255,0.12), 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .chip-float-br {
+      bottom: -18px; left: -18px;
+      border: 1px solid rgba(168,85,247,0.25);
+      box-shadow: 0 0 20px rgba(168,85,247,0.12), 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    /* ── Ticker bar ── */
+    .ticker-strip {
+      background: rgba(6,13,26,0.65);
+      border-top: 1px solid rgba(0,245,255,0.07);
+      border-bottom: 1px solid rgba(0,245,255,0.07);
+      position: relative; z-index: 2;
+    }
+    .ticker-item { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .ticker-sym  { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.82rem; color: #e2e8f0; }
+    .ticker-px   { font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: #94a3b8; }
+    .ticker-up   { font-size: 0.72rem; font-weight: 700; color: #00ff88; }
+    .ticker-dn   { font-size: 0.72rem; font-weight: 700; color: #ff5f56; }
+    .ticker-sep  { width: 1px; height: 16px; background: rgba(255,255,255,0.07); flex-shrink: 0; }
+
+    /* ── Section tags & headings ── */
+    .section-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 100px;
+      font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+    .section-heading {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+      font-weight: 800; line-height: 1.2;
+    }
+
+    /* ── Feature cards ── */
+    .feature-card {
+      position: relative; border-radius: 16px; padding: 28px;
+      background: linear-gradient(135deg, rgba(10,22,40,0.85) 0%, rgba(6,13,26,0.92) 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275),
+                  border-color 0.35s ease,
+                  box-shadow 0.35s ease;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: 16px;
+      background: linear-gradient(135deg, var(--glow-color, rgba(0,245,255,0.08)) 0%, transparent 60%);
+      opacity: 0; transition: opacity 0.35s ease; pointer-events: none;
+    }
+    .feature-card:hover {
+      transform: translateY(-8px) scale(1.01);
+      border-color: var(--border-color, rgba(0,245,255,0.3));
+      box-shadow: 0 0 40px var(--shadow-color, rgba(0,245,255,0.12)), 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-card:hover .card-icon { transform: scale(1.15) rotate(5deg); }
+
+    .card-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 16px;
+      transition: transform 0.3s ease;
+    }
+    .card-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.08rem; font-weight: 700; margin-bottom: 10px;
+    }
+    .card-desc { font-size: 0.875rem; line-height: 1.65; color: #94a3b8; }
+
+    /* ── Badges ── */
+    .badge-free {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 0.68rem; font-weight: 700;
+      background: linear-gradient(135deg, rgba(0,255,136,0.18), rgba(0,255,136,0.07));
+      border: 1px solid rgba(0,255,136,0.4); color: #00ff88;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+    }
+    .badge-pro {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 0.68rem; font-weight: 700;
+      background: linear-gradient(135deg, rgba(168,85,247,0.22), rgba(168,85,247,0.08));
+      border: 1px solid rgba(168,85,247,0.5); color: #c084fc;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+    }
+
+    /* ── Pricing cards ── */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 22px; max-width: 680px; margin: 0 auto 48px;
+    }
+    .pricing-card {
+      position: relative; border-radius: 18px; padding: 32px 28px;
+      background: linear-gradient(135deg, rgba(10,22,40,0.9) 0%, rgba(6,13,26,0.96) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .pricing-card:hover { transform: translateY(-6px); }
+    .pricing-card.featured {
+      border-color: rgba(168,85,247,0.5);
+      box-shadow: 0 0 40px rgba(168,85,247,0.14), 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .pricing-save-badge {
+      position: absolute; top: -13px; right: 24px;
+      background: linear-gradient(135deg, #00ff88, #00d4aa);
+      color: #020409; font-size: 0.68rem; font-weight: 800;
+      letter-spacing: 0.4px; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 100px;
+      box-shadow: 0 4px 14px rgba(0,255,136,0.35);
+    }
+    .pricing-plan-name {
+      font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700;
+      color: #c084fc; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
+    }
+    .pricing-amount { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+    .pricing-amount-value {
+      font-family: 'Space Grotesk', sans-serif; font-size: 2.4rem; font-weight: 800; color: white;
+    }
+    .pricing-amount-period { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+    .pricing-subnote { font-size: 0.78rem; color: #64748b; margin-bottom: 22px; }
+    .pricing-feature-list { list-style: none; margin-bottom: 26px; }
+    .pricing-feature-list li {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 0.85rem; color: #94a3b8; padding: 6px 0;
+    }
+    .pricing-feature-list li svg { flex-shrink: 0; color: #00ff88; }
+    .pricing-cta {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 13px 20px; border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem;
+      cursor: pointer; text-decoration: none; box-sizing: border-box;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .pricing-cta.primary {
+      background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+      color: white; border: none;
+      box-shadow: 0 0 22px rgba(168,85,247,0.4), 0 4px 14px rgba(0,0,0,0.3);
+    }
+    .pricing-cta.secondary {
+      background: transparent; color: #c084fc; border: 1px solid rgba(168,85,247,0.4);
+    }
+    .pricing-cta:hover { transform: translateY(-2px); }
+
+    /* ── Glow divider ── */
+    .glow-divider {
+      height: 1px; width: 100%;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(0,245,255,0.28) 30%,
+        rgba(168,85,247,0.28) 70%,
+        transparent 100%);
+    }
+
+    /* ── How-it-works step numbers ── */
+    .step-num {
+      width: 46px; height: 46px; border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem; font-weight: 800;
+    }
+
+    /* ── About card ── */
+    .about-card {
+      background: linear-gradient(135deg, rgba(10,22,40,0.92) 0%, rgba(6,13,26,0.96) 100%);
+      border: 1px solid rgba(0,245,255,0.1); border-radius: 20px; padding: 40px;
+      position: relative; overflow: hidden;
+    }
+    .about-card::before {
+      content: ''; position: absolute; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: conic-gradient(from 0deg, transparent 0deg, rgba(0,245,255,0.025) 60deg, transparent 120deg);
+      animation: rotateCone 14s linear infinite; pointer-events: none;
+    }
+    @keyframes rotateCone { to { transform: rotate(360deg); } }
+
+    .avatar-ring {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: linear-gradient(135deg, #00f5ff, #a855f7);
+      padding: 3px; flex-shrink: 0;
+    }
+    .avatar-inner {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: linear-gradient(135deg, #0a1628, #060d1a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+
+    /* ── Disclaimer ── */
+    .disclaimer-box {
+      background: linear-gradient(135deg, rgba(255,107,53,0.06), rgba(255,107,53,0.02));
+      border: 1px solid rgba(255,107,53,0.2);
+      border-radius: 14px; padding: 24px 28px;
+    }
+
+    /* ── Footer ── */
+    .site-footer {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 32px 0;
+      position: relative; z-index: 2;
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(2,4,9,0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1; pointer-events: all;
+    }
+    .modal-box {
+      background: linear-gradient(135deg, #0a1628 0%, #060d1a 100%);
+      border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 20px; padding: 36px;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 0 60px rgba(168,85,247,0.18), 0 40px 80px rgba(0,0,0,0.65);
+      transform: translateY(28px) scale(0.95);
+      transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+    }
+    .modal-overlay.active .modal-box {
+      transform: translateY(0) scale(1);
+    }
+
+    .wallet-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      background: rgba(0,0,0,0.32);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; margin-bottom: 10px;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .wallet-row:hover {
+      border-color: rgba(168,85,247,0.3);
+      background: rgba(168,85,247,0.05);
+    }
+    .wallet-address {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; color: #94a3b8;
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .copy-btn {
+      padding: 6px 12px; border-radius: 8px;
+      font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      border: 1px solid rgba(0,245,255,0.3);
+      background: rgba(0,245,255,0.08); color: #00f5ff;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .copy-btn:hover { background: rgba(0,245,255,0.2); border-color: rgba(0,245,255,0.65); }
+    .copy-btn.copied { background: rgba(0,255,136,0.14); border-color: rgba(0,255,136,0.5); color: #00ff88; }
+
+    .coin-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* ── Floating particles ── */
+    .particle {
+      position: fixed; border-radius: 50%;
+      pointer-events: none; z-index: 0;
+      animation: particleDrift linear infinite;
+    }
+    @keyframes particleDrift {
+      0%   { opacity:0; transform:translateY(100vh) scale(0); }
+      10%  { opacity:1; }
+      90%  { opacity:1; }
+      100% { opacity:0; transform:translateY(-20vh) scale(1); }
+    }
+
+    /* ── Scroll reveal (GSAP fallback) ── */
+    .scroll-reveal { opacity: 0; transform: translateY(36px); }
+    .scroll-reveal.visible {
+      animation: revealUp 0.7s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    @keyframes revealUp { to { opacity:1; transform:translateY(0); } }
+
+    /* ── Language switcher ── */
+    .lang-switcher { position: relative; flex-shrink: 0; }
+    .lang-select {
+      appearance: none; -webkit-appearance: none; -moz-appearance: none;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; font-weight: 600;
+      color: #e2e8f0; background: rgba(0,245,255,0.06);
+      border: 1px solid rgba(0,245,255,0.25); border-radius: 10px;
+      padding: 9px 30px 9px 14px; cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .lang-select:hover, .lang-select:focus {
+      background: rgba(0,245,255,0.13);
+      border-color: rgba(0,245,255,0.55);
+      outline: none;
+    }
+    .lang-switcher::after {
+      content: '';
+      position: absolute; top: 50%; right: 12px; width: 7px; height: 7px;
+      border-right: 1.5px solid #00f5ff; border-bottom: 1.5px solid #00f5ff;
+      transform: translateY(-65%) rotate(45deg); pointer-events: none;
+    }
+    .lang-select option { background: #0a1628; color: #e2e8f0; }
+
+    /* ── Mobile hamburger + menu ── */
+    .hamburger-btn {
+      display: none; flex-direction: column; justify-content: center; gap: 5px;
+      width: 38px; height: 38px; border-radius: 8px;
+      background: rgba(0,245,255,0.06); border: 1px solid rgba(0,245,255,0.2);
+      cursor: pointer; flex-shrink: 0; padding: 0;
+    }
+    .hamburger-btn span {
+      display: block; width: 18px; height: 2px; margin: 0 auto;
+      background: #00f5ff; border-radius: 2px;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .hamburger-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger-btn.open span:nth-child(2) { opacity: 0; }
+    .hamburger-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none; flex-direction: column; gap: 4px;
+      max-height: 0; overflow: hidden;
+      background: rgba(2,4,9,0.97);
+      border-bottom: 1px solid rgba(0,245,255,0.1);
+      transition: max-height 0.3s ease;
+    }
+    .mobile-menu.open { max-height: 340px; }
+    .mobile-menu a, .mobile-menu button.mobile-link {
+      display: block; width: 100%; text-align: left;
+      padding: 14px 24px; font-size: 0.95rem; font-weight: 500;
+      color: #cbd5e1; text-decoration: none; background: none; border: none;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .mobile-menu .lang-switcher { padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.05); }
+    .mobile-menu .lang-select { width: 100%; }
+
+    /* ── Hero grid & about flex (base = desktop) ── */
+    .hero-grid { grid-template-columns: 1fr 1fr; gap: 56px; }
+    .about-flex { flex-direction: row; align-items: flex-start; gap: 28px; text-align: left; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1024px) {
+      .chip-float-tl, .chip-float-br { display: none !important; }
+    }
+    @media (max-width: 900px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    }
+    @media (max-width: 768px) {
+      .hero-headline { font-size: clamp(1.9rem, 7vw, 2.5rem); }
+      .modal-box { padding: 24px; }
+      .about-card { padding: 24px; }
+      .wallet-address { font-size: 0.62rem; }
+      .btn-neon, .btn-ghost { font-size: 0.85rem; padding: 10px 20px; }
+      .nav-links, .nav-desktop-lang, .nav-desktop-cta { display: none !important; }
+      .hamburger-btn { display: flex; }
+      .mobile-menu { display: flex; }
+    }
+    @media (max-width: 640px) {
+      .about-flex { flex-direction: column; align-items: center; gap: 28px; text-align: center; }
+    }
+    @media (max-width: 480px) {
+      .feature-card { padding: 20px; }
+      .wallet-row { flex-wrap: wrap; }
+      .wallet-address { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Fixed background layers ── -->
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="orb orb-1" aria-hidden="true"></div>
+  <div class="orb orb-2" aria-hidden="true"></div>
+  <div class="orb orb-3" aria-hidden="true"></div>
+  <div id="particles-container" aria-hidden="true" style="position:fixed;inset:0;z-index:0;pointer-events:none;"></div>
+
+  <!-- ════════════════════════════════════════ NAVBAR ════ -->
+  <nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+    <div style="max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+
+      <!-- Logo -->
+      <a href="#home" class="no-underline" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
+              <stop offset="0%" stop-color="#001a2e"/>
+              <stop offset="100%" stop-color="#0a0618"/>
+            </linearGradient>
+          </defs>
+          <rect width="32" height="32" rx="9" fill="url(#logoGrad)"/>
+          <circle cx="16" cy="16" r="5" fill="#020409"/>
+          <circle cx="16" cy="16" r="2.5" fill="#00f5ff"/>
+          <circle cx="8"  cy="8"  r="2" fill="#00f5ff" opacity="0.75"/>
+          <circle cx="24" cy="8"  r="2" fill="#a855f7" opacity="0.75"/>
+          <circle cx="8"  cy="24" r="2" fill="#a855f7" opacity="0.75"/>
+          <circle cx="24" cy="24" r="2" fill="#00f5ff" opacity="0.75"/>
+          <line x1="16" y1="11" x2="8"  y2="8"  stroke="#00f5ff" stroke-width="1" stroke-opacity="0.45"/>
+          <line x1="16" y1="11" x2="24" y2="8"  stroke="#a855f7" stroke-width="1" stroke-opacity="0.45"/>
+          <line x1="16" y1="21" x2="8"  y2="24" stroke="#a855f7" stroke-width="1" stroke-opacity="0.45"/>
+          <line x1="16" y1="21" x2="24" y2="24" stroke="#00f5ff" stroke-width="1" stroke-opacity="0.45"/>
+        </svg>
+        <span class="logo-text">NodeChart<span class="logo-dot" aria-hidden="true"></span></span>
+      </a>
+
+      <!-- Desktop links -->
+      <div style="display:flex;align-items:center;gap:32px;" class="nav-links">
+        <a href="#features" data-i18n="nav.features" style="font-size:0.88rem;font-weight:500;color:#94a3b8;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#94a3b8'">Features</a>
+        <a href="#pro"      data-i18n="nav.pro"      style="font-size:0.88rem;font-weight:500;color:#94a3b8;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#94a3b8'">Pro Access</a>
+        <a href="#about"    data-i18n="nav.about"    style="font-size:0.88rem;font-weight:500;color:#94a3b8;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#94a3b8'">About</a>
+      </div>
+
+      <!-- CTAs -->
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <div class="lang-switcher nav-desktop-lang">
+          <select class="lang-select" id="lang-select-desktop" aria-label="Select language" onchange="setLanguage(this.value)">
+            <option value="en">🇬🇧 EN</option>
+            <option value="ko">🇰🇷 KO</option>
+            <option value="es">🇪🇸 ES</option>
+            <option value="ru">🇷🇺 RU</option>
+            <option value="zh">🇨🇳 ZH</option>
+          </select>
+        </div>
+        <div class="nav-desktop-cta" style="display:flex;align-items:center;gap:10px;">
+          <button class="btn-donate" onclick="openDonateModal()" aria-label="Open donation modal">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span class="nav-support-label" data-i18n="nav.support">Support</span>
+          </button>
+          <a href="app.html" class="btn-neon" style="font-size:0.88rem;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span data-i18n="nav.launch">Launch App</span>
+          </a>
+        </div>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu" onclick="toggleMobileMenu()">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div class="mobile-menu" id="mobile-menu" role="navigation" aria-label="Mobile navigation">
+      <a href="#features" data-i18n="nav.features" onclick="closeMobileMenu()">Features</a>
+      <a href="#pro" data-i18n="nav.pro" onclick="closeMobileMenu()">Pro Access</a>
+      <a href="#about" data-i18n="nav.about" onclick="closeMobileMenu()">About</a>
+      <button class="mobile-link" data-i18n="nav.support" onclick="closeMobileMenu();openDonateModal()">Support</button>
+      <a href="app.html" data-i18n="nav.launch">Launch App</a>
+      <div class="lang-switcher">
+        <select class="lang-select" id="lang-select-mobile" aria-label="Select language" onchange="setLanguage(this.value)">
+          <option value="en">🇬🇧 English</option>
+          <option value="ko">🇰🇷 한국어</option>
+          <option value="es">🇪🇸 Español</option>
+          <option value="ru">🇷🇺 Русский</option>
+          <option value="zh">🇨🇳 中文</option>
+        </select>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════════════ HERO ════ -->
+  <section class="hero-section" id="home" aria-label="Hero">
+    <div style="max-width:1280px;margin:0 auto;padding:64px 24px 80px;position:relative;z-index:1;width:100%;">
+      <div style="display:grid;align-items:center;" class="hero-grid">
+
+        <!-- Left: copy -->
+        <div id="hero-copy">
+          <div class="hero-badge" role="status">
+            <div class="hero-badge-dot" aria-hidden="true"></div>
+            <span data-i18n="hero.badge">Live on Mainnet — 100% Free</span>
+          </div>
+
+          <h1 class="hero-headline" style="color:white;margin-bottom:24px;" id="hero-headline" data-i18n-html="hero.headline">
+            The <span class="gradient-text-cyan">Decentralized</span><br/>
+            TradingView<br/>
+            <span class="gradient-text-green">Alternative.</span>
+          </h1>
+
+          <p id="hero-sub" style="color:#94a3b8;font-size:1.05rem;line-height:1.75;margin-bottom:12px;max-width:480px;" data-i18n="hero.sub">
+            Real-time Binance charts. AI-drawn support zones. On-chain intelligence.
+          </p>
+          <p style="color:#cbd5e1;font-weight:600;font-size:0.95rem;margin-bottom:8px;" data-i18n="hero.tagline">
+            Zero tracking. Zero ads. Zero compromise.
+          </p>
+
+          <!-- Typewriter -->
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:36px;margin-top:16px;">
+            <span style="color:#00f5ff;font-size:1rem;font-weight:700;">›</span>
+            <span id="typewriter-text" style="color:#67e8f9;font-size:0.9rem;font-weight:500;min-height:1.2em;"></span>
+            <span class="typewriter-cursor" style="color:#00f5ff;font-size:0.9rem;">|</span>
+          </div>
+
+          <!-- CTA row -->
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:44px;">
+            <a href="app.html" class="btn-neon" style="font-size:0.95rem;padding:14px 32px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span data-i18n="hero.cta.launch">Launch NodeChart</span>
+            </a>
+            <a href="#features" class="btn-ghost" style="font-size:0.95rem;">
+              <span data-i18n="hero.cta.explore">Explore Features</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg>
+            </a>
+          </div>
+
+          <!-- Mini stat strip -->
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:24px;">
+            <div class="stat-item">
+              <span class="stat-value gradient-text-cyan">0%</span>
+              <span class="stat-label" data-i18n="hero.stat.tracking">Data Tracking</span>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,0.08);"></div>
+            <div class="stat-item">
+              <span class="stat-value gradient-text-green">$0</span>
+              <span class="stat-label" data-i18n="hero.stat.core">Free Core</span>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,0.08);"></div>
+            <div class="stat-item">
+              <span class="stat-value" style="color:#a855f7;">∞</span>
+              <span class="stat-label" data-i18n="hero.stat.timeframes">Timeframes</span>
+            </div>
+            <div style="width:1px;height:36px;background:rgba(255,255,255,0.08);"></div>
+            <div class="stat-item">
+              <span class="stat-value" style="color:#ff6b35;">AI</span>
+              <span class="stat-label" data-i18n="hero.stat.zones">S/R Zones</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Mockup -->
+        <div class="mockup-wrapper" id="app-mockup">
+          <div class="mockup-glow" aria-hidden="true"></div>
+
+          <div class="mockup-frame">
+            <!-- Window chrome -->
+            <div class="mockup-topbar">
+              <div class="dot-red"></div>
+              <div class="dot-yellow"></div>
+              <div class="dot-green"></div>
+              <div style="display:flex;align-items:center;gap:10px;margin-left:12px;">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#00f5ff;font-weight:600;">BTC/USDT</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#00ff88;font-weight:600;">$67,482.50</span>
+                <span style="font-size:0.65rem;color:#00ff88;font-weight:700;">▲ +2.34%</span>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <span style="font-size:0.62rem;padding:2px 7px;border:1px solid rgba(0,245,255,0.35);border-radius:4px;color:#00f5ff;background:rgba(0,245,255,0.09);">1H</span>
+                <span style="font-size:0.62rem;padding:2px 7px;border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#475569;">4H</span>
+                <span style="font-size:0.62rem;padding:2px 7px;border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:#475569;">1D</span>
+              </div>
+            </div>
+
+            <!-- SVG Chart -->
+            <div style="padding:14px 14px 6px;">
+              <svg viewBox="0 0 560 250" width="100%" style="display:block;overflow:visible;" role="img" aria-label="Live BTC/USDT chart preview">
+                <defs>
+                  <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stop-color="#00f5ff" stop-opacity="0.28"/>
+                    <stop offset="100%" stop-color="#00f5ff" stop-opacity="0"/>
+                  </linearGradient>
+                  <filter id="glowF" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <clipPath id="chartClip">
+                    <rect x="0" y="0" width="560" height="250"/>
+                  </clipPath>
+                </defs>
+
+                <!-- Grid lines -->
+                <g stroke="rgba(255,255,255,0.04)" stroke-width="1">
+                  <line x1="0" y1="55"  x2="560" y2="55"/>
+                  <line x1="0" y1="105" x2="560" y2="105"/>
+                  <line x1="0" y1="155" x2="560" y2="155"/>
+                  <line x1="0" y1="205" x2="560" y2="205"/>
+                  <line x1="80"  y1="0" x2="80"  y2="250"/>
+                  <line x1="160" y1="0" x2="160" y2="250"/>
+                  <line x1="240" y1="0" x2="240" y2="250"/>
+                  <line x1="320" y1="0" x2="320" y2="250"/>
+                  <line x1="400" y1="0" x2="400" y2="250"/>
+                  <line x1="480" y1="0" x2="480" y2="250"/>
+                </g>
+
+                <!-- AI Support zone -->
+                <rect x="0" y="168" width="560" height="17" fill="rgba(0,255,136,0.07)" class="zone-pulse" clip-path="url(#chartClip)"/>
+                <line x1="0" y1="168" x2="560" y2="168" stroke="#00ff88" stroke-width="1" stroke-dasharray="6,4" opacity="0.55" class="zone-pulse"/>
+                <text x="6" y="165" fill="#00ff88" font-size="8" opacity="0.85" font-family="JetBrains Mono,monospace" font-weight="600">AI SUPPORT</text>
+
+                <!-- AI Resistance zone -->
+                <rect x="0" y="50" width="560" height="15" fill="rgba(255,107,53,0.06)" class="zone-pulse" clip-path="url(#chartClip)"/>
+                <line x1="0" y1="50" x2="560" y2="50" stroke="#ff6b35" stroke-width="1" stroke-dasharray="6,4" opacity="0.55" class="zone-pulse"/>
+                <text x="6" y="47" fill="#ff6b35" font-size="8" opacity="0.85" font-family="JetBrains Mono,monospace" font-weight="600">AI RESISTANCE</text>
+
+                <!-- Candlesticks (rendered before price line so line appears on top) -->
+                <g clip-path="url(#chartClip)">
+                  <rect x="12"  y="186" width="9" height="17" rx="1" fill="#ff5f56" class="candle" style="animation-delay:2.5s"/>
+                  <line x1="16"  y1="184" x2="16"  y2="207" stroke="#ff5f56" stroke-width="1.5" class="candle" style="animation-delay:2.5s"/>
+                  <rect x="29"  y="178" width="9" height="13" rx="1" fill="#27c93f" class="candle" style="animation-delay:2.7s"/>
+                  <line x1="33"  y1="174" x2="33"  y2="195" stroke="#27c93f" stroke-width="1.5" class="candle" style="animation-delay:2.7s"/>
+                  <rect x="46"  y="170" width="9" height="11" rx="1" fill="#27c93f" class="candle" style="animation-delay:2.9s"/>
+                  <rect x="63"  y="163" width="9" height="10" rx="1" fill="#27c93f" class="candle" style="animation-delay:3.05s"/>
+                  <rect x="80"  y="158" width="9" height="8"  rx="1" fill="#ff5f56" class="candle" style="animation-delay:3.2s"/>
+                  <rect x="97"  y="150" width="9" height="11" rx="1" fill="#27c93f" class="candle" style="animation-delay:3.35s"/>
+                  <rect x="114" y="143" width="9" height="11" rx="1" fill="#27c93f" class="candle" style="animation-delay:3.5s"/>
+                  <rect x="131" y="133" width="9" height="13" rx="1" fill="#ff5f56" class="candle" style="animation-delay:3.62s"/>
+                  <rect x="148" y="125" width="9" height="12" rx="1" fill="#27c93f" class="candle" style="animation-delay:3.75s"/>
+                  <rect x="165" y="118" width="9" height="10" rx="1" fill="#27c93f" class="candle" style="animation-delay:3.87s"/>
+                  <rect x="182" y="108" width="9" height="13" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.0s"/>
+                  <rect x="199" y="98"  width="9" height="13" rx="1" fill="#ff5f56" class="candle" style="animation-delay:4.1s"/>
+                  <rect x="216" y="85"  width="9" height="16" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.2s"/>
+                  <rect x="233" y="79"  width="9" height="11" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.3s"/>
+                  <rect x="250" y="76"  width="9" height="9"  rx="1" fill="#ff5f56" class="candle" style="animation-delay:4.4s"/>
+                  <rect x="267" y="83"  width="9" height="12" rx="1" fill="#ff5f56" class="candle" style="animation-delay:4.5s"/>
+                  <rect x="284" y="90"  width="9" height="10" rx="1" fill="#ff5f56" class="candle" style="animation-delay:4.6s"/>
+                  <rect x="301" y="95"  width="9" height="11" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.7s"/>
+                  <rect x="318" y="91"  width="9" height="15" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.8s"/>
+                  <rect x="335" y="83"  width="9" height="17" rx="1" fill="#27c93f" class="candle" style="animation-delay:4.9s"/>
+                  <rect x="352" y="70"  width="9" height="15" rx="1" fill="#27c93f" class="candle" style="animation-delay:5.0s"/>
+                  <rect x="369" y="60"  width="9" height="13" rx="1" fill="#27c93f" class="candle" style="animation-delay:5.1s"/>
+                  <rect x="386" y="52"  width="9" height="11" rx="1" fill="#ff5f56" class="candle" style="animation-delay:5.2s"/>
+                  <rect x="403" y="44"  width="9" height="13" rx="1" fill="#27c93f" class="candle" style="animation-delay:5.3s"/>
+                  <rect x="420" y="41"  width="9" height="9"  rx="1" fill="#27c93f" class="candle" style="animation-delay:5.4s"/>
+                </g>
+
+                <!-- Whale bubble -->
+                <circle cx="360" cy="72" r="13" fill="rgba(168,85,247,0.22)" stroke="#a855f7" stroke-width="1.2" class="zone-pulse"/>
+                <text x="360" y="76" text-anchor="middle" font-size="10">🐋</text>
+
+                <!-- Price area (glow layer + crisp line) -->
+                <path d="M0,196 C18,191 38,181 58,174 C78,167 90,161 108,154 C128,147 140,141 158,131 C178,121 190,114 208,105 C228,95 240,87 258,82 C278,77 298,85 318,92 C338,99 350,105 368,97 C388,89 408,75 428,65 C448,55 468,49 488,45 C508,41 528,40 560,38"
+                      fill="none" stroke="rgba(0,245,255,0.2)" stroke-width="9" filter="url(#glowF)" class="chart-line"/>
+                <path d="M0,196 C18,191 38,181 58,174 C78,167 90,161 108,154 C128,147 140,141 158,131 C178,121 190,114 208,105 C228,95 240,87 258,82 C278,77 298,85 318,92 C338,99 350,105 368,97 C388,89 408,75 428,65 C448,55 468,49 488,45 C508,41 528,40 560,38"
+                      fill="none" stroke="#00f5ff" stroke-width="1.8" class="chart-line"/>
+                <!-- Area fill -->
+                <path d="M0,196 C18,191 38,181 58,174 C78,167 90,161 108,154 C128,147 140,141 158,131 C178,121 190,114 208,105 C228,95 240,87 258,82 C278,77 298,85 318,92 C338,99 350,105 368,97 C388,89 408,75 428,65 C448,55 468,49 488,45 C508,41 528,40 560,38 L560,250 L0,250 Z"
+                      fill="url(#areaGrad)" class="chart-area"/>
+
+                <!-- Current price marker -->
+                <line x1="0" y1="40" x2="536" y2="40" stroke="#00f5ff" stroke-width="0.8" stroke-dasharray="4,6" opacity="0.55"/>
+                <rect x="537" y="34" width="22" height="13" rx="3" fill="#00f5ff"/>
+                <text x="548" y="44" text-anchor="middle" fill="#020409" font-size="6.5" font-weight="800" font-family="Inter,sans-serif">NOW</text>
+              </svg>
+
+              <!-- F&G + overlays strip -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 2px 0;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 5px #00ff88;"></div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#00ff88;font-weight:600;">GREED 74</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#a855f7;"></div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#a855f7;">TVL $120.4B</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:5px;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:#ff6b35;"></div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#ff6b35;">Hash 640EH</span>
+                  </div>
+                </div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#334155;">WS ●</span>
+              </div>
+            </div>
+
+            <!-- Bottom toolbar -->
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid rgba(0,245,255,0.08);background:rgba(0,0,0,0.22);flex-wrap:wrap;">
+              <span style="font-size:0.62rem;color:#00f5ff;padding:3px 8px;background:rgba(0,245,255,0.09);border-radius:4px;border:1px solid rgba(0,245,255,0.2);">S/R Zones ✓</span>
+              <span style="font-size:0.62rem;color:#a855f7;padding:3px 8px;background:rgba(168,85,247,0.09);border-radius:4px;border:1px solid rgba(168,85,247,0.2);">Whale Bubbles ✓</span>
+              <span style="font-size:0.62rem;color:#ff6b35;padding:3px 8px;background:rgba(255,107,53,0.09);border-radius:4px;border:1px solid rgba(255,107,53,0.2);">Mempool ✓</span>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:5px;">
+                <div style="width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 5px #00ff88;animation:pulseDot 1.5s ease-in-out infinite;"></div>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:#00ff88;font-weight:600;">LIVE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating info chips (desktop only, hidden on tablet/mobile via CSS) -->
+          <div class="chip-float chip-float-tl" aria-hidden="true">
+            <span style="font-size:1.05rem;">⚡</span>
+            <div>
+              <div style="font-size:0.68rem;font-weight:700;color:#00f5ff;font-family:'Space Grotesk',sans-serif;">WebSocket</div>
+              <div style="font-size:0.6rem;color:#475569;">Real-time stream</div>
+            </div>
+          </div>
+          <div class="chip-float chip-float-br" aria-hidden="true">
+            <span style="font-size:1.05rem;">🧠</span>
+            <div>
+              <div style="font-size:0.68rem;font-weight:700;color:#c084fc;font-family:'Space Grotesk',sans-serif;">AI Zones</div>
+              <div style="font-size:0.6rem;color:#475569;">Auto-detected</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /hero-grid -->
+    </div>
+  </section>
+
+  <!-- Ticker bar -->
+  <div class="ticker-strip" role="marquee" aria-label="Live crypto prices">
+    <div style="max-width:1280px;margin:0 auto;padding:12px 24px;">
+      <div style="display:flex;align-items:center;gap:16px;overflow-x:auto;" class="hide-scrollbar" id="ticker-row">
+        <div class="ticker-item">
+          <span class="ticker-sym">BTC</span>
+          <span class="ticker-px" id="tp-btc">$67,482</span>
+          <span class="ticker-up" id="td-btc">▲ 2.34%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">ETH</span>
+          <span class="ticker-px" id="tp-eth">$3,521</span>
+          <span class="ticker-up" id="td-eth">▲ 1.87%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">BNB</span>
+          <span class="ticker-px" id="tp-bnb">$608</span>
+          <span class="ticker-dn" id="td-bnb">▼ 0.52%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">SOL</span>
+          <span class="ticker-px" id="tp-sol">$178.4</span>
+          <span class="ticker-up" id="td-sol">▲ 4.12%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">DOGE</span>
+          <span class="ticker-px" id="tp-doge">$0.182</span>
+          <span class="ticker-up" id="td-doge">▲ 6.70%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">XRP</span>
+          <span class="ticker-px" id="tp-xrp">$0.634</span>
+          <span class="ticker-dn" id="td-xrp">▼ 1.20%</span>
+        </div>
+        <div class="ticker-sep"></div>
+        <div class="ticker-item">
+          <span class="ticker-sym">AVAX</span>
+          <span class="ticker-px" id="tp-avax">$42.8</span>
+          <span class="ticker-up" id="td-avax">▲ 3.45%</span>
+        </div>
+        <div style="margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:6px;">
+          <div style="width:6px;height:6px;background:#00ff88;border-radius:50%;box-shadow:0 0 5px #00ff88;animation:pulseDot 2s ease-in-out infinite;"></div>
+          <span style="font-size:0.72rem;color:#475569;white-space:nowrap;" data-i18n="ticker.label">Binance WebSocket</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ FEATURES ════ -->
+  <section style="position:relative;z-index:2;padding:96px 24px;" id="features">
+    <div style="max-width:1280px;margin:0 auto;">
+
+      <div class="scroll-reveal" style="text-align:center;margin-bottom:60px;">
+        <div class="section-tag" style="background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.2);color:#00f5ff;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span data-i18n="features.tag">Free Core Features</span>
+        </div>
+        <h2 class="section-heading" style="color:white;margin-bottom:14px;" data-i18n-html="features.heading">
+          Everything You Need,<br/><span class="gradient-text-cyan">Out of the Box</span>
+        </h2>
+        <p style="color:#64748b;max-width:520px;margin:0 auto;line-height:1.75;font-size:0.95rem;" data-i18n="features.sub">
+          No sign-up. No paywall. No compromise. NodeChart delivers institutional-grade charting tools directly in your browser — powered by live Binance WebSocket feeds.
+        </p>
+      </div>
+
+      <!-- Free cards grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:60px;">
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(0,245,255,0.09);--border-color:rgba(0,245,255,0.28);--shadow-color:rgba(0,245,255,0.1);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(0,245,255,0.1);border:1px solid rgba(0,245,255,0.2);">⚡</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.ws.title">Live Binance WebSocket</h3>
+          <p class="card-desc">Real-time tick-by-tick streaming directly from Binance's public WS API. No API keys. Timeframes from 1m to 1d with instant candlestick updates.</p>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:6px;">
+            <div style="width:6px;height:6px;background:#00ff88;border-radius:50%;box-shadow:0 0 5px #00ff88;"></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#00ff88;">LIVE STREAM</span>
+          </div>
+        </div>
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(0,255,136,0.08);--border-color:rgba(0,255,136,0.28);--shadow-color:rgba(0,255,136,0.08);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);">🧠</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.ai.title">AI Support &amp; Resistance</h3>
+          <p class="card-desc">Auto-drawn price zones calculated algorithmically from historical swing highs and lows. The AI continuously re-evaluates as new candles close — no manual drawing required.</p>
+          <div style="margin-top:16px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#475569;">Powered by local DSP algo</span>
+          </div>
+        </div>
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(255,200,0,0.06);--border-color:rgba(255,180,0,0.25);--shadow-color:rgba(255,180,0,0.08);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(255,180,0,0.1);border:1px solid rgba(255,180,0,0.2);">😨</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.fng.title">Fear &amp; Greed Sentiment</h3>
+          <p class="card-desc">The chart background dynamically tints based on the live Crypto Fear &amp; Greed Index — deep red for extreme fear, vibrant green for extreme greed. Instant market pulse.</p>
+          <div style="margin-top:16px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#475569;">alternative.me API</span>
+          </div>
+        </div>
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(0,245,255,0.07);--border-color:rgba(0,245,255,0.22);--shadow-color:rgba(0,245,255,0.08);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.15);">📊</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.tf.title">Multi-Timeframe Charts</h3>
+          <p class="card-desc">Seamlessly switch between 1m, 3m, 5m, 15m, 30m, 1h, 4h, and 1d. Each switch reconnects the WebSocket automatically — zero page reloads.</p>
+          <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:5px;">
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">1m</span>
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">5m</span>
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">15m</span>
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">1h</span>
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">4h</span>
+            <span style="font-size:0.6rem;padding:2px 6px;border-radius:4px;background:rgba(0,245,255,0.08);color:#00f5ff;border:1px solid rgba(0,245,255,0.2);">1d</span>
+          </div>
+        </div>
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(0,255,136,0.06);--border-color:rgba(0,255,136,0.2);--shadow-color:rgba(0,255,136,0.07);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.15);">🔒</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.privacy.title">Zero Tracking, Zero Cost</h3>
+          <p class="card-desc">NodeChart runs entirely client-side. No accounts, no cookies, no telemetry. All data comes from public APIs. Your charts, your privacy — forever free.</p>
+          <div style="margin-top:16px;display:flex;gap:10px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#00ff88;">0% tracking</span>
+            <span style="color:#334155;">·</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#00ff88;">0% server cost</span>
+          </div>
+        </div>
+
+        <div class="feature-card scroll-reveal" style="--glow-color:rgba(255,107,53,0.06);--border-color:rgba(255,107,53,0.2);--shadow-color:rgba(255,107,53,0.07);">
+          <div class="badge-free" data-i18n="badge.free">Free</div>
+          <div class="card-icon" style="background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.15);">🎯</div>
+          <h3 class="card-title" style="color:white;" data-i18n="feat.search.title">Symbol Search &amp; Pairs</h3>
+          <p class="card-desc">Instantly search any Binance USDT pair. Type a ticker, select from the live dropdown, and your chart loads in under a second with a fresh WS connection.</p>
+          <div style="margin-top:16px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:#475569;">300+ USDT pairs</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="glow-divider" style="margin-bottom:60px;"></div>
+
+      <!-- Pro section -->
+      <div id="pro">
+        <div class="scroll-reveal" style="text-align:center;margin-bottom:48px;">
+          <div class="section-tag" style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.22);color:#c084fc;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span data-i18n="pro.tag">Pro / Premium — Monthly or Annual</span>
+          </div>
+          <h2 class="section-heading" style="color:white;margin-bottom:14px;" data-i18n-html="pro.heading">
+            Unlock<br/><span class="gradient-text-purple">Pro Intelligence</span>
+          </h2>
+          <p style="color:#64748b;max-width:520px;margin:0 auto;line-height:1.75;font-size:0.95rem;" data-i18n="pro.sub">
+            One simple subscription. Cancel anytime. Upgrade to Pro/Premium and unlock every advanced overlay and terminal feature NodeChart offers.
+          </p>
+        </div>
+
+        <!-- Pricing cards -->
+        <div class="pricing-grid scroll-reveal">
+          <div class="pricing-card">
+            <div class="pricing-plan-name" data-i18n="pricing.monthly.name">Pro Monthly</div>
+            <div class="pricing-amount">
+              <span class="pricing-amount-value">$10</span>
+              <span class="pricing-amount-period" data-i18n="pricing.monthly.period">/ month</span>
+            </div>
+            <div class="pricing-subnote" data-i18n="pricing.monthly.note">Billed monthly. Cancel anytime.</div>
+            <ul class="pricing-feature-list">
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.overlays">All Pro overlays &amp; indicators</span></li>
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.grid">Multi-grid terminal layouts</span></li>
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.cancel">Cancel anytime, no lock-in</span></li>
+            </ul>
+            <a href="app.html?plan=monthly" class="pricing-cta secondary" data-i18n="pricing.monthly.cta">Subscribe Monthly</a>
+          </div>
+
+          <div class="pricing-card featured">
+            <div class="pricing-save-badge" data-i18n="pricing.save">Save 17%</div>
+            <div class="pricing-plan-name" data-i18n="pricing.annual.name">Pro Annual</div>
+            <div class="pricing-amount">
+              <span class="pricing-amount-value">$100</span>
+              <span class="pricing-amount-period" data-i18n="pricing.annual.period">/ year</span>
+            </div>
+            <div class="pricing-subnote" data-i18n="pricing.annual.note">Equivalent to $8.33/mo — 2 months free.</div>
+            <ul class="pricing-feature-list">
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.overlays">All Pro overlays &amp; indicators</span></li>
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.grid">Multi-grid terminal layouts</span></li>
+              <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg><span data-i18n="pricing.feat.priority">Priority feature requests</span></li>
+            </ul>
+            <a href="app.html?plan=annual" class="pricing-cta primary" data-i18n="pricing.annual.cta">Go Annual — Best Value</a>
+          </div>
+        </div>
+
+        <!-- Pro cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:48px;">
+
+          <div class="feature-card scroll-reveal" style="--glow-color:rgba(168,85,247,0.1);--border-color:rgba(168,85,247,0.4);--shadow-color:rgba(168,85,247,0.12);">
+            <div class="badge-pro">Pro</div>
+            <div class="card-icon" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">📡</div>
+            <h3 class="card-title" style="color:#c084fc;" data-i18n="pro.tvl.title">On-Chain TVL Overlay</h3>
+            <p class="card-desc">DeFiLlama Total Value Locked data overlaid on your price chart as a secondary axis. Spot liquidity flows and protocol health signals before the crowd.</p>
+          </div>
+
+          <div class="feature-card scroll-reveal" style="--glow-color:rgba(168,85,247,0.1);--border-color:rgba(168,85,247,0.4);--shadow-color:rgba(168,85,247,0.12);">
+            <div class="badge-pro">Pro</div>
+            <div class="card-icon" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">⛏️</div>
+            <h3 class="card-title" style="color:#c084fc;" data-i18n="pro.mempool.title">Mempool &amp; Hashrate</h3>
+            <p class="card-desc">Live Bitcoin mempool fee pressure and global hashrate displayed as overlays. Know when miner capitulation or fee spikes are signaling macro moves.</p>
+          </div>
+
+          <div class="feature-card scroll-reveal" style="--glow-color:rgba(168,85,247,0.1);--border-color:rgba(168,85,247,0.4);--shadow-color:rgba(168,85,247,0.12);">
+            <div class="badge-pro">Pro</div>
+            <div class="card-icon" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">🐋</div>
+            <h3 class="card-title" style="color:#c084fc;" data-i18n="pro.whale.title">Whale Bubble Alerts</h3>
+            <p class="card-desc">Large on-chain transactions visualized as scaled bubbles on the chart at the exact price and time they occurred. Never miss a whale accumulation event.</p>
+          </div>
+
+          <div class="feature-card scroll-reveal" style="--glow-color:rgba(168,85,247,0.1);--border-color:rgba(168,85,247,0.4);--shadow-color:rgba(168,85,247,0.12);">
+            <div class="badge-pro">Pro</div>
+            <div class="card-icon" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.25);">⊞</div>
+            <h3 class="card-title" style="color:#c084fc;" data-i18n="pro.grid.title">Multi-Grid Layouts</h3>
+            <p class="card-desc">Run 2×2 or 3×3 chart grids simultaneously — each with its own symbol, timeframe, and live WS connection. A true multi-screen terminal in one tab.</p>
+          </div>
+
+        </div>
+
+        <!-- Subscription flow explainer -->
+        <div class="scroll-reveal" style="max-width:680px;margin:0 auto;">
+          <div style="background:linear-gradient(135deg,rgba(168,85,247,0.08),rgba(168,85,247,0.03));border:1px solid rgba(168,85,247,0.22);border-radius:16px;padding:28px 32px;">
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(168,85,247,0.14);border:1px solid rgba(168,85,247,0.3);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;">💳</div>
+              <div>
+                <h4 style="font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;color:#c084fc;margin-bottom:8px;" data-i18n="pro.how.title">How the Pro Subscription Works</h4>
+                <p style="font-size:0.855rem;line-height:1.75;color:#94a3b8;margin-bottom:18px;" data-i18n="pro.how.desc">
+                  Pick monthly or annual billing, enter your payment details securely at checkout, and every Pro overlay and layout unlocks instantly inside the app. Manage or cancel your subscription at any time.
+                </p>
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="width:22px;height:22px;border-radius:50%;background:rgba(0,245,255,0.14);border:1px solid rgba(0,245,255,0.3);display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:800;color:#00f5ff;flex-shrink:0;">1</div>
+                    <span style="font-size:0.8rem;color:#94a3b8;" data-i18n="pro.how.step1">Choose your plan</span>
+                  </div>
+                  <span style="color:#334155;">→</span>
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="width:22px;height:22px;border-radius:50%;background:rgba(168,85,247,0.14);border:1px solid rgba(168,85,247,0.3);display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:800;color:#c084fc;flex-shrink:0;">2</div>
+                    <span style="font-size:0.8rem;color:#94a3b8;" data-i18n="pro.how.step2">Enter payment details</span>
+                  </div>
+                  <span style="color:#334155;">→</span>
+                  <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="width:22px;height:22px;border-radius:50%;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.3);display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:800;color:#00ff88;flex-shrink:0;">3</div>
+                    <span style="font-size:0.8rem;color:#94a3b8;" data-i18n="pro.how.step3">Instant Pro access</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="glow-divider"></div>
+
+  <!-- ════════════════════════════════════════ HOW IT WORKS ════ -->
+  <section style="position:relative;z-index:2;padding:96px 24px;">
+    <div style="max-width:960px;margin:0 auto;">
+      <div class="scroll-reveal" style="text-align:center;margin-bottom:56px;">
+        <div class="section-tag" style="background:rgba(0,255,136,0.07);border:1px solid rgba(0,255,136,0.2);color:#00ff88;" data-i18n="how.tag">
+          Architecture
+        </div>
+        <h2 class="section-heading" style="color:white;margin-bottom:14px;" data-i18n-html="how.heading">
+          Why NodeChart Is<br/><span class="gradient-text-green">Truly Decentralized</span>
+        </h2>
+        <p style="color:#64748b;max-width:480px;margin:0 auto;line-height:1.75;font-size:0.95rem;" data-i18n="how.sub">
+          No backend. No data brokers. No middlemen between you and the market.
+        </p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px;">
+
+        <div class="scroll-reveal" style="text-align:center;">
+          <div style="display:flex;justify-content:center;margin-bottom:16px;">
+            <div class="step-num" style="background:linear-gradient(135deg,rgba(0,245,255,0.15),rgba(0,245,255,0.05));border:1px solid rgba(0,245,255,0.3);color:#00f5ff;">01</div>
+          </div>
+          <h4 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:white;margin-bottom:8px;font-size:1rem;" data-i18n="how.step1.title">Your Browser Connects</h4>
+          <p style="font-size:0.855rem;color:#475569;line-height:1.7;">NodeChart opens a direct WebSocket to Binance's public market data endpoint. No proxy, no caching layer — raw market data, instantly delivered.</p>
+        </div>
+
+        <div class="scroll-reveal" style="text-align:center;">
+          <div style="display:flex;justify-content:center;margin-bottom:16px;">
+            <div class="step-num" style="background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(168,85,247,0.05));border:1px solid rgba(168,85,247,0.3);color:#c084fc;">02</div>
+          </div>
+          <h4 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:white;margin-bottom:8px;font-size:1rem;" data-i18n="how.step2.title">Client-Side AI Processes</h4>
+          <p style="font-size:0.855rem;color:#475569;line-height:1.7;">All indicator calculations, S/R zone detection, and sentiment tinting happen entirely in your browser. Your machine does all the heavy lifting.</p>
+        </div>
+
+        <div class="scroll-reveal" style="text-align:center;">
+          <div style="display:flex;justify-content:center;margin-bottom:16px;">
+            <div class="step-num" style="background:linear-gradient(135deg,rgba(0,255,136,0.12),rgba(0,255,136,0.04));border:1px solid rgba(0,255,136,0.3);color:#00ff88;">03</div>
+          </div>
+          <h4 style="font-family:'Space Grotesk',sans-serif;font-weight:700;color:white;margin-bottom:8px;font-size:1rem;" data-i18n="how.step3.title">You Own Your Session</h4>
+          <p style="font-size:0.855rem;color:#475569;line-height:1.7;">No user data is ever transmitted to any server. Every chart, every session, every setting lives only in your browser. Close the tab and it's gone — true privacy.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="glow-divider"></div>
+
+  <!-- ════════════════════════════════════════ ABOUT ════ -->
+  <section style="position:relative;z-index:2;padding:96px 24px;" id="about">
+    <div style="max-width:800px;margin:0 auto;">
+
+      <div class="scroll-reveal" style="text-align:center;margin-bottom:44px;">
+        <div class="section-tag" style="background:rgba(0,245,255,0.07);border:1px solid rgba(0,245,255,0.18);color:#00f5ff;">
+          <span data-i18n="about.tag">The Builder</span>
+        </div>
+        <h2 class="section-heading" style="color:white;">
+          <span data-i18n="about.heading">Built by</span> <span class="gradient-text-cyan">Andrex</span>
+        </h2>
+      </div>
+
+      <div class="about-card scroll-reveal">
+        <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:28px;" class="about-inner">
+          <div style="display:flex;width:100%;" class="about-flex">
+            <div class="avatar-ring">
+              <div class="avatar-inner" role="img" aria-label="Developer avatar">👨‍💻</div>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <h3 style="font-family:'Space Grotesk',sans-serif;font-size:1.35rem;font-weight:800;color:white;margin-bottom:4px;">Andrex</h3>
+              <p style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#00f5ff;margin-bottom:18px;">Solo Dev · Web3 Builder · Crypto Trader</p>
+              <p style="font-size:0.9rem;color:#94a3b8;line-height:1.78;margin-bottom:14px;">
+                NodeChart was built out of frustration with paywalled, bloated charting tools that sell your data to the highest bidder. As a self-funded solo developer and active crypto trader, I wanted a clean, fast, no-compromise charting experience that respected the decentralized ethos of crypto itself.
+              </p>
+              <p style="font-size:0.9rem;color:#94a3b8;line-height:1.78;margin-bottom:24px;">
+                This project is free, open in spirit, and funded entirely by community donations. If NodeChart saves you money on TradingView subscriptions or helps you make a great trade, consider throwing some sats my way.
+              </p>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <a href="mailto:hippie.highho@gmail.com"
+                   style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;font-size:0.85rem;font-weight:600;background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.25);color:#00f5ff;text-decoration:none;transition:background 0.2s ease,border-color 0.2s ease;"
+                   onmouseover="this.style.background='rgba(0,245,255,0.16)';this.style.borderColor='rgba(0,245,255,0.5)';"
+                   onmouseout="this.style.background='rgba(0,245,255,0.08)';this.style.borderColor='rgba(0,245,255,0.25)';">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  hippie.highho@gmail.com
+                </a>
+                <button onclick="openDonateModal()"
+                        style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;font-size:0.85rem;font-weight:600;font-family:'Inter',sans-serif;background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.3);color:#c084fc;cursor:pointer;transition:background 0.2s ease,border-color 0.2s ease;"
+                        onmouseover="this.style.background='rgba(168,85,247,0.22)';this.style.borderColor='rgba(168,85,247,0.55)';"
+                        onmouseout="this.style.background='rgba(168,85,247,0.12)';this.style.borderColor='rgba(168,85,247,0.3)';">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  Support the Project
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="glow-divider"></div>
+
+  <!-- ════════════════════════════════════════ DISCLAIMER ════ -->
+  <section style="position:relative;z-index:2;padding:64px 24px;">
+    <div style="max-width:800px;margin:0 auto;">
+      <div class="disclaimer-box scroll-reveal" role="note" aria-label="Financial risk disclaimer">
+        <div style="display:flex;align-items:flex-start;gap:14px;">
+          <div style="font-size:1.3rem;flex-shrink:0;margin-top:2px;" aria-hidden="true">⚠️</div>
+          <div>
+            <h4 style="font-family:'Space Grotesk',sans-serif;font-size:0.9rem;font-weight:700;color:#fb923c;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;" data-i18n="disclaimer.title">Financial Risk Disclaimer</h4>
+            <p style="font-size:0.82rem;line-height:1.8;color:#78716c;">
+              <strong style="color:#a8a29e;">Trading cryptocurrencies involves substantial risk of loss.</strong> NodeChart is a free charting tool provided for informational and educational purposes only. Nothing displayed on this platform constitutes financial, investment, or trading advice. Past price performance is not indicative of future results. AI-generated support and resistance zones, sentiment indicators, and on-chain overlays are analytical tools only and do not guarantee profitable outcomes. <strong style="color:#a8a29e;">You may lose all of your invested capital.</strong> Always conduct your own research (DYOR), consult a qualified financial advisor, and never invest more than you can afford to lose. The developer of NodeChart bears no responsibility for any financial losses incurred through the use of this application.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════ FOOTER ════ -->
+  <footer class="site-footer" style="padding:32px 24px;" role="contentinfo">
+    <div style="max-width:1280px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:20px;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;width:100%;gap:16px;">
+        <!-- Brand -->
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="logo-text" style="font-size:1.15rem;">NodeChart</span>
+          <span style="font-size:0.82rem;color:#334155;">— The Decentralized Charting Terminal</span>
+        </div>
+        <!-- Links -->
+        <nav style="display:flex;flex-wrap:wrap;align-items:center;gap:20px;" aria-label="Footer navigation">
+          <a href="#features" data-i18n="nav.features" style="font-size:0.82rem;color:#475569;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#475569'">Features</a>
+          <a href="#pro"      data-i18n="nav.pro"      style="font-size:0.82rem;color:#475569;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#475569'">Pro Access</a>
+          <a href="#about"    data-i18n="nav.about"    style="font-size:0.82rem;color:#475569;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#475569'">About</a>
+          <button onclick="openDonateModal()" data-i18n="footer.donate" style="font-size:0.82rem;color:#475569;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:color 0.2s;" onmouseover="this.style.color='#c084fc'" onmouseout="this.style.color='#475569'">Donate</button>
+          <a href="mailto:hippie.highho@gmail.com" data-i18n="footer.contact" style="font-size:0.82rem;color:#475569;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#00f5ff'" onmouseout="this.style.color='#475569'">Contact</a>
+        </nav>
+        <!-- Copyright -->
+        <div style="text-align:right;">
+          <p style="font-size:0.8rem;color:#334155;"><span data-i18n="footer.builtby">Built with ❤️ by</span> <strong style="color:#475569;">Andrex</strong> · MIT Open Source</p>
+          <p style="font-size:0.72rem;color:#1e293b;margin-top:3px;">© 2025 NodeChart · v1.7 · <span data-i18n="footer.rights">No rights reserved · Share freely</span></p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════ DONATE MODAL ════ -->
+  <div class="modal-overlay" id="donate-modal" role="dialog" aria-modal="true" aria-label="Donation modal" onclick="handleOverlayClick(event)">
+    <div class="modal-box">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px;">
+        <div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-size:1.25rem;font-weight:800;color:white;margin-bottom:4px;" data-i18n="modal.title">Support NodeChart 💜</h3>
+          <p style="font-size:0.82rem;color:#475569;" data-i18n="modal.sub">Your donation keeps the free tier running for everyone.</p>
+        </div>
+        <button id="modal-close-btn"
+                onclick="closeDonateModal()"
+                aria-label="Close modal"
+                style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.2rem;line-height:1;flex-shrink:0;transition:background 0.2s ease;"
+                onmouseover="this.style.background='rgba(255,255,255,0.13)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.06)'">&times;</button>
+      </div>
+
+      <!-- BTC -->
+      <div class="wallet-row">
+        <div class="coin-icon" style="background:linear-gradient(135deg,#f7931a,#e5820a);color:white;">₿</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.7rem;font-weight:700;color:#f7931a;margin-bottom:3px;font-family:'Space Grotesk',sans-serif;letter-spacing:0.3px;">BITCOIN (BTC)</div>
+          <div class="wallet-address" id="btc-addr">bc1qeqzrlfg3edrydk4s0hecakc82gp26n5p7hkc7f</div>
+        </div>
+        <button class="copy-btn" id="copy-btc" onclick="copyAddress('btc-addr','copy-btc')">Copy</button>
+      </div>
+
+      <!-- ETH -->
+      <div class="wallet-row">
+        <div class="coin-icon" style="background:linear-gradient(135deg,#627eea,#4a5fcf);color:white;">Ξ</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.7rem;font-weight:700;color:#627eea;margin-bottom:3px;font-family:'Space Grotesk',sans-serif;letter-spacing:0.3px;">ETHEREUM (ETH)</div>
+          <div class="wallet-address" id="eth-addr">0xBC3fab34f69bc9f6661608C3FB36dDdC313C42F7</div>
+        </div>
+        <button class="copy-btn" id="copy-eth" onclick="copyAddress('eth-addr','copy-eth')">Copy</button>
+      </div>
+
+      <!-- SOL -->
+      <div class="wallet-row">
+        <div class="coin-icon" style="background:linear-gradient(135deg,#9945ff,#14f195);color:white;font-size:0.65rem;font-weight:800;letter-spacing:-0.5px;">SOL</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.7rem;font-weight:700;color:#9945ff;margin-bottom:3px;font-family:'Space Grotesk',sans-serif;letter-spacing:0.3px;">SOLANA (SOL)</div>
+          <div class="wallet-address" id="sol-addr">79KsqtJJdhKFJ9woxnYgtf3nq7HxQveafWBCtC3mxWi8</div>
+        </div>
+        <button class="copy-btn" id="copy-sol" onclick="copyAddress('sol-addr','copy-sol')">Copy</button>
+      </div>
+
+      <!-- Donation note -->
+      <div style="margin-top:16px;padding:14px 16px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.16);border-radius:10px;">
+        <p style="font-size:0.8rem;color:#94a3b8;line-height:1.65;" data-i18n="modal.note">
+          <strong style="color:#c084fc;">🙏 Thank you:</strong> This donation supports free-tier development and infrastructure. It's separate from a Pro subscription — head to the Pro Access section to subscribe for $10/mo or $100/yr.
+        </p>
+      </div>
+
+      <!-- Launch CTA -->
+      <a href="app.html" class="btn-neon" style="display:flex;justify-content:center;width:100%;margin-top:16px;box-sizing:border-box;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span data-i18n="modal.launch">Launch NodeChart App</span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════ SCRIPTS ════ -->
+  <script>
+    'use strict';
+
+    /* ── i18n: translation dictionary ── */
+    var translations = {
+      en: {
+        'nav.features':'Features','nav.pro':'Pro Access','nav.about':'About','nav.support':'Support','nav.launch':'Launch App',
+        'hero.badge':'Live on Mainnet — 100% Free',
+        'hero.headline':'The <span class="gradient-text-cyan">Decentralized</span><br/>TradingView<br/><span class="gradient-text-green">Alternative.</span>',
+        'hero.sub':'Real-time Binance charts. AI-drawn support zones. On-chain intelligence.',
+        'hero.tagline':'Zero tracking. Zero ads. Zero compromise.',
+        'hero.cta.launch':'Launch NodeChart','hero.cta.explore':'Explore Features',
+        'hero.stat.tracking':'Data Tracking','hero.stat.core':'Free Core','hero.stat.timeframes':'Timeframes','hero.stat.zones':'S/R Zones',
+        'ticker.label':'Binance WebSocket',
+        'features.tag':'Free Core Features',
+        'features.heading':'Everything You Need,<br/><span class="gradient-text-cyan">Out of the Box</span>',
+        'features.sub':'No sign-up. No paywall. No compromise. NodeChart delivers institutional-grade charting tools directly in your browser — powered by live Binance WebSocket feeds.',
+        'badge.free':'Free',
+        'feat.ws.title':'Live Binance WebSocket','feat.ai.title':'AI Support & Resistance','feat.fng.title':'Fear & Greed Sentiment',
+        'feat.tf.title':'Multi-Timeframe Charts','feat.privacy.title':'Zero Tracking, Zero Cost','feat.search.title':'Symbol Search & Pairs',
+        'pro.tag':'Pro / Premium — Monthly or Annual',
+        'pro.heading':'Unlock<br/><span class="gradient-text-purple">Pro Intelligence</span>',
+        'pro.sub':'One simple subscription. Cancel anytime. Upgrade to Pro/Premium and unlock every advanced overlay and terminal feature NodeChart offers.',
+        'pricing.monthly.name':'Pro Monthly','pricing.monthly.period':'/ month','pricing.monthly.note':'Billed monthly. Cancel anytime.','pricing.monthly.cta':'Subscribe Monthly',
+        'pricing.annual.name':'Pro Annual','pricing.annual.period':'/ year','pricing.annual.note':'Equivalent to $8.33/mo — 2 months free.','pricing.annual.cta':'Go Annual — Best Value',
+        'pricing.save':'Save 17%',
+        'pricing.feat.overlays':'All Pro overlays & indicators','pricing.feat.grid':'Multi-grid terminal layouts',
+        'pricing.feat.cancel':'Cancel anytime, no lock-in','pricing.feat.priority':'Priority feature requests',
+        'pro.tvl.title':'On-Chain TVL Overlay','pro.mempool.title':'Mempool & Hashrate','pro.whale.title':'Whale Bubble Alerts','pro.grid.title':'Multi-Grid Layouts',
+        'pro.how.title':'How the Pro Subscription Works',
+        'pro.how.desc':'Pick monthly or annual billing, enter your payment details securely at checkout, and every Pro overlay and layout unlocks instantly inside the app. Manage or cancel your subscription at any time.',
+        'pro.how.step1':'Choose your plan','pro.how.step2':'Enter payment details','pro.how.step3':'Instant Pro access',
+        'how.tag':'Architecture',
+        'how.heading':'Why NodeChart Is<br/><span class="gradient-text-green">Truly Decentralized</span>',
+        'how.sub':'No backend. No data brokers. No middlemen between you and the market.',
+        'how.step1.title':'Your Browser Connects','how.step2.title':'Client-Side AI Processes','how.step3.title':'You Own Your Session',
+        'about.tag':'The Builder','about.heading':'Built by',
+        'disclaimer.title':'Financial Risk Disclaimer',
+        'footer.donate':'Donate','footer.contact':'Contact','footer.builtby':'Built with ❤️ by','footer.rights':'No rights reserved · Share freely',
+        'modal.title':'Support NodeChart 💜','modal.sub':'Your donation keeps the free tier running for everyone.',
+        'modal.note':'<strong style="color:#c084fc;">🙏 Thank you:</strong> This donation supports free-tier development and infrastructure. It\'s separate from a Pro subscription — head to the Pro Access section to subscribe for $10/mo or $100/yr.',
+        'modal.launch':'Launch NodeChart App'
+      },
+      ko: {
+        'nav.features':'기능','nav.pro':'프로 이용','nav.about':'소개','nav.support':'후원','nav.launch':'앱 실행',
+        'hero.badge':'메인넷 운영 중 — 100% 무료',
+        'hero.headline':'<span class="gradient-text-cyan">탈중앙화된</span><br/>트레이딩뷰의<br/><span class="gradient-text-green">대안.</span>',
+        'hero.sub':'실시간 바이낸스 차트. AI 기반 지지/저항 구간. 온체인 인텔리전스.',
+        'hero.tagline':'추적 없음. 광고 없음. 타협 없음.',
+        'hero.cta.launch':'NodeChart 실행','hero.cta.explore':'기능 살펴보기',
+        'hero.stat.tracking':'데이터 추적','hero.stat.core':'무료 코어','hero.stat.timeframes':'타임프레임','hero.stat.zones':'지지/저항 구간',
+        'ticker.label':'바이낸스 웹소켓',
+        'features.tag':'무료 핵심 기능',
+        'features.heading':'필요한 모든 것,<br/><span class="gradient-text-cyan">기본 제공</span>',
+        'features.sub':'가입 불필요. 유료화 없음. 타협 없음. NodeChart는 실시간 바이낸스 웹소켓 피드로 구동되는 기관급 차트 도구를 브라우저에서 바로 제공합니다.',
+        'badge.free':'무료',
+        'feat.ws.title':'실시간 바이낸스 웹소켓','feat.ai.title':'AI 지지/저항 분석','feat.fng.title':'공포·탐욕 심리 지수',
+        'feat.tf.title':'멀티 타임프레임 차트','feat.privacy.title':'추적 없음, 비용 없음','feat.search.title':'심볼 검색 & 페어',
+        'pro.tag':'프로/프리미엄 — 월간 또는 연간',
+        'pro.heading':'프로 인텔리전스<br/><span class="gradient-text-purple">잠금 해제</span>',
+        'pro.sub':'간단한 구독 하나로. 언제든 해지 가능. 프로/프리미엄으로 업그레이드하면 NodeChart의 모든 고급 오버레이와 터미널 기능을 이용할 수 있습니다.',
+        'pricing.monthly.name':'프로 월간','pricing.monthly.period':'/ 월','pricing.monthly.note':'매월 결제. 언제든 해지 가능.','pricing.monthly.cta':'월간 구독하기',
+        'pricing.annual.name':'프로 연간','pricing.annual.period':'/ 년','pricing.annual.note':'월 $8.33 상당 — 2개월 무료.','pricing.annual.cta':'연간 구독 — 최고 혜택',
+        'pricing.save':'17% 절약',
+        'pricing.feat.overlays':'모든 프로 오버레이 및 지표','pricing.feat.grid':'멀티 그리드 터미널 레이아웃',
+        'pricing.feat.cancel':'언제든 해지, 약정 없음','pricing.feat.priority':'기능 요청 우선 반영',
+        'pro.tvl.title':'온체인 TVL 오버레이','pro.mempool.title':'멤풀 & 해시레이트','pro.whale.title':'고래 거래 알림','pro.grid.title':'멀티 그리드 레이아웃',
+        'pro.how.title':'프로 구독 작동 방식',
+        'pro.how.desc':'월간 또는 연간 결제를 선택하고, 결제 정보를 안전하게 입력하면 모든 프로 오버레이와 레이아웃이 앱 내에서 즉시 활성화됩니다. 언제든 구독을 관리하거나 해지할 수 있습니다.',
+        'pro.how.step1':'요금제 선택','pro.how.step2':'결제 정보 입력','pro.how.step3':'즉시 프로 이용',
+        'how.tag':'아키텍처',
+        'how.heading':'NodeChart가 진정으로<br/><span class="gradient-text-green">탈중앙화된 이유</span>',
+        'how.sub':'백엔드 없음. 데이터 브로커 없음. 시장과 당신 사이에 중개자가 없습니다.',
+        'how.step1.title':'브라우저가 직접 연결','how.step2.title':'클라이언트 측 AI 처리','how.step3.title':'세션은 온전히 당신 것',
+        'about.tag':'개발자','about.heading':'제작',
+        'disclaimer.title':'금융 위험 고지',
+        'footer.donate':'후원하기','footer.contact':'문의','footer.builtby':'❤️로 제작:','footer.rights':'저작권 주장 없음 · 자유롭게 공유하세요',
+        'modal.title':'NodeChart 후원하기 💜','modal.sub':'여러분의 후원이 무료 서비스 운영을 가능하게 합니다.',
+        'modal.note':'<strong style="color:#c084fc;">🙏 감사합니다:</strong> 이 후원은 무료 서비스 개발과 인프라를 지원합니다. 프로 구독과는 별개이며, 프로 이용 섹션에서 월 $10 또는 연 $100으로 구독할 수 있습니다.',
+        'modal.launch':'NodeChart 앱 실행'
+      },
+      es: {
+        'nav.features':'Funciones','nav.pro':'Acceso Pro','nav.about':'Acerca de','nav.support':'Apoyar','nav.launch':'Abrir App',
+        'hero.badge':'En Mainnet — 100% Gratis',
+        'hero.headline':'La alternativa<br/><span class="gradient-text-cyan">descentralizada</span><br/>a <span class="gradient-text-green">TradingView.</span>',
+        'hero.sub':'Gráficos en tiempo real de Binance. Zonas de soporte con IA. Inteligencia on-chain.',
+        'hero.tagline':'Sin rastreo. Sin anuncios. Sin concesiones.',
+        'hero.cta.launch':'Abrir NodeChart','hero.cta.explore':'Explorar funciones',
+        'hero.stat.tracking':'Rastreo de datos','hero.stat.core':'Núcleo gratuito','hero.stat.timeframes':'Marcos temporales','hero.stat.zones':'Zonas S/R',
+        'ticker.label':'WebSocket de Binance',
+        'features.tag':'Funciones básicas gratuitas',
+        'features.heading':'Todo lo que necesitas,<br/><span class="gradient-text-cyan">de fábrica</span>',
+        'features.sub':'Sin registro. Sin muros de pago. Sin concesiones. NodeChart ofrece herramientas de gráficos de nivel institucional directamente en tu navegador, impulsadas por feeds WebSocket en vivo de Binance.',
+        'badge.free':'Gratis',
+        'feat.ws.title':'WebSocket de Binance en vivo','feat.ai.title':'Soporte y resistencia con IA','feat.fng.title':'Sentimiento de miedo y codicia',
+        'feat.tf.title':'Gráficos multi-timeframe','feat.privacy.title':'Sin rastreo, sin costo','feat.search.title':'Búsqueda de símbolos y pares',
+        'pro.tag':'Pro / Premium — Mensual o anual',
+        'pro.heading':'Desbloquea<br/><span class="gradient-text-purple">Inteligencia Pro</span>',
+        'pro.sub':'Una sola suscripción sencilla. Cancela cuando quieras. Actualiza a Pro/Premium y desbloquea todas las funciones avanzadas de NodeChart.',
+        'pricing.monthly.name':'Pro Mensual','pricing.monthly.period':'/ mes','pricing.monthly.note':'Facturación mensual. Cancela cuando quieras.','pricing.monthly.cta':'Suscribirse mensual',
+        'pricing.annual.name':'Pro Anual','pricing.annual.period':'/ año','pricing.annual.note':'Equivale a $8.33/mes — 2 meses gratis.','pricing.annual.cta':'Ir anual — Mejor valor',
+        'pricing.save':'Ahorra 17%',
+        'pricing.feat.overlays':'Todas las superposiciones e indicadores Pro','pricing.feat.grid':'Diseños de terminal multi-grid',
+        'pricing.feat.cancel':'Cancela cuando quieras, sin permanencia','pricing.feat.priority':'Solicitudes de funciones prioritarias',
+        'pro.tvl.title':'Superposición de TVL on-chain','pro.mempool.title':'Mempool y hashrate','pro.whale.title':'Alertas de burbujas de ballenas','pro.grid.title':'Diseños multi-grid',
+        'pro.how.title':'Cómo funciona la suscripción Pro',
+        'pro.how.desc':'Elige facturación mensual o anual, introduce tus datos de pago de forma segura al finalizar la compra y todas las superposiciones y diseños Pro se desbloquean al instante en la app. Gestiona o cancela tu suscripción cuando quieras.',
+        'pro.how.step1':'Elige tu plan','pro.how.step2':'Introduce el pago','pro.how.step3':'Acceso Pro instantáneo',
+        'how.tag':'Arquitectura',
+        'how.heading':'Por qué NodeChart es<br/><span class="gradient-text-green">verdaderamente descentralizado</span>',
+        'how.sub':'Sin backend. Sin intermediarios de datos. Sin intermediarios entre tú y el mercado.',
+        'how.step1.title':'Tu navegador se conecta','how.step2.title':'La IA procesa en el cliente','how.step3.title':'Tu sesión es tuya',
+        'about.tag':'El desarrollador','about.heading':'Creado por',
+        'disclaimer.title':'Aviso de riesgo financiero',
+        'footer.donate':'Donar','footer.contact':'Contacto','footer.builtby':'Hecho con ❤️ por','footer.rights':'Sin derechos reservados · Comparte libremente',
+        'modal.title':'Apoya a NodeChart 💜','modal.sub':'Tu donación mantiene gratis el nivel básico para todos.',
+        'modal.note':'<strong style="color:#c084fc;">🙏 Gracias:</strong> Esta donación apoya el desarrollo y la infraestructura del nivel gratuito. Es independiente de una suscripción Pro — ve a la sección Acceso Pro para suscribirte por $10/mes o $100/año.',
+        'modal.launch':'Abrir la app NodeChart'
+      },
+      ru: {
+        'nav.features':'Функции','nav.pro':'Pro-доступ','nav.about':'О проекте','nav.support':'Поддержать','nav.launch':'Запустить',
+        'hero.badge':'В мейннете — 100% бесплатно',
+        'hero.headline':'<span class="gradient-text-cyan">Децентрализованная</span><br/>альтернатива<br/><span class="gradient-text-green">TradingView.</span>',
+        'hero.sub':'Графики Binance в реальном времени. Зоны поддержки на основе ИИ. Ончейн-аналитика.',
+        'hero.tagline':'Без слежки. Без рекламы. Без компромиссов.',
+        'hero.cta.launch':'Запустить NodeChart','hero.cta.explore':'Смотреть функции',
+        'hero.stat.tracking':'Слежка за данными','hero.stat.core':'Бесплатное ядро','hero.stat.timeframes':'Таймфреймы','hero.stat.zones':'Зоны S/R',
+        'ticker.label':'WebSocket Binance',
+        'features.tag':'Бесплатные основные функции',
+        'features.heading':'Всё необходимое<br/><span class="gradient-text-cyan">из коробки</span>',
+        'features.sub':'Без регистрации. Без платного доступа. Без компромиссов. NodeChart предоставляет инструменты графиков институционального уровня прямо в браузере — на основе живых WebSocket-потоков Binance.',
+        'badge.free':'Бесплатно',
+        'feat.ws.title':'Живой WebSocket Binance','feat.ai.title':'ИИ-поддержка и сопротивление','feat.fng.title':'Индекс страха и жадности',
+        'feat.tf.title':'Мульти-таймфрейм графики','feat.privacy.title':'Без слежки, без затрат','feat.search.title':'Поиск символов и пар',
+        'pro.tag':'Pro / Premium — помесячно или ежегодно',
+        'pro.heading':'Откройте<br/><span class="gradient-text-purple">Pro-аналитику</span>',
+        'pro.sub':'Одна простая подписка. Отмена в любой момент. Перейдите на Pro/Premium и получите все расширенные функции NodeChart.',
+        'pricing.monthly.name':'Pro Месяц','pricing.monthly.period':'/ мес','pricing.monthly.note':'Помесячная оплата. Отмена в любое время.','pricing.monthly.cta':'Подписаться помесячно',
+        'pricing.annual.name':'Pro Год','pricing.annual.period':'/ год','pricing.annual.note':'Эквивалент $8,33/мес — 2 месяца бесплатно.','pricing.annual.cta':'Годовая подписка — выгоднее',
+        'pricing.save':'Экономия 17%',
+        'pricing.feat.overlays':'Все Pro-оверлеи и индикаторы','pricing.feat.grid':'Мульти-сеточные раскладки терминала',
+        'pricing.feat.cancel':'Отмена в любое время, без обязательств','pricing.feat.priority':'Приоритетные запросы функций',
+        'pro.tvl.title':'Ончейн-оверлей TVL','pro.mempool.title':'Мемпул и хешрейт','pro.whale.title':'Оповещения о китах','pro.grid.title':'Мульти-сеточные раскладки',
+        'pro.how.title':'Как работает Pro-подписка',
+        'pro.how.desc':'Выберите помесячную или годовую оплату, безопасно введите платёжные данные при оформлении — и все Pro-оверлеи и раскладки мгновенно активируются в приложении. Управляйте подпиской или отменяйте её в любое время.',
+        'pro.how.step1':'Выберите тариф','pro.how.step2':'Введите платёжные данные','pro.how.step3':'Мгновенный Pro-доступ',
+        'how.tag':'Архитектура',
+        'how.heading':'Почему NodeChart<br/><span class="gradient-text-green">по-настоящему децентрализован</span>',
+        'how.sub':'Без бэкенда. Без брокеров данных. Без посредников между вами и рынком.',
+        'how.step1.title':'Ваш браузер подключается','how.step2.title':'ИИ работает на стороне клиента','how.step3.title':'Сессия принадлежит только вам',
+        'about.tag':'Разработчик','about.heading':'Создано',
+        'disclaimer.title':'Предупреждение о финансовых рисках',
+        'footer.donate':'Поддержать','footer.contact':'Контакты','footer.builtby':'Сделано с ❤️ автором','footer.rights':'Без прав защиты · Свободно делитесь',
+        'modal.title':'Поддержите NodeChart 💜','modal.sub':'Ваше пожертвование поддерживает бесплатный уровень для всех.',
+        'modal.note':'<strong style="color:#c084fc;">🙏 Спасибо:</strong> Это пожертвование поддерживает разработку и инфраструктуру бесплатного уровня. Оно не связано с Pro-подпиской — оформите её в разделе Pro-доступ за $10/мес или $100/год.',
+        'modal.launch':'Запустить приложение NodeChart'
+      },
+      zh: {
+        'nav.features':'功能','nav.pro':'专业版','nav.about':'关于','nav.support':'支持','nav.launch':'启动应用',
+        'hero.badge':'已上线主网 — 100% 免费',
+        'hero.headline':'<span class="gradient-text-cyan">去中心化的</span><br/>TradingView<br/><span class="gradient-text-green">替代方案。</span>',
+        'hero.sub':'实时币安图表。AI 支撑/阻力位。链上情报。',
+        'hero.tagline':'零追踪。零广告。零妥协。',
+        'hero.cta.launch':'启动 NodeChart','hero.cta.explore':'探索功能',
+        'hero.stat.tracking':'数据追踪','hero.stat.core':'免费核心','hero.stat.timeframes':'时间周期','hero.stat.zones':'支撑/阻力位',
+        'ticker.label':'币安 WebSocket',
+        'features.tag':'免费核心功能',
+        'features.heading':'开箱即用，<br/><span class="gradient-text-cyan">应有尽有</span>',
+        'features.sub':'无需注册。无付费墙。无妥协。NodeChart 通过实时币安 WebSocket 数据流，直接在您的浏览器中提供机构级图表工具。',
+        'badge.free':'免费',
+        'feat.ws.title':'实时币安 WebSocket','feat.ai.title':'AI 支撑与阻力','feat.fng.title':'恐惧与贪婪情绪',
+        'feat.tf.title':'多时间周期图表','feat.privacy.title':'零追踪，零成本','feat.search.title':'交易对搜索',
+        'pro.tag':'专业版/高级版 — 月付或年付',
+        'pro.heading':'解锁<br/><span class="gradient-text-purple">专业情报</span>',
+        'pro.sub':'一个简单的订阅。随时取消。升级到专业版/高级版，解锁 NodeChart 提供的所有高级叠加层和终端功能。',
+        'pricing.monthly.name':'专业版 · 月付','pricing.monthly.period':'/ 月','pricing.monthly.note':'按月计费。随时可取消。','pricing.monthly.cta':'订阅月付',
+        'pricing.annual.name':'专业版 · 年付','pricing.annual.period':'/ 年','pricing.annual.note':'相当于每月 $8.33 — 免费两个月。','pricing.annual.cta':'选择年付 — 最划算',
+        'pricing.save':'节省 17%',
+        'pricing.feat.overlays':'全部专业版叠加层与指标','pricing.feat.grid':'多网格终端布局',
+        'pricing.feat.cancel':'随时取消，无需长期合约','pricing.feat.priority':'功能请求优先处理',
+        'pro.tvl.title':'链上 TVL 叠加','pro.mempool.title':'内存池与算力','pro.whale.title':'巨鲸交易提醒','pro.grid.title':'多网格布局',
+        'pro.how.title':'专业版订阅如何运作',
+        'pro.how.desc':'选择按月或按年计费，在结账时安全填写支付信息，所有专业版叠加层和布局将在应用内立即解锁。您可以随时管理或取消订阅。',
+        'pro.how.step1':'选择套餐','pro.how.step2':'填写支付信息','pro.how.step3':'立即获得专业版',
+        'how.tag':'架构',
+        'how.heading':'为什么 NodeChart<br/><span class="gradient-text-green">真正去中心化</span>',
+        'how.sub':'无后端。无数据经纪商。您与市场之间没有任何中间人。',
+        'how.step1.title':'浏览器直接连接','how.step2.title':'客户端 AI 处理','how.step3.title':'会话完全归您所有',
+        'about.tag':'开发者','about.heading':'开发者：',
+        'disclaimer.title':'金融风险提示',
+        'footer.donate':'捐赠','footer.contact':'联系我们','footer.builtby':'用 ❤️ 打造 ·','footer.rights':'不保留权利 · 欢迎自由分享',
+        'modal.title':'支持 NodeChart 💜','modal.sub':'您的捐赠让免费版本得以持续运行。',
+        'modal.note':'<strong style="color:#c084fc;">🙏 感谢您：</strong>此捐赠用于支持免费版的开发与基础设施建设，与专业版订阅无关 —— 如需订阅专业版，请前往"专业版"板块，选择每月 $10 或每年 $100 的方案。',
+        'modal.launch':'启动 NodeChart 应用'
+      }
+    };
+
+    var currentLang = 'en';
+    function setLanguage(lang) {
+      if (!translations[lang]) return;
+      currentLang = lang;
+      document.documentElement.setAttribute('lang', lang);
+
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        var key = el.getAttribute('data-i18n');
+        var text = translations[lang][key] || translations.en[key];
+        if (text) el.textContent = text;
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+        var key = el.getAttribute('data-i18n-html');
+        var html = translations[lang][key] || translations.en[key];
+        if (html) el.innerHTML = html;
+      });
+
+      var deskSel = document.getElementById('lang-select-desktop');
+      var mobSel = document.getElementById('lang-select-mobile');
+      if (deskSel) deskSel.value = lang;
+      if (mobSel) mobSel.value = lang;
+    }
+
+    /* ── Mobile menu toggle ── */
+    function toggleMobileMenu() {
+      var btn = document.getElementById('hamburger-btn');
+      var menu = document.getElementById('mobile-menu');
+      var isOpen = menu.classList.toggle('open');
+      btn.classList.toggle('open', isOpen);
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+    function closeMobileMenu() {
+      document.getElementById('hamburger-btn').classList.remove('open');
+      document.getElementById('hamburger-btn').setAttribute('aria-expanded', 'false');
+      document.getElementById('mobile-menu').classList.remove('open');
+    }
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 768) closeMobileMenu();
+    }, { passive: true });
+
+    /* ── Navbar scroll class ── */
+    var navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', function () {
+      navbar.classList.toggle('scrolled', window.scrollY > 50);
+    }, { passive: true });
+
+    /* ── Typewriter ── */
+    var phrases = [
+      'WebSocket streaming. No latency.',
+      'AI zones. Auto-detected.',
+      'Fear & Greed tinting. Always on.',
+      'Whale bubbles. On-chain verified.',
+      'TVL overlays via DeFiLlama.',
+      'Multi-grid terminal. One tab.',
+      'Zero tracking. Zero cost. Forever.',
+    ];
+    var twEl = document.getElementById('typewriter-text');
+    var twPhrase = 0, twChar = 0, twDeleting = false;
+
+    function typeWrite() {
+      var current = phrases[twPhrase];
+      if (twDeleting) {
+        twChar--;
+        twEl.textContent = current.substring(0, twChar);
+        if (twChar === 0) {
+          twDeleting = false;
+          twPhrase = (twPhrase + 1) % phrases.length;
+          setTimeout(typeWrite, 380);
+          return;
+        }
+        setTimeout(typeWrite, 38);
+      } else {
+        twChar++;
+        twEl.textContent = current.substring(0, twChar);
+        if (twChar === current.length) {
+          twDeleting = true;
+          setTimeout(typeWrite, 2400);
+          return;
+        }
+        setTimeout(typeWrite, 52);
+      }
+    }
+    setTimeout(typeWrite, 900);
+
+    /* ── Modal ── */
+    function openDonateModal() {
+      document.getElementById('donate-modal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('modal-close-btn').focus();
+    }
+    function closeDonateModal() {
+      document.getElementById('donate-modal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    function handleOverlayClick(e) {
+      if (e.target === document.getElementById('donate-modal')) {
+        closeDonateModal();
+      }
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeDonateModal();
+    });
+
+    /* ── Clipboard copy ── */
+    function copyAddress(addrId, btnId) {
+      var addr = document.getElementById(addrId).textContent.trim();
+      var btn  = document.getElementById(btnId);
+      function onSuccess() {
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(addr).then(onSuccess).catch(fallbackCopy);
+      } else {
+        fallbackCopy();
+      }
+      function fallbackCopy() {
+        var ta = document.createElement('textarea');
+        ta.value = addr;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); onSuccess(); } catch (err) { /* silent */ }
+        document.body.removeChild(ta);
+      }
+    }
+
+    /* ── Ticker price animation ── */
+    var tickerCoins = [
+      { px: 'tp-btc',  base: 67482,  dec: 0 },
+      { px: 'tp-eth',  base: 3521,   dec: 0 },
+      { px: 'tp-bnb',  base: 608,    dec: 0 },
+      { px: 'tp-sol',  base: 178.4,  dec: 1 },
+      { px: 'tp-doge', base: 0.182,  dec: 3 },
+      { px: 'tp-xrp',  base: 0.634,  dec: 3 },
+      { px: 'tp-avax', base: 42.8,   dec: 1 },
+    ];
+    var tickerCurrents = tickerCoins.map(function(c) { return c.base; });
+
+    function animateTicker() {
+      tickerCoins.forEach(function(coin, i) {
+        var drift = (Math.random() - 0.5) * 0.0018;
+        tickerCurrents[i] = tickerCurrents[i] * (1 + drift);
+        var el = document.getElementById(coin.px);
+        if (el) {
+          var val = tickerCurrents[i];
+          var formatted = val >= 1000
+            ? '$' + Math.round(val).toLocaleString('en-US')
+            : '$' + val.toFixed(coin.dec);
+          el.textContent = formatted;
+        }
+      });
+    }
+    setInterval(animateTicker, 1900);
+
+    /* ── Floating particles ── */
+    var particleContainer = document.getElementById('particles-container');
+    var particleColors = [
+      'rgba(0,245,255,',
+      'rgba(168,85,247,',
+      'rgba(0,255,136,',
+    ];
+    function spawnParticle() {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      var size = Math.random() * 2.5 + 1;
+      var colorBase = particleColors[Math.floor(Math.random() * particleColors.length)];
+      var opacity = (Math.random() * 0.4 + 0.3).toFixed(2);
+      var color = colorBase + opacity + ')';
+      var dur = (9 + Math.random() * 13).toFixed(1);
+      var delay = (Math.random() * 6).toFixed(1);
+      p.style.cssText = [
+        'width:' + size + 'px',
+        'height:' + size + 'px',
+        'left:' + (Math.random() * 100).toFixed(1) + 'vw',
+        'background:' + color,
+        'box-shadow:0 0 ' + (size * 2.5).toFixed(1) + 'px ' + color,
+        'animation-duration:' + dur + 's',
+        'animation-delay:' + delay + 's',
+      ].join(';');
+      particleContainer.appendChild(p);
+      setTimeout(function () { p.remove(); }, (parseFloat(dur) + parseFloat(delay)) * 1000 + 500);
+    }
+    for (var pi = 0; pi < 16; pi++) { setTimeout(spawnParticle, pi * 700); }
+    setInterval(spawnParticle, 2000);
+
+    /* ── Animations (GSAP or IntersectionObserver fallback) ── */
+    if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+      gsap.registerPlugin(ScrollTrigger);
+
+      /* Hero entrance — only animate elements NOT in scroll-reveal set */
+      gsap.from('#hero-copy', {
+        opacity: 0, y: 44, duration: 1.05, ease: 'power3.out', delay: 0.15,
+        clearProps: 'all'
+      });
+      gsap.from('#app-mockup', {
+        opacity: 0, y: 56, scale: 0.96, duration: 1.1, ease: 'power3.out', delay: 0.32,
+        clearProps: 'all'
+      });
+
+      /* Floating mockup bob */
+      gsap.to('#app-mockup', {
+        y: -10, duration: 3.6, ease: 'sine.inOut', yoyo: true, repeat: -1
+      });
+
+      /* Scroll reveals */
+      gsap.utils.toArray('.scroll-reveal').forEach(function(el, idx) {
+        /* Reset inline style set by CSS so GSAP can take over */
+        el.style.opacity = '';
+        el.style.transform = '';
+        gsap.fromTo(el,
+          { opacity: 0, y: 38 },
+          {
+            opacity: 1, y: 0,
+            duration: 0.75,
+            ease: 'power3.out',
+            delay: (idx % 3) * 0.08,
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 89%',
+              toggleActions: 'play none none none',
+              once: true
+            },
+            onComplete: function () {
+              /* Lock in visibility via the CSS 'visible' class (opacity:1, forwards)
+                 BEFORE clearing inline styles, so the element doesn't fall back to
+                 the base .scroll-reveal { opacity: 0 } rule once GSAP's inline
+                 opacity/transform are removed. */
+              el.classList.add('visible');
+              gsap.set(el, { clearProps: 'all' });
+            }
+          }
+        );
+      });
+
+    } else {
+      /* Fallback: IntersectionObserver */
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll('.scroll-reveal').forEach(function(el) { io.observe(el); });
+
+      /* Hero copy visible immediately when no GSAP */
+      ['hero-copy','app-mockup'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.style.opacity = '1'; el.style.transform = 'none'; }
+      });
+    }
+  </script>
+
+</body>
+</html>
