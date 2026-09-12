@@ -179,6 +179,8 @@ npm run dev            # http://localhost:3000  (Turbopack)
 
 ## 4. Deploy: GitHub → Cloudflare (free tier)
 
+> **Idiotensichere Komplett-Anleitung (Deutsch, Klick für Klick):** [`VEROEFFENTLICHEN.md`](VEROEFFENTLICHEN.md)
+
 1. Push this repository to GitHub.
 2. Cloudflare dashboard → **Workers & Pages** → **Create** → connect the repo.
 3. Build settings:
