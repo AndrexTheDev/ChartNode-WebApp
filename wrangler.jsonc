@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nodechart",
+  "compatibility_date": "2026-01-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "main": ".open-next/worker.js",
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://nodechart.cc"
+  }
+  // Bindings for later parts (watchlist sync, cached candles) – uncomment when needed.
+  // Everything below stays inside the Cloudflare free tier.
+  // "kv_namespaces": [{ "binding": "NC_KV", "id": "<kv-id>" }],
+  // "d1_databases": [{ "binding": "NC_DB", "database_name": "nodechart", "database_id": "<d1-id>" }],
+  // "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "nodechart" }]
+}

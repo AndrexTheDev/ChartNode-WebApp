@@ -1,0 +1,1578 @@
+{
+  "meta": {
+    "title": "NodeChart – Decode the Market. 免费、快速、去中心化。",
+    "description": "免费的加密货币图表终端（CEX 与 DEX）：实时行情图表、34 个指标、42 项市场度量与自写脚本实验室——无需账户、没有付费墙、完全在你的浏览器中运行。",
+    "keywords": "加密货币图表, 交易终端, TradingView 替代品, CEX, DEX, K线图, 免费看盘, 比特币行情, 以太坊行情, 链上市场",
+    "shortDescription": "面向 CEX 与 DEX 的免费、快速、去中心化图表。"
+  },
+  "nav": {
+    "brandTagline": "Decode the Market",
+    "features": "功能",
+    "layouts": "布局",
+    "help": "帮助",
+    "terminal": "终端",
+    "launchTerminal": "启动终端",
+    "openMenu": "打开导航",
+    "closeMenu": "关闭导航",
+    "skipToContent": "跳到正文",
+    "language": "语言",
+    "selectLanguage": "选择语言",
+    "theme": "主题",
+    "cycleTheme": "切换主题",
+    "openPalette": "打开命令面板",
+    "freeForever": "永久免费",
+    "github": "源代码"
+  },
+  "theme": {
+    "label": "主题",
+    "acid": "酸性绿",
+    "acidDesc": "默认霓虹暗色主题",
+    "violet": "电光紫",
+    "violetDesc": "高压紫色夜间模式",
+    "light": "日间模式",
+    "lightDesc": "高对比度浅色主题",
+    "matrix": "Matrix Green",
+    "matrixDesc": "荧光 CRT — 分享解锁",
+    "miami": "Miami Vice Pink",
+    "miamiDesc": "日落黑色 — 分享解锁",
+    "premium": "高级",
+    "premiumHint": "分享一次即可解锁"
+  },
+  "hero": {
+    "badge": "无付费墙 · 无需账户 · 广告与捐赠维持运行",
+    "titleLine1": "Decode the Market.",
+    "titleLine2": "免费、快速、去中心化。",
+    "subtitle": "NodeChart 是完全运行在浏览器中的 TradingView 替代品。统一 CEX/DEX K线、多窗格布局与实时行情——由一名独立 dev 维持：靠克制的广告与打赏，绝不靠付费墙。",
+    "ctaPrimary": "启动终端",
+    "ctaSecondary": "查看功能",
+    "hint": "无需注册，无需 API 密钥。你的自选列表永远不会离开这台设备。",
+    "liveDemo": "模拟数据源",
+    "stats": {
+      "cost": {
+        "value": "0",
+        "label": "付费墙 · 账单由广告与打赏支付"
+      },
+      "locales": {
+        "value": "5",
+        "label": "种语言"
+      },
+      "layouts": {
+        "value": "3",
+        "label": "种网格布局"
+      },
+      "trackers": {
+        "value": "0",
+        "label": "个跟踪器"
+      }
+    }
+  },
+  "ticker": {
+    "ariaLabel": "行情滚动条（模拟演示数据）",
+    "demo": "演示数据"
+  },
+  "features": {
+    "eyebrow": "能力",
+    "heading": "终端需要的一切，都不用你付钱。",
+    "subheading": "以静态优先的方式构建在 Cloudflare 边缘节点上：计算由浏览器完成，网络只负责传输数据。",
+    "items": [
+      {
+        "icon": "Zap",
+        "title": "彻底的客户端架构",
+        "body": "图表、指标和状态都在你的浏览器里计算。没有排队、没有速率限制墙、也没有订阅等级。"
+      },
+      {
+        "icon": "Globe",
+        "title": "CEX 与 DEX 同屏对比",
+        "body": "把币安的永续合约和 Uniswap 的流动性池并排比较。同一套交易对模型同时覆盖中心化订单簿与链上流动性。"
+      },
+      {
+        "icon": "LayoutGrid",
+        "title": "多图表布局",
+        "body": "在 1x1、2x1 和 2x2 网格之间自由切换。每个窗格保留自己的交易对，刷新页面也不会丢失。"
+      },
+      {
+        "icon": "ShieldCheck",
+        "title": "默认保护隐私",
+        "body": "没有账户、没有 API 密钥、没有分析 Cookie。自选列表和布局只存在于 localStorage，绝不会被上传。"
+      },
+      {
+        "icon": "Languages",
+        "title": "五种语言，真正的 SEO",
+        "body": "德语、英语、西班牙语、中文和俄语——每种语言都预渲染为静态 HTML，拥有独立的规范链接和 hreflang 标记。"
+      },
+      {
+        "icon": "Cpu",
+        "title": "边缘优先的基础设施",
+        "body": "预渲染页面由最近的 Cloudflare 数据中心提供。语言识别在边缘节点上以毫秒级完成。"
+      },
+      {
+        "icon": "History",
+        "title": "全周期K线回放",
+        "body": "像训练器一样回倒1分钟K线：播放、暂停、单步、10倍速——33个指标、Volume Profile 与 S/R 全程实时重算。TradingView 把日内回放当作订阅卖。"
+      },
+      {
+        "icon": "FlaskConical",
+        "title": "策略实验室，而非 Pine 付费墙",
+        "body": "六种策略、真实手续费、按市价计权益、胜率、盈利因子、最大回撤——一键把每笔仓位画上图。深度回测在别家是 Ultimate  territory。"
+      },
+      {
+        "icon": "Table2",
+        "title": "约2000个交易对的筛选器",
+        "body": "按成交量、动量或24h区间排序整个 Gate USDT 市场，过滤涨跌/巨量，单击任意交易对打开真实图表。含导出。"
+      },
+      {
+        "icon": "List",
+        "title": "没有30个上限的自选列表",
+        "body": "无限符号的实时报价，与 breadth、screener 共用同一次 ticker 扫描——无额外请求、无限制、无 premium 档。"
+      },
+      {
+        "icon": "Calculator",
+        "title": "风险与仓位计算器",
+        "body": "账户、风险%、入场、止损、目标：实时算出数量、名义、保证金与盈亏比——让账户活下去的公式，终成一级工具。"
+      },
+      {
+        "icon": "Download",
+        "title": "CSV 导出与坐标轴模式",
+        "body": "OHLCV 导出 CSV、screener 导出 CSV、对数与百分比轴、收盘倒计时、基线图：别家藏在套餐里的 QoL 清单，这里直接给你。"
+      },
+      {
+        "icon": "Radar",
+        "title": "自动形态，无需 Ultimate",
+        "body": "双顶、头肩、三角形、旗形：在可见缓冲区识别、图上标记、按置信度列表。别处 239 美元/月的功能——这里用广告与小费代替付费墙。"
+      },
+      {
+        "icon": "Gauge",
+        "title": "多周期技术评级矩阵",
+        "body": "六个周期、每个 14 个信号、一根总指针：来自振荡器与均线的买卖压力，由实时 REST 种子计算。不做隧道视野的仪表盘。"
+      },
+      {
+        "icon": "Flame",
+        "title": "市场热力图 + K线放大镜",
+        "body": "USDT 交易对 Treemap（面积 = 成交量，颜色 = 24h 涨跌），加上一根K线内的原始成交带、主动买卖差与巨鲸大单。点击方块即加载该交易对。"
+      },
+      {
+        "icon": "BookOpen",
+        "title": "带统计的交易日志",
+        "body": "本地记录交易：胜率、盈亏因子、期望值、平均 R、标签分解与 CSV 导出。TradingView 任何计划都没有的工具——住在你的浏览器里。"
+      },
+      {
+        "icon": "Code2",
+        "title": "自有脚本取代 Pine 付费墙",
+        "body": "编写并测试逐根蜡烛公式（ema、rsi、vwap、highest 等），通过 https 从 GitHub 导入，并以线条或价格叠加显示。全部在你的浏览器本地运行——由广告与打赏支撑，而非脚本订阅。"
+      },
+      {
+        "icon": "LifeBuoy",
+        "title": "每个指标与每项度量的帮助文档",
+        "body": "34 个指标、42 项市场度量和脚本实验室：每一个都有通俗易懂的文档条目——可搜索、可筛选、覆盖全部五种语言。让每位交易者都明白自己在看什么。"
+      },
+      {
+        "icon": "Sparkles",
+        "title": "Edge Suite 优势套件",
+        "body": "Liq Radar、Lag Oracle、Regime Compass 和 Clock Edge：四个信号引擎，把你的K线变成清算地图、领先滞后统计、市场状态与季节性分析。传统图表软件里没有的东西。"
+      }
+    ]
+  },
+  "showcase": {
+    "eyebrow": "图表布局",
+    "heading": "选择你的网格，它会记住。",
+    "subheading": "这些按钮直接写入全局 Zustand store——也就是终端读取的同一份状态。试一试，刷新页面，它依然在那里。",
+    "layouts": {
+      "1x1": {
+        "name": "1x1",
+        "desc": "单个图表，细节最大化。适合对单一交易对做深度分析。"
+      },
+      "2x1": {
+        "name": "2x1",
+        "desc": "两个图表并排。非常适合把 CEX 和 DEX 放在一起对比。"
+      },
+      "2x2": {
+        "name": "2x2",
+        "desc": "同时显示四个窗格。用于寻找相关性的完整交易台视图。"
+      }
+    },
+    "pane": "窗格 {index}",
+    "active": "当前",
+    "symbol": "交易对",
+    "venue": "数据来源",
+    "timeframe": "周期",
+    "stateReadout": "Store 状态",
+    "waiting": "等待图表引擎接入（第二部分）",
+    "vp": "VP",
+    "avwap": "aVWAP",
+    "sr": "支撑/阻力",
+    "div": "背离",
+    "alert": "警报",
+    "alerts": "警报",
+    "compare": "对比",
+    "session": {
+      "title": "当日",
+      "open": "开盘",
+      "high": "最高",
+      "low": "最低",
+      "range": "区间",
+      "rv": "年化波动"
+    },
+    "types": {
+      "candles": "K线",
+      "bars": "棒线",
+      "line": "线",
+      "area": "面积",
+      "heikinAshi": "平均K",
+      "baseline": "基线",
+      "renko": "Renko 砖",
+      "lineBreak": "三线突破线",
+      "kagi": "Kagi 线",
+      "pnf": "点数图"
+    },
+    "replay": "回放",
+    "log": "LOG",
+    "pct": "%",
+    "backtest": "回测",
+    "screener": "筛选",
+    "risk": "风险",
+    "watch": "自选",
+    "patterns": "形态",
+    "ratings": "评级",
+    "heatmap": "热力图",
+    "journal": "日志",
+    "magnifier": "放大镜",
+    "custom": {
+      "label": "∿ 周期",
+      "apply": "确定",
+      "clear": "重置"
+    },
+    "scripts": "脚本",
+    "menus": {
+      "analyse": "分析",
+      "tools": "工具",
+      "more": "更多",
+      "help": "帮助中心",
+      "edge": "Edge"
+    }
+  },
+  "cta": {
+    "eyebrow": "开始使用",
+    "heading": "打开终端，数据留在你手里。",
+    "body": "没有邮箱墙、没有 premium 档、没有黑暗模式——只有一名 dev、克制的广告和一个让灯亮着的打赏罐。",
+    "primary": "启动终端",
+    "secondary": "阅读帮助中心",
+    "contactLine": "有疑问、发现 Bug，或希望接入新的交易所？"
+  },
+  "footer": {
+    "blurb": "面向中心化与去中心化加密市场的无付费墙浏览器图表终端。由一名独立开发者构建维护——靠广告与捐赠维持。",
+    "productTitle": "产品",
+    "legalTitle": "法律条款",
+    "supportTitle": "支持",
+    "statusTitle": "状态",
+    "terms": "服务条款",
+    "disclaimer": "免责声明",
+    "privacy": "隐私政策",
+    "help": "帮助中心",
+    "contact": "联系我们",
+    "contactVia": "通过 {handle}",
+    "features": "功能",
+    "layouts": "图表布局",
+    "terminal": "终端",
+    "rights": "保留所有权利。",
+    "madeBy": "作者",
+    "builtWith": "Next.js · Tailwind CSS · Zustand · Cloudflare",
+    "statusOk": "所有系统运行正常",
+    "demoNotice": "终端之外显示的价格均为模拟演示数据。",
+    "languageNote": "内容提供 5 种语言版本。"
+  },
+  "detect": {
+    "title": "已检测到系统语言",
+    "body": "你的浏览器语言为{language}。要把 NodeChart 切换过去吗？",
+    "switch": "切换到{language}",
+    "keep": "继续使用{current}",
+    "dismiss": "忽略"
+  },
+  "shortcuts": {
+    "palette": "打开命令面板",
+    "layout1": "布局 1x1",
+    "layout2": "布局 2x1",
+    "layout3": "布局 2x2",
+    "help": "打开帮助中心",
+    "escape": "关闭浮层"
+  },
+  "palette": {
+    "placeholder": "搜索页面、操作、交易对……",
+    "title": "命令面板",
+    "empty": "没有匹配项",
+    "hint": "导航 · ",
+    "hintEnter": "Enter",
+    "hintEsc": "Esc",
+    "hintClose": "关闭",
+    "groups": {
+      "navigation": "导航",
+      "actions": "操作",
+      "layout": "图表布局",
+      "theme": "主题",
+      "language": "语言"
+    },
+    "actions": {
+      "goHome": "返回首页",
+      "goTerminal": "启动终端",
+      "goHelp": "打开帮助中心",
+      "goTerms": "服务条款",
+      "goDisclaimer": "免责声明",
+      "goPrivacy": "隐私政策",
+      "writeEmail": "给 AndrexTheDev 发邮件",
+      "layout1x1": "设置布局 1x1",
+      "layout2x1": "设置布局 2x1",
+      "layout2x2": "设置布局 2x2",
+      "themeAcid": "主题：酸性绿",
+      "themeViolet": "主题：电光紫",
+      "themeLight": "主题：日间模式"
+    }
+  },
+  "help": {
+    "eyebrow": "支持",
+    "title": "帮助中心",
+    "subtitle": "搜索知识库、按主题浏览，或学习键盘快捷键。",
+    "searchPlaceholder": "搜索帮助……",
+    "searchLabel": "在帮助中心搜索",
+    "clearSearch": "清除搜索",
+    "results": "{count, plural, =0 {没有主题} other {# 个主题}}",
+    "noResults": "没有找到与“{query}”相关的内容。",
+    "noResultsHint": "试试更短的关键词，或者直接写信给我们。",
+    "categories": {
+      "all": "全部",
+      "gettingStarted": "快速上手",
+      "charts": "图表",
+      "data": "数据与隐私",
+      "troubleshooting": "故障排查",
+      "indicators": "指标",
+      "metrics": "指标度量",
+      "scripts": "脚本实验室",
+      "edge": "Edge Suite"
+    },
+    "topics": [
+      {
+        "id": "what-is-nodechart",
+        "category": "gettingStarted",
+        "question": "NodeChart 究竟是什么？",
+        "answer": "NodeChart 是一个完全在浏览器中运行的免费加密货币图表终端。它把中心化交易所（CEX）的行情和去中心化交易所（DEX）的数据整合到同一个界面中，提供可与 TradingView 相比的多图表布局——但不需要账户、不需要订阅、也没有自己的后端。"
+      },
+      {
+        "id": "no-account",
+        "category": "gettingStarted",
+        "question": "我需要注册账户或填写 API 密钥吗？",
+        "answer": "不需要。NodeChart 从不索取任何凭据。公开行情数据由你的浏览器直接从交易所的公共接口读取。因为服务器端不保存任何东西，所以也就没有需要注册的内容。"
+      },
+      {
+        "id": "switch-layout",
+        "category": "charts",
+        "question": "如何在 1x1、2x1 和 2x2 布局之间切换？",
+        "answer": "使用终端工具栏中的布局切换按钮，或者直接按键盘上的 1、2、3。你的选择会写入全局 store 并持久化到 localStorage，因此刷新页面后依然保留。"
+      },
+      {
+        "id": "change-symbol",
+        "category": "charts",
+        "question": "如何更换正在查看的交易对？",
+        "answer": "打开终端侧边栏的交易对搜索并选择一个标的。每个窗格都可以使用不同的交易对；第一个窗格跟随全局激活的标的。因此在多窗格布局中，你可以把币安上的 BTC 和以太坊上的 WBTC 放在一起比较。"
+      },
+      {
+        "id": "timeframes",
+        "category": "charts",
+        "question": "支持哪些周期和图表类型？",
+        "answer": "周期从 1 分钟到 1 周（1m、5m、15m、1h、4h、1d、1w）。图表类型包括蜡烛图、美国线、折线图、面积图和平均K线（Heikin-Ashi）。全部基于 canvas 渲染，因此平移和缩放都很流畅。"
+      },
+      {
+        "id": "data-sources",
+        "category": "data",
+        "question": "价格数据从哪里来？",
+        "answer": "价格由各交易所的公共 API 和 WebSocket 直接推送到你的浏览器。NodeChart 不通过自己的服务器中转，因此不存在所有用户共享的速率限制，也不需要把基础设施成本转嫁给你。"
+      },
+      {
+        "id": "stored-data",
+        "category": "data",
+        "question": "NodeChart 会保存我的数据吗？",
+        "answer": "只保存在你自己的浏览器里。主题、语言、图表布局、自选列表和最后选中的交易对都写入 localStorage。没有分析工具、没有广告 Cookie、没有账户——因此不存在任何可能被出售或泄露的数据。"
+      },
+      {
+        "id": "empty-chart",
+        "category": "troubleshooting",
+        "question": "图表是空的，或者不更新。",
+        "answer": "通常原因是某个浏览器扩展拦截了 WebSocket 连接，或者交易所对你所在地区做了限制。请刷新页面、为本站点关闭广告拦截器，或换一个交易对试试。如果某个交易所在你所在的国家无法访问，那是交易所的限制，而不是 NodeChart 的问题。"
+      },
+      {
+        "id": "theme-language",
+        "category": "troubleshooting",
+        "question": "如何更改主题或语言？",
+        "answer": "两者都在页面顶部导航栏。主题按钮在酸性绿、电光紫和日间模式之间循环；语言菜单会在保持当前页面的前提下切换语言。首次访问时会自动识别你的系统语言。"
+      }
+    ],
+    "shortcutsTitle": "键盘快捷键",
+    "shortcutsSubtitle": "不用鼠标也能完成所有操作。",
+    "contactTitle": "还是没有解决？",
+    "contactBody": "直接写信给开发者。Bug 报告、新交易所接入请求、翻译修正都非常欢迎——回信的是真人，不是工单系统。",
+    "contactCta": "发邮件给 {handle}",
+    "feedbackNote": "NodeChart 是一个独立项目。你的反馈确实会改变开发路线图。",
+    "metrics": {
+      "deriv.funding": {
+        "name": "资金费率",
+        "body": "永续合约市场多空双方之间的周期性支付。为正 = 多头付给空头（多头过度拥挤）；为负则相反。极值往往标志局部反转。"
+      },
+      "deriv.annual": {
+        "name": "年化资金费率",
+        "body": "把当前费率按整年折算。显示当前持仓成本有多高——对套利和 carry 交易有用。"
+      },
+      "deriv.mark": {
+        "name": "标记价格",
+        "body": "交易所计算的公允价格，用于清算。当它与最新成交价明显偏离时，可防止操纵性插针清算。"
+      },
+      "deriv.premium": {
+        "name": "溢价（标记 vs 指数）",
+        "body": "标记价与指数价的百分比差。正溢价 = 期货高于现货（杠杆买盘）；深度负溢价 = 空头压力。"
+      },
+      "deriv.oi": {
+        "name": "未平仓合约",
+        "body": "所有未平仓合约的总和。价格与 OI 同涨确认趋势；OI 下降表示平仓（趋势失去动力）。"
+      },
+      "deriv.lsrAcc": {
+        "name": "多空账户比",
+        "body": "多头账户与空头账户之比。小散账户极度偏多常是反向信号（人群往往错）。"
+      },
+      "deriv.lsrTaker": {
+        "name": "多空主动成交比",
+        "body": "主动买入与主动卖出之比。大于 1 = 买方在发起流量——比账户比更直接。"
+      },
+      "deriv.lsrTop": {
+        "name": "大户持仓比",
+        "body": "最大账户的多空比。与散户背离（散户做多、大户做空）是常用反向线索。"
+      },
+      "deriv.liq5m": {
+        "name": "5 分钟爆仓",
+        "body": "过去 5 分钟被强制平仓的头寸。连环爆仓制造快速插针——随后常有均值回归。"
+      },
+      "deriv.nextFunding": {
+        "name": "下次资金费",
+        "body": "距下一次资金费支付的倒计时。支付前价格常漂向资金费中性区。"
+      },
+      "flow.spread": {
+        "name": "买卖价差",
+        "body": "最优买价与最优卖价之差。价差窄 = 流动性深、成本低；价差宽警示订单簿稀薄。"
+      },
+      "flow.imbalance": {
+        "name": "订单簿失衡",
+        "body": "可见订单簿中买盘与卖盘之比。单边墙可充当磁铁或阻力——但随时可撤单。"
+      },
+      "flow.cvd": {
+        "name": "累计成交量差值",
+        "body": "主动买减主动卖的累计和。价格上涨而 CVD 下跌（背离）说明行情缺乏信心——反转风险。"
+      },
+      "flow.delta60": {
+        "name": "最近 60 秒差值",
+        "body": "短期主动成交差值，动能速览：现在是谁在发起——买方还是卖方？"
+      },
+      "flow.depth": {
+        "name": "订单簿深度",
+        "body": "买卖两侧按价格档位围绕中间价的累计量。深度厚缓冲波动；薄的一侧让价格跳空。"
+      },
+      "global.mcap": {
+        "name": "总市值",
+        "body": "所有上市币种的总价值。读取占比与轮动的大框架。"
+      },
+      "global.btcD": {
+        "name": "比特币占比",
+        "body": "BTC 占总市值的份额。上升 = 资金回流 BTC（避险）；下降 = 山寨季轮动。"
+      },
+      "global.ethD": {
+        "name": "以太坊占比",
+        "body": "ETH 占总市场的份额。BTC.D 之外的第二轮动指标，尤其对 DeFi/L2 行情。"
+      },
+      "global.fng": {
+        "name": "恐惧贪婪指数",
+        "body": "由波动率、动能、占比和社交数据构成的 0–100 情绪分。极度恐惧（<20）历史上适合买入，极度贪婪（>80）适合卖出。"
+      },
+      "vol.dvol": {
+        "name": "Deribit 期权成交量",
+        "body": "24 小时期权成交量（BTC/ETH 拆分）。高活跃显示大户在哪里寻找对冲或杠杆。"
+      },
+      "vol.putCall": {
+        "name": "看跌/看涨比",
+        "body": "期权流向：大于 1 = 对冲/恐惧主导，小于 1 = 买入看涨（贪婪）。在极值处可作反向解读。"
+      },
+      "vol.maxPain": {
+        "name": "最大痛点",
+        "body": "多数期权头寸变得一文不行的价格——到期日的磁铁区。"
+      },
+      "vol.smile": {
+        "name": "IV 微笑",
+        "body": "各执行价的隐含波动率。陡峭的看跌偏斜显示崩盘保护需求；平坦的微笑显得放松。"
+      },
+      "vol.term": {
+        "name": "IV 期限结构",
+        "body": "各到期日的隐含波动率。正向（远期 IV 更高）= 正常；反向 = 急性压力溢价。"
+      },
+      "breadth.advPct": {
+        "name": "上涨占比",
+        "body": "上涨 USDT 交易对的百分比。BTC 走平而占比低于 25% = 山寨隐性疲软；高于 75% = 全面 risk-on。"
+      },
+      "breadth.median": {
+        "name": "24h 涨跌中位数",
+        "body": "所有交易对 24 小时涨跌的中位数——比均值稳健，因为极端值无法主导它。"
+      },
+      "chart.vp": {
+        "name": "成交量分布 (VR)",
+        "body": "可见区间内每个价位的成交量。控制点（最响亮的价位）充当磁铁，稀薄区是快速通道。"
+      },
+      "chart.avwap": {
+        "name": "锚定 VWAP",
+        "body": "从你的锚点（如摆动低点、新闻）起算的成交量加权均价。显示自该事件以来谁在盈利——机构参照框架。"
+      },
+      "chart.sr": {
+        "name": "自动支撑/阻力",
+        "body": "自动聚类的枢轴区。多次测试提升其重要性；放量突破把阻力变成支撑（反之亦然）。"
+      },
+      "chart.divergence": {
+        "name": "RSI 背离",
+        "body": "价格创新高而 RSI 没有（或相反）。在价格转向之前预警动能枯竭——是预警信号而非择时信号。"
+      },
+      "chart.session": {
+        "name": "时段统计",
+        "body": "当前时段的开/高/低/涨跌加上区间和年化波动率——快速了解当天是趋势还是震荡。"
+      },
+      "chart.rv": {
+        "name": "已实现波动率",
+        "body": "实际成交的波动幅度（年化）。RV 低于 IV = 期权定价了市场尚未兑现的兴奋。"
+      },
+      "chart.countdown": {
+        "name": "蜡烛倒计时",
+        "body": "当前蜡烛收盘剩余时间。指标与形态只有收盘才确认——倒计时告诉你还要等多久。"
+      },
+      "chart.patterns": {
+        "name": "自动图表形态",
+        "body": "在可见历史中识别双顶/双底、头肩顶/底、上升/下降三角形和旗形，并给出置信度。"
+      },
+      "chart.ratings": {
+        "name": "多周期技术评级",
+        "body": "并行评估六个周期、14 个信号（震荡指标 + 均线），汇总成从「强力卖出」到「强力买入」的一根指针。"
+      },
+      "chart.heatmap": {
+        "name": "市场热力图",
+        "body": "成交量最大 USDT 交易对的树状图：面积 = 24h 成交量，颜色 = 24h 涨跌。一眼看清资金流向和失血处。"
+      },
+      "chart.journal": {
+        "name": "交易日志",
+        "body": "本地交易记录，含胜率、盈亏比因子、期望值、平均 R 与按日统计——带 CSV 导出。验证你的优势是否真实。"
+      },
+      "chart.magnifier": {
+        "name": "K 线放大镜",
+        "body": "显示蜡烛内部的原始成交流水：成交笔数、主动差值、累计差值曲线和 10 万美元以上的巨鲸成交。"
+      },
+      "chart.replay": {
+        "name": "K 线回放",
+        "body": "把任一周期的图表倒带到过去并逐根回放——所有指标在可见窗口上实时重算。"
+      },
+      "chart.backtest": {
+        "name": "策略实验室",
+        "body": "对可见历史回测六套规则策略（EMA 交叉、RSI 反转、突破等）：交易、胜率、盈亏比因子、净值曲线、图表标记。"
+      },
+      "chart.screener": {
+        "name": "筛选器",
+        "body": "按涨跌、成交量和动能扫描约 2000 个 USDT 交易对，带过滤器、即时图表和 CSV 导出——无需强制手动刷新。"
+      },
+      "chart.customScripts": {
+        "name": "脚本实验室",
+        "body": "编写自己的逐根蜡烛指标公式（ema、rsi、vwap 等）、测试、从 GitHub raw 链接导入，并以线条或价格叠加显示。"
+      }
+    },
+    "scriptTopics": [
+      {
+        "id": "scr-write",
+        "category": "scripts",
+        "question": "如何编写自己的脚本？",
+        "answer": "在终端打开「脚本」（或在指标弹窗选「自定义脚本」）。每根蜡烛一个公式，如 ema(21) - ema(55) 或 c / vwap() - 1。可用：o h l c v 以及 ema(p) sma(p) rsi(p) atr(p) stoch(p) vwap() highest(p) lowest(p) change(p) 和 abs/max/min/sqrt/log/pow。「测试」会显示当前缓冲区的最新/最小/最大值。"
+      },
+      {
+        "id": "scr-import",
+        "category": "scripts",
+        "question": "如何导入脚本，例如来自 GitHub？",
+        "answer": "在脚本实验室粘贴一个 https 链接——github.com/…/blob/… 和 gist 链接会自动改写为 raw 地址，其他任何 https raw 文件也可用。内容进入编辑器（最大 20 KB），随后可测试、保存或直接应用到图表。一切只在你的浏览器中运行。"
+      },
+      {
+        "id": "scr-apply",
+        "category": "scripts",
+        "question": "脚本如何显示到图表上？",
+        "answer": "「应用到图表」会创建一个带你公式的 CUSTOM 指标实例——独立面板，或（勾选「叠加」）直接画在价格上。保存的脚本只存在浏览器本地，可随时加载、修改或删除。"
+      }
+    ],
+    "edgeTopics": [
+      {
+        "id": "edge-liq",
+        "category": "edge",
+        "question": "Liq Radar 是如何工作的？",
+        "answer": "Liq Radar 查看你图表最近 400 根K线，推算 10x、25x、50x 和 100x 杠杆仓位的清算价格分布。成交量大、振幅宽的K线权重更高，并随时间衰减。最强的簇会以磁力带绘制在图表上，并在 Edge ▸ Liq Radar 弹窗中列出距离与强度。它只是基于你的K线的估算——没有交易所数据，也不构成保证。"
+      },
+      {
+        "id": "edge-lag",
+        "category": "edge",
+        "question": "Lag Oracle 测量什么？",
+        "answer": "Lag Oracle 将你的图表与领先品种数据源（默认大型 CEX 的 BTC）对比，计算最佳滞后K线数、相关性、贝塔以及历史领先跳动的命中率。当领先品种刚刚跳动至少 1.5 个标准差、而你的币落后于统计预期时，会出现实时提示。领先品种数据只在弹窗打开时加载。"
+      },
+      {
+        "id": "edge-regime",
+        "category": "edge",
+        "question": "Regime Compass 如何判断市场状态？",
+        "answer": "Regime Compass 综合 ADX、短期与长期已实现波动率之比、50 根K线回归斜率，以及（若可用）资金费率、市场宽度和清算量，得出五种状态之一：强趋势、弱趋势、震荡、波动扩张或清算风暴，并给出置信度与驱动因子。工具建议可直接开启对应的图表工具。"
+      },
+      {
+        "id": "edge-clock",
+        "category": "edge",
+        "question": "Clock Edge 显示什么？",
+        "answer": "Clock Edge 按 UTC 小时和星期拆分你已加载的K线，计算每个时段未来 4 根K线的胜率与平均收益。t 值说明形态是否统计显著；只有显著单元（至少 30 个样本，t ≥ 2）才算优势。全部在浏览器本地、仅用你的数据源提供的K线计算。"
+      }
+    ]
+  },
+  "legal": {
+    "back": "返回首页",
+    "updated": "最后更新：{date}",
+    "readingTime": "法律声明",
+    "contactBlock": "本服务负责人",
+    "terms": {
+      "title": "服务条款",
+      "intro": "本条款规定 NodeChart 的使用方式。打开本应用即表示你接受这些条款。条款刻意写得简短，并使用通俗语言。",
+      "sections": [
+        {
+          "heading": "1. 服务范围",
+          "body": "NodeChart 是一个基于浏览器的加密货币图表与行情数据界面，提供公开价格数据的可视化。NodeChart 不是交易所、不是券商、不是资产托管方，也不是支付服务机构。"
+        },
+        {
+          "heading": "2. 不构成金融服务",
+          "body": "NodeChart 不执行订单、不托管资金，也无法访问你的钱包或交易所账户。你的任何交易都发生在你自行连接的第三方平台上，并受该平台自身条款的约束。"
+        },
+        {
+          "heading": "3. 可用性与变更",
+          "body": "本服务免费提供，并尽力保障可用性。功能可能随时增加、修改或移除。公开数据源依赖第三方提供者，其可用性不在 NodeChart 的控制范围内。"
+        },
+        {
+          "heading": "4. 可接受的使用",
+          "body": "你同意不滥用本服务、不试图干扰其运行、不转售本服务，也不将其冒充为自己的产品。禁止通过 NodeChart 以违反上游交易所条款的方式大量抓取或冲击其接口。"
+        },
+        {
+          "heading": "5. 知识产权",
+          "body": "NodeChart 的名称、设计与源代码归开发者所有。第三方数据与品牌名称归各自权利人所有，仅用于识别目的。"
+        },
+        {
+          "heading": "6. 责任限制",
+          "body": "因故意或重大过失产生的责任不受限制。在此之外，对轻微过失的责任以通常可预见的损害为限。加密货币交易存在本金全部损失的风险，NodeChart 对此不承担责任。"
+        },
+        {
+          "heading": "7. 其他条款",
+          "body": "若个别条款无效，其余条款仍然有效。条款的变更将连同更新日期一并发布在本页面上。"
+        }
+      ]
+    },
+    "disclaimer": {
+      "title": "免责声明",
+      "intro": "在你使用 NodeChart 做出任何交易决定之前，请仔细阅读本声明。",
+      "sections": [
+        {
+          "heading": "不构成投资建议",
+          "body": "NodeChart 上的全部内容——图表、指标、数字、布局和文字——仅用于信息展示与技术演示。这里的任何内容都不构成投资、法律、税务或财务建议，也不构成买入或卖出任何资产的推荐。"
+        },
+        {
+          "heading": "不保证准确性",
+          "body": "行情数据实时来自第三方来源，可能存在延迟、不完整、聚合方式不同，甚至完全错误的情况。NodeChart 无法也不保证任何显示数值的准确性、完整性或及时性。"
+        },
+        {
+          "heading": "本金全损风险",
+          "body": "加密货币波动极大，且在很大程度上不受监管。你可能损失全部本金。杠杆、永续合约和流动性池头寸的亏损可能超过你投入的金额。切勿使用你无法承受损失的资金进行交易。"
+        },
+        {
+          "heading": "无关联关系",
+          "body": "NodeChart 是一个独立项目，与界面中提到的任何交易所、协议、基金会或代币发行方均无关联、无授权、无运营关系。所有商标归各自权利人所有。"
+        },
+        {
+          "heading": "自行承担后果",
+          "body": "每一个决定都由你自己负责。请自行研究、在实际交易平台上核对价格，并在必要时咨询持牌专业人士。NodeChart 的开发者不对交易损失承担责任。"
+        }
+      ]
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "intro": "简短版本：NodeChart 不会收集任何关于你的信息。详细版本解释为什么这在技术上是成立的。",
+      "sections": [
+        {
+          "heading": "没有账户，没有用户画像",
+          "body": "本应用没有注册、没有登录，也没有用户数据库。因此我们无法存储你的个人数据，因为我们从来不会收到任何个人数据。"
+        },
+        {
+          "heading": "仅使用本地存储",
+          "body": "你的设置——主题、语言、图表布局、自选列表和最后选中的交易对——保存在浏览器的 localStorage 中。这些数据留在你的设备上，绝不会发送给我们。你可以随时在浏览器设置中删除。"
+        },
+        {
+          "heading": "没有分析，没有广告",
+          "body": "NodeChart 不使用跟踪 Cookie、分析脚本、广告网络或浏览器指纹。也没有任何第三方嵌入内容会把你的 IP 地址泄露给广告商。"
+        },
+        {
+          "heading": "第三方数据提供方",
+          "body": "加载图表时，你的浏览器会直接连接到相应交易所的公共 API 或 WebSocket。该提供方会看到你的 IP 地址，这与任何一次普通的网络请求相同。该连接适用对方的隐私政策；NodeChart 不介入其中，也不做任何记录。"
+        },
+        {
+          "heading": "托管与日志",
+          "body": "本应用托管在 Cloudflare 的边缘网络上。Cloudflare 作为技术服务提供方处理请求，并可能出于安全与反滥用目的保留标准服务器日志。我们没有配置任何应用层的用户跟踪。"
+        },
+        {
+          "heading": "你的权利与联系方式",
+          "body": "由于我们不处理任何个人数据，访问、更正或删除的请求实际上已经得到满足。如果你仍有关于隐私的问题，请写信到页面底部的联系邮箱。"
+        }
+      ]
+    }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "信号丢失",
+    "body": "NodeChart 上不存在这个路由。它可能已被重命名，或者链接输入有误。",
+    "cta": "返回主界面",
+    "secondary": "打开帮助中心"
+  },
+  "common": {
+    "close": "关闭",
+    "open": "打开",
+    "copy": "复制",
+    "copied": "已复制",
+    "demo": "演示",
+    "loading": "加载中",
+    "back": "返回",
+    "menu": "菜单",
+    "search": "搜索",
+    "and": "和"
+  },
+  "search": {
+    "placeholder": "搜索代币或粘贴合约地址…",
+    "label": "搜索市场",
+    "clear": "清除搜索",
+    "scanning": "正在扫描网络…",
+    "empty": "没有找到与“{query}”相关的内容",
+    "results": "{count, plural, =0 {没有结果} other {# 条结果}}",
+    "providers": "审计：GoPlus · RugCheck",
+    "cex": "CEX",
+    "dex": "DEX",
+    "safe": "安全",
+    "warn": "谨慎",
+    "danger": "骗局 / 蜜罐",
+    "unknown": "未审计",
+    "auditing": "审计中…",
+    "liq": "流动性"
+  },
+  "whales": {
+    "title": "鲸鱼流向",
+    "live": "实时",
+    "buy": "买入",
+    "sell": "卖出",
+    "empty": "等待超过阈值的鲸鱼交易…",
+    "total": "{count} 笔鲸鱼交易 · {volume}",
+    "threshold": "最低 {value}",
+    "aria": "实时鲸鱼交易流"
+  },
+  "ratelimit": {
+    "title": "超出速率限制",
+    "body": "正在绕过…",
+    "source": "来源：{source}",
+    "countdown": "{seconds} 秒后重试",
+    "retrying": "正在重建链路…",
+    "aria": "速率限制冷却中"
+  },
+  "feed": {
+    "idle": "空闲",
+    "connecting": "连接中",
+    "open": "实时",
+    "reconnecting": "重连中",
+    "error": "离线",
+    "closed": "已关闭",
+    "region": "地区限制",
+    "seedFailed": "历史数据失败",
+    "attempt": "第 {n} 次",
+    "candles": "{n} 根K线",
+    "unsupported": "未上架该交易对",
+    "seedVia": "历史数据来自 {venue}"
+  },
+  "exchanges": {
+    "label": "数据源",
+    "auto": "自动 – 最快可达",
+    "autoHint": "每次访问时实测，并按你的地区自动调整",
+    "reprobe": "重新测速",
+    "reprobeHint": "检测全部 {count} 家交易所的可达性与延迟",
+    "region": "地区：{country}",
+    "regionUnknown": "地区：未识别",
+    "regionSource": {
+      "edge": "由边缘节点识别",
+      "timezone": "由时区推断"
+    },
+    "rerouted": "该交易所对你不可用 – 已自动切换到替代来源",
+    "reroutedShort": "已切换",
+    "status": {
+      "unknown": "尚未测速",
+      "probing": "测速中…",
+      "ok": "可达",
+      "slow": "可达（较慢）",
+      "blocked": "地区封锁",
+      "error": "不可达"
+    },
+    "flags": {
+      "unsupportedTimeframe": "无 {timeframe} K 线",
+      "unlisted": "未上架该交易对",
+      "restricted": "在你所在地区受限"
+    }
+  },
+  "chart": {
+    "toolbar": {
+      "indicators": "指标（{n}）",
+      "fit": "适应视图",
+      "screenshot": "导出 PNG（含水印）",
+      "csv": "导出 OHLCV CSV"
+    },
+    "tools": {
+      "group": "绘图工具",
+      "none": "光标 / 选择",
+      "trendline": "趋势线",
+      "ray": "射线",
+      "horizontal": "水平价格线",
+      "fib": "斐波那契回撤",
+      "zone": "支撑 / 阻力区",
+      "eraser": "橡皮擦",
+      "clear": "删除全部绘图（{n}）",
+      "active": "当前工具：{tool}"
+    },
+    "sync": {
+      "group": "网格同步",
+      "timeframe": "跨窗格同步时间周期",
+      "crosshair": "跨窗格同步十字光标",
+      "zoom": "同步缩放与平移",
+      "volume": "成交量叠加"
+    },
+    "mobile": {
+      "title": "检测到触摸屏",
+      "body": "不建议在触摸屏上进行复杂绘图——线条需逐像素放置。工具默认隐藏，开启后才会显示。",
+      "force": "强制开启",
+      "dismiss": "关闭提示"
+    },
+    "modal": {
+      "title": "指标",
+      "subtitle": "窗格 {pane} · 实例数量不限，本地计算",
+      "overlays": "价格叠加",
+      "oscillators": "振荡指标（独立窗格）",
+      "active": "当前图表",
+      "empty": "还没有指标——从指标库中添加一个。",
+      "pane": "窗格",
+      "overlay": "叠加",
+      "hide": "隐藏",
+      "show": "显示",
+      "reset": "重置参数",
+      "remove": "移除",
+      "clearAll": "全部移除",
+      "count": "已启用 {n} 个",
+      "done": "完成"
+    },
+    "indicators": {
+      "EMA": {
+        "name": "EMA",
+        "short": "指数移动平均线",
+        "hint": "更重视近期K线，用于判断趋势方向与动态支撑。"
+      },
+      "SMA": {
+        "name": "SMA",
+        "short": "简单移动平均线",
+        "hint": "周期内的算术平均，提供平滑的支撑与阻力。"
+      },
+      "BB": {
+        "name": "布林带",
+        "short": "围绕均线的波动区间",
+        "hint": "中轨为均线，上下轨为标准差倍数；收窄代表波动率降低。"
+      },
+      "RSI": {
+        "name": "RSI",
+        "short": "相对强弱指标",
+        "hint": "0 到 100 的动量指标，70 以上超买，30 以下超卖。"
+      },
+      "MACD": {
+        "name": "MACD",
+        "short": "趋势动量",
+        "hint": "两条 EMA 的差值加信号线，柱状图反映动能强弱。"
+      },
+      "ATR": {
+        "name": "ATR",
+        "short": "平均真实波幅",
+        "hint": "以价格点数衡量波动率，适合设置止损距离。"
+      },
+      "STOCH": {
+        "name": "随机指标",
+        "short": "%K 与 %D 振荡器",
+        "hint": "将收盘价与周期内的波动区间进行比较。"
+      },
+      "SUPERTREND": {
+        "name": "超级趋势",
+        "short": "ATR 趋势带",
+        "hint": "趋势反转时换边的跟踪线（ATR × 乘数）。"
+      },
+      "KELTNER": {
+        "name": "肯特纳通道",
+        "short": "EMA ± ATR",
+        "hint": "波动包络：EMA ± 乘数 × ATR。"
+      },
+      "DONCHIAN": {
+        "name": "唐奇安通道",
+        "short": "n 高/低",
+        "hint": "突破通道：周期内最高价与最低价。"
+      },
+      "STOCHRSI": {
+        "name": "随机 RSI",
+        "short": "RSI 随机化",
+        "hint": "对 RSI 应用随机指标——比单纯 RSI 更灵敏。"
+      },
+      "OBV": {
+        "name": "能量潮",
+        "short": "成交量余额",
+        "hint": "按涨跌收盘累计成交量——成交量趋势。"
+      },
+      "MFI": {
+        "name": "资金流量指标",
+        "short": "带量 RSI",
+        "hint": "带成交量的 RSI（0–100）：含资金流的超买超卖。"
+      },
+      "CCI": {
+        "name": "商品通道指标",
+        "short": "均值偏离",
+        "hint": "与统计平均价的偏离（±100 水平）。"
+      },
+      "ADX": {
+        "name": "ADX / DMI",
+        "short": "趋势强度",
+        "hint": "ADX = 趋势强度；+DI/−DI = 多空方向力。"
+      },
+      "PSAR": {
+        "name": "抛物线 SAR",
+        "short": "止损点",
+        "hint": "跟随价格的点，作为移动止损。"
+      },
+      "TRIX": {
+        "name": "三重平滑",
+        "short": "3× 平滑",
+        "hint": "三重平滑 EMA 的变化率——过滤噪声。"
+      },
+      "PPO": {
+        "name": "PPO",
+        "short": "百分比 MACD",
+        "hint": "百分比形式的 MACD——跨品种可比动量。"
+      },
+      "DPO": {
+        "name": "去趋势价格振荡",
+        "short": "无趋势价格",
+        "hint": "价格减去移位 SMA——显示无趋势周期。"
+      },
+      "BBPCT": {
+        "name": "布林 %B",
+        "short": "带内位置",
+        "hint": "价格在布林带内的位置（0–1）。"
+      },
+      "AROON": {
+        "name": "阿隆",
+        "short": "高低新鲜度",
+        "hint": "周期高低点的新鲜程度（0–100，交叉为转折点）。"
+      },
+      "ICHIMOKU": {
+        "name": "一目均衡表",
+        "short": "Tenko/Kumo",
+        "hint": "日系完整系统：转换线、基准线与云带（Span A/B）。"
+      },
+      "VWAP": {
+        "name": "VWAP",
+        "short": "量加权均价",
+        "hint": "会话成交量加权均价——机构基准价。"
+      },
+      "WILLR": {
+        "name": "威廉 %R",
+        "short": "动量摆",
+        "hint": "动量振荡器（−100..0）：>−20 超买，<−80 超卖。"
+      },
+      "HMA": {
+        "name": "赫尔均线",
+        "short": "快速平滑",
+        "hint": "Hull 均线：同等平滑下延迟几乎为零。"
+      },
+      "TEMA": {
+        "name": "三重 EMA",
+        "short": "3×EMA",
+        "hint": "三重 EMA——几乎消除 EMA 滞后。"
+      },
+      "DEMA": {
+        "name": "双重 EMA",
+        "short": "2×EMA",
+        "hint": "双重 EMA——滞后减半。"
+      },
+      "GUPPY": {
+        "name": "Guppy 多均线",
+        "short": "EMA 扇形",
+        "hint": "六条 EMA（3–60）：扇形开合显示趋势强度与 regime 切换。"
+      },
+      "SQUEEZE": {
+        "name": "TTM 挤压",
+        "short": "波动率蓄力",
+        "hint": "布林带进入肯特纳通道内 = 挤压；动量柱显示释放。"
+      },
+      "TDSEQ": {
+        "name": "TD 序列",
+        "short": "Setup 1–9",
+        "hint": "Tom DeMark setup 计数：9 标记动能衰竭点。"
+      },
+      "CMF": {
+        "name": "蔡金资金流",
+        "short": "资金压力",
+        "hint": "按成交量加权的积累/分发压力。"
+      },
+      "EMV": {
+        "name": "移动 ease",
+        "short": "单位体积价格",
+        "hint": "价格移动的难易度：距离除以成交量盒。"
+      },
+      "UO": {
+        "name": "终极振荡器",
+        "short": "三周期振荡",
+        "hint": "融合 7/14/28 周期——减少背离假信号。"
+      },
+      "CUSTOM": {
+        "name": "自定义脚本",
+        "short": "Script-Lab 公式",
+        "hint": "在浏览器本地逐K线运行你自己的公式，无付费墙。"
+      }
+    },
+    "params": {
+      "period": "周期",
+      "fast": "快线长度",
+      "slow": "慢线长度",
+      "signal": "信号平滑",
+      "stdDev": "标准差倍数",
+      "smoothing": "平滑",
+      "multiplier": "乘数",
+      "step": "步长",
+      "max": "最大值",
+      "overlay": "覆盖 (0/1)"
+    },
+    "pane": {
+      "primary": "主图",
+      "index": "窗格 {n}",
+      "timeframe": "时间周期",
+      "symbol": "交易对",
+      "waiting": "等待第一根K线…",
+      "dexWaiting": "DEX 池——K线稍后加载",
+      "rerouted": "已切换交易所",
+      "liquidity": "流动性 {amount}"
+    },
+    "replay": {
+      "title": "K线回放",
+      "back10": "回退10根",
+      "back1": "回退1根",
+      "play": "播放",
+      "pause": "暂停",
+      "fwd1": "前进1根",
+      "fwd10": "前进10根",
+      "speed": "回放速度",
+      "live": "实时"
+    }
+  },
+  "support": {
+    "title": "NodeChart 不花你一分钱。支持这场叛逆。",
+    "body": "你的广告拦截器暂停了——而这正是这个终端存在的原因：一名独立的 dev 靠克制的广告和你这样的人维持它。关掉拦截器，或直接给 grid 加油：",
+    "wallets": "捐赠钱包",
+    "copy": "复制",
+    "copied": "已复制！",
+    "donated": "我已捐赠",
+    "dismiss": "关闭",
+    "note": "无账户、无追踪、无付费墙。广告与捐赠支付服务器、咖啡和 dev 的深夜——每笔打赏都会变成新图表功能。",
+    "openTip": "打赏罐",
+    "supporter": "Supporter",
+    "story1": "NodeChart 没有团队、没有投资人、没有销售。只有一名开发者——他白天付房租电费拉面钱，晚上写订单簿解析器。",
+    "story2": "这个终端靠两样东西运转：克制的广告，和之后打开打赏罐的人。它们让灯亮着、让付费墙消失。",
+    "story3": "任何数额的捐赠都会直接变成新功能、更快的数据和更少的睡眠。谢谢你让这一切成为可能。",
+    "monthly": "你的份额能买到",
+    "slot1": "1 杯咖啡 = 1 小时专注修 bug",
+    "slot2": "1 份披萨 = 一个带 smoke 测试的新指标",
+    "slot3": "1 周伙食 = 一整个 PRO 模块",
+    "nudge1": "如果 NodeChart 今天帮你省了钱或时间：打赏罐一直开着。☕",
+    "nudge2": "一个孤独的 dev 让终端活着——咖啡是他的冷却液。❤",
+    "nudge3": "广告 alone 付不起夜班。如果可以：打赏罐。🍜",
+    "nudge4": "你像pro 一样使用 NodeChart——小额打赏就是 pro 操作。⚡",
+    "milestoneTitle": "你已是常客",
+    "milestoneBody": "{sessions} 次会话用 NodeChart 拆解图表。没有公司支撑这个项目——只有广告和你这样的人。如果它配得上你的工作流，打赏罐是最诚实的表达。",
+    "milestoneCta": "打开打赏罐",
+    "milestoneLater": "以后再说",
+    "celebrate": "TradingView 把这功能锁在订阅后。这里保持开放——因为广告和打赏罐在撑着。我的冰箱也是。",
+    "celebrateCta": "打赏罐",
+    "cta": "我已捐赠",
+    "thanks": "谢谢。真金白银、真实 dev、真实的功能预算。你的 Supporter 徽章已在顶栏点亮。",
+    "landingEyebrow": "生存",
+    "landingHeading": "一名 dev。没有投资人。你的打赏罐。",
+    "landingSub": "这里的每个功能都开放——而只有广告与捐赠覆盖房租、电费和拉面时，它才会继续开放。如果 NodeChart 配得上你的工作流，这是留住它最诚实的方式。",
+    "adsWhy": "为什么有广告？因为它让终端无需账户与付费墙地开放。为什么需要捐赠？因为单靠广告付不起夜班。",
+    "toolNudge": {
+      "body": "一个会话用了六个工具——你的系统很认真。我的小费罐也是：一杯咖啡让数据流继续跳动。",
+      "cta": "请我咖啡"
+    },
+    "copyFailed": "无法复制——请手动选择地址。",
+    "donatedAsk": "大概多少？诚实申报即可——链上捐赠无法对应到个人。",
+    "donatedSmall": "$5 以内",
+    "donatedBig": "超过 $5",
+    "donatedThanks48": "谢谢！48 小时内不会再出现任何捐赠请求——说到做到。",
+    "donatedThanks5d": "超过 $5——敬佩！5 天内不再有捐赠请求，支持者徽章已点亮。"
+  },
+  "share": {
+    "button": "分享",
+    "title": "分享这个图表",
+    "titleTheme": "解锁高级主题",
+    "hint": "在 X 或 Telegram 发一条动态即可永久解锁 Matrix Green + Miami Vice Pink。",
+    "already": "你已解锁高级主题。分享依然能为网络充能。",
+    "x": "发布到 X",
+    "telegram": "分享到 Telegram",
+    "unlocked": "已解锁：Matrix Green + Miami Vice Pink",
+    "tweet": "Found an insane setup for {ticker} on NodeChart. Zero fees, real-time on-chain data. #Crypto #Trading"
+  },
+  "ads": {
+    "sponsored": "赞助"
+  },
+  "onchain": {
+    "button": "链上",
+    "title": "链上信号",
+    "close": "关闭",
+    "refresh": "立即刷新",
+    "sources": "数据源：mempool.space · Blockscout · DeFiLlama · GeckoTerminal · DexScreener · GoPlus · 公共 RPC",
+    "live": "LIVE",
+    "offline": "离线",
+    "loading": "加载中…",
+    "idle": "就绪",
+    "groups": {
+      "btc": "比特币网络",
+      "evm": "EVM 网络",
+      "solana": "Solana",
+      "defi": "DeFi 资金",
+      "dex": "DEX 热度",
+      "forensics": "代币取证"
+    },
+    "btc": {
+      "fast": "特快",
+      "half": "30 分钟",
+      "eco": "经济",
+      "unconfirmed": "未确认",
+      "mempool": "内存池",
+      "difficulty": "难度 Δ",
+      "blocks": "平均出块",
+      "feeUnit": "费率单位 sat/vB"
+    },
+    "evm": {
+      "gwei": "gwei",
+      "util": "利用率 {value}",
+      "txToday": "今日 {value} 笔交易",
+      "tvl": "TVL {value}"
+    },
+    "solana": {
+      "tps": "TPS",
+      "nonVote": "用户 TPS",
+      "slot": "时隙"
+    },
+    "defi": {
+      "total": "总 TVL",
+      "change": "24 小时 Δ",
+      "stables": "稳定币",
+      "chains": "顶级公链"
+    },
+    "dex": {
+      "trending": "热门池",
+      "boosts": "最多加速"
+    },
+    "forensics": {
+      "hint": "选择 DEX 代币以取证",
+      "holders": "持有人",
+      "taxes": "买/卖税",
+      "top10": "前十占比",
+      "lp": "LP 已锁",
+      "mintable": "可增发",
+      "honeypot": "HONEYPOT"
+    }
+  },
+  "pro": {
+    "button": "PRO",
+    "title": "专业指标",
+    "close": "关闭",
+    "refresh": "立即刷新",
+    "sources": "数据源：Gate · OKX · CoinGecko · alternative.me · Deribit · 实时成交（CVD）",
+    "live": "LIVE",
+    "offline": "离线",
+    "loading": "加载中…",
+    "idle": "就绪",
+    "groups": {
+      "deriv": "衍生品",
+      "flow": "订单流",
+      "global": "全球市场",
+      "heat": "热力图",
+      "vol": "期权与 IV",
+      "breadth": "市场宽度"
+    },
+    "deriv": {
+      "funding": "资金费率",
+      "annual": "年化",
+      "mark": "标记价",
+      "index": "指数",
+      "premium": "溢价",
+      "oi": "未平仓",
+      "lsrAcc": "多空账户",
+      "lsrTaker": "多空主动",
+      "lsrTop": "大户多空",
+      "liq5m": "5分钟爆仓",
+      "nextFunding": "下次资金费",
+      "oiHist": "OI · 2.5 小时",
+      "lsrHist": "L/S 主动 · 2.5 小时",
+      "fundingHist": "资金费 · 8 天"
+    },
+    "flow": {
+      "bid": "最佳买价",
+      "ask": "最佳卖价",
+      "spread": "价差",
+      "imbalance": "失衡",
+      "cvd": "会话 CVD",
+      "delta60": "Δ 60 秒",
+      "trades": "成交笔数",
+      "cvdHint": "CVD 来自实时成交——请保持鲸鱼流开启",
+      "depth": "订单簿深度（累计 ±0.5 %）"
+    },
+    "global": {
+      "mcap": "总市值",
+      "mcap24": "24 小时 Δ",
+      "vol": "24 小时成交量",
+      "coins": "币种数",
+      "btcD": "BTC 占比",
+      "ethD": "ETH 占比",
+      "fng": "恐惧与贪婪"
+    },
+    "vol": {
+      "dvolBtc": "DVOL BTC",
+      "dvolEth": "DVOL ETH",
+      "putCall": "Put/Call OI",
+      "maxPain": "最大痛点",
+      "painDist": "最大痛点距现货 {value}",
+      "dvolHint": "隐含波动率与期权流（Deribit）",
+      "smile": "IV 微笑（最近到期）",
+      "term": "IV 期限结构（ATM）"
+    },
+    "breadth": {
+      "adv": "上涨",
+      "dec": "下跌",
+      "median": "24h 中位数",
+      "advPct": "上涨占比",
+      "hint": "{total} 个 USDT 交易对 · 涨跌对比"
+    }
+  },
+  "tools": {
+    "backtest": {
+      "title": "策略实验室 · 回测",
+      "strategy": "策略",
+      "strategies": {
+        "emaCross": "EMA 交叉",
+        "rsiReversion": "RSI 均值回归",
+        "bbReversion": "布林回归",
+        "supertrend": "Supertrend 翻转",
+        "macdCross": "MACD 交叉",
+        "donchian": "Donchian 突破"
+      },
+      "fee": "单边手续费",
+      "showOnChart": "在图上绘制交易",
+      "clearMarkers": "清除标记",
+      "markersOn": "{n} 笔回合已上图",
+      "needData": "历史数据不足，无法回测",
+      "net": "净收益",
+      "buyHold": "买入持有",
+      "trades": "交易数",
+      "winRate": "胜率",
+      "pf": "盈利因子",
+      "maxDd": "最大回撤",
+      "avg": "平均单笔",
+      "best": "最佳",
+      "worst": "最差",
+      "exposure": "持仓占比",
+      "equity": "权益曲线（1 = 初始资金）",
+      "entry": "入场",
+      "exit": "出场",
+      "pnl": "盈亏",
+      "bars": "K线数",
+      "hint": "信号与成交均在收盘，单边计费。仅做多、按市价计权益——不拟合、不粉饰。"
+    },
+    "screener": {
+      "title": "市场筛选器",
+      "subtitle": "{n} 个 USDT 交易对 · 实时排序过滤",
+      "search": "搜索…",
+      "filters": {
+        "all": "全部",
+        "gainers": "涨 >3%",
+        "losers": "跌 <−3%",
+        "whales": "量 > $25M",
+        "nearHigh": "接近24h高点"
+      },
+      "pair": "交易对",
+      "last": "最新",
+      "chg": "24h %",
+      "vol": "24h 量",
+      "range": "24h 区间",
+      "hint": "点击行即打开真实图表——种子列表之外也可以。含导出：TradingView 对此收费。"
+    },
+    "risk": {
+      "title": "仓位与风险计算器",
+      "account": "账户 (USD)",
+      "riskPct": "单笔风险 %",
+      "leverage": "杠杆",
+      "entry": "入场",
+      "stop": "止损",
+      "target": "目标",
+      "riskUsd": "风险",
+      "rewardUsd": "收益",
+      "rr": "收益/风险",
+      "units": "仓位数量",
+      "notional": "名义价值",
+      "margin": "所需保证金",
+      "stopDist": "止损距离",
+      "targetDist": "目标距离",
+      "accountTarget": "达标后账户",
+      "invalid": "入场、止损、目标需互不相同",
+      "hint": "按止损恰好亏掉设定风险来 sizing——唯一能让账户活下去的公式。"
+    },
+    "watch": {
+      "title": "自选 · 实时",
+      "empty": "还是空的——工具栏的星号收集符号。",
+      "remove": "移除",
+      "hint": "不限数量，报价来自共享 ticker 扫描。"
+    },
+    "ratings": {
+      "title": "技术评级",
+      "sub": "6 个周期实时评分",
+      "hint": "每个周期 14 个信号：振荡器 + 均线，来自实时 REST 种子。",
+      "refresh": "重扫",
+      "err": "评级失败——数据源可达吗？",
+      "loading": "正在评分 6 个周期 …",
+      "buy": "买入",
+      "sell": "卖出",
+      "neutral": "中性",
+      "verdict": "结论",
+      "foot": "这个矩阵不收你订阅费——但收我的咖啡。小费罐？",
+      "gauge": {
+        "strongBuy": "强烈买入",
+        "buy": "买入",
+        "neutral": "中性",
+        "sell": "卖出",
+        "strongSell": "强烈卖出"
+      }
+    },
+    "heatmap": {
+      "title": "市场热力图",
+      "sub": "USDT 交易对 Top · 面积 = 24h 成交量 · 颜色 = 涨跌",
+      "err": "热力图不可达——Binance 拦截？",
+      "loading": "加载行情 …",
+      "click": "点击方块即在终端加载该交易对。",
+      "foot": "别处热力图藏在登录后。这里靠小费罐保温。"
+    },
+    "journal": {
+      "title": "交易日志",
+      "sub": "本地存储 · 统计 + CSV",
+      "side": "方向",
+      "long": "多",
+      "short": "空",
+      "size": "数量",
+      "entryP": "入场",
+      "exitP": "出场",
+      "stop": "止损（算 R）",
+      "tags": "标签",
+      "note": "备注",
+      "save": "保存记录",
+      "del": "删除",
+      "empty": "还没有记录。最好的交易是被记录的那笔。",
+      "foot": "TradingView 没有日志。你现在有了——一笔小费让它持续进化。",
+      "stats": {
+        "count": "笔数",
+        "winRate": "胜率",
+        "pf": "盈亏比",
+        "expectancy": "期望值",
+        "avgR": "平均 R",
+        "best": "最佳"
+      }
+    },
+    "magnifier": {
+      "title": "K线放大镜",
+      "sub": "一根K线内的原始成交带（Binance aggTrades）",
+      "prev": "更旧K线",
+      "next": "更新K线",
+      "err": "成交带不可达——该符号未在 Binance 上市？",
+      "empty": "此K线内未找到成交。",
+      "trades": "成交数",
+      "vol": "成交量",
+      "notional": "名义价值",
+      "buys": "买",
+      "sells": "卖",
+      "delta": "主动买卖差",
+      "foot": "别处的付费功能，这里的开放。一杯咖啡让镜片干净。"
+    },
+    "alerts": {
+      "title": "警报管理器",
+      "sub": "无上限 · 持久化 · 永不过期 · 多条件",
+      "permOn": "通知已开",
+      "permOff": "通知已关",
+      "testbeep": "测试提示音",
+      "kind": "类型",
+      "price": "价格位",
+      "pct": "百分比变动",
+      "dir": "方向",
+      "above": "上穿",
+      "below": "下穿",
+      "value": "值",
+      "pctValue": "百分比",
+      "note": "备注",
+      "addCond2": "第二条件（与）",
+      "create": "创建警报",
+      "empty": "暂无警报。选价位、选方向，安心睡觉。",
+      "armed": "布防中",
+      "fired": "已触发",
+      "del": "删除",
+      "foot": "400 条永不过期警报在别处要 60 美元/月。这里：小费罐里的一句谢谢。"
+    },
+    "patterns": {
+      "title": "形态扫描器",
+      "sub": "对可见缓冲区自动识别",
+      "toggle": "图上标记",
+      "empty": "视野内没有形态——市场今天跳过经典。",
+      "foot": "形态识别在别处是 239 美元的功能。这里只要一个微笑或小费。",
+      "kinds": {
+        "doubleTop": "双顶",
+        "doubleBottom": "双底",
+        "headShoulders": "头肩顶",
+        "invHeadShoulders": "头肩底",
+        "triAsc": "上升三角形",
+        "triDesc": "下降三角形",
+        "flagBull": "牛旗",
+        "flagBear": "熊旗"
+      }
+    },
+    "scripts": {
+      "title": "脚本实验室",
+      "sub": "编写、测试并导入你自己的指标脚本",
+      "name": "名称",
+      "source": "公式（每根K线）",
+      "overlay": "作为覆盖线画在价格上",
+      "test": "测试",
+      "apply": "应用到图表",
+      "save": "保存",
+      "del": "删除",
+      "new": "新建",
+      "import": "导入",
+      "importPh": "https://github.com/…/blob/…/script.txt 或 raw 链接",
+      "importGo": "加载",
+      "saved": "已保存脚本",
+      "guide": "每根K线：o h l c v · 函数：ema(p) sma(p) rsi(p) atr(p) stoch(p) vwap() highest(p) lowest(p) change(p) · 数学：abs max min sqrt log pow",
+      "foot": "脚本只在你的浏览器运行——一笔小费让实验台保持整洁。",
+      "last": "最新值",
+      "min": "最小",
+      "max": "最大",
+      "err": {
+        "empty": "公式为空。",
+        "too-long": "公式过长（最多 4000 字符）。",
+        "compile": "语法错误。",
+        "runtime": "运行错误。",
+        "https-only": "仅支持 https:// 来源。",
+        "too-large": "文件过大（最多 20 KB）。"
+      },
+      "errHttp": "导入失败：{code}",
+      "applied": "脚本已上图表。"
+    }
+  },
+  "faq": {
+    "heading": "常见问题",
+    "sub": "由一位宁愿做功能也不做付费墙的独立开发者，简短而诚实地回答。",
+    "items": [
+      {
+        "q": "NodeChart 真的免费吗？",
+        "a": "是的。所有图表、指标、度量与工具都完全在浏览器中运行——无需账户、无需订阅。运营成本由低调的广告与自愿打赏承担；没有付费墙，也没有隐藏的付费等级。"
+      },
+      {
+        "q": "NodeChart 支持哪些交易所与链？",
+        "a": "12 家中心化交易所（含 Binance、OKX、Bybit、Gate.io、KuCoin），以及通过 DexScreener 与 GeckoTerminal 覆盖 33 条链的 DEX 数据——并附带代币地址安全审查。"
+      },
+      {
+        "q": "我可以编写自己的指标脚本吗？",
+        "a": "可以。脚本实验室接受逐根蜡烛公式（ema、rsi、vwap 等），实时测试并以线条或叠加方式画在图表上。脚本可本地保存，或通过 https 链接（如 GitHub）导入。"
+      },
+      {
+        "q": "我的数据和画线存在哪里？",
+        "a": "只存在你的浏览器（localStorage）。NodeChart 没有用户数据后端——无账户、无追踪器、无云同步。"
+      },
+      {
+        "q": "与 TradingView 的对比如何？",
+        "a": "那里锁在 Essential、Plus、Ultimate 订阅后的功能——成交量分布、K 线回放、Renko/Kagi、形态识别、多周期评级、自定义脚本——在这里完全开放。NodeChart 不收费，但靠广告与打赏维持。"
+      },
+      {
+        "q": "NodeChart 适合谁？",
+        "a": "适合想要免注册实时加密图表（CEX 与 DEX）的交易者：新手有为每个指标准备的帮助文档，专业者有订单流、期权与链上度量。"
+      }
+    ]
+  },
+  "edge": {
+    "menuLabel": "Edge",
+    "menuLiq": "Liq Radar",
+    "menuLag": "Lag Oracle",
+    "menuRegime": "Regime Compass",
+    "menuClock": "Clock Edge",
+    "liqTitle": "Liq Radar",
+    "liqSub": "杠杆仓位在哪里被清算",
+    "liqEnable": "在图表中显示磁力位",
+    "liqHow": "Liq Radar 根据最近 400 根K线估算 10x 至 100x 仓位清算簇的位置。价格常像被磁铁吸引一样靠近这些区域——可用作目标或止损区。纯粹基于你的图表计算：不含预测，也不使用交易所持仓数据。",
+    "liqAbove": "价格上方的空头清算位",
+    "liqBelow": "价格下方的多头清算位",
+    "liqSpot": "当前价格",
+    "liqEmpty": "数据源中的K线还太少。",
+    "lagTitle": "Lag Oracle",
+    "lagSub": "BTC 先动，你的币随后",
+    "lagLeader": "领先品种",
+    "lagLag": "滞后(K线)",
+    "lagCorr": "相关性",
+    "lagBeta": "贝塔",
+    "lagHits": "命中率",
+    "lagNeed": "正在加载领先品种数据——至少需要 60 根K线。",
+    "lagCalm": "领先品种暂无明显脉冲，市场在等待。",
+    "lagHow": "Lag Oracle 测算领先品种（如 Binance 的 BTC）历史上以多少根K线的滞后带动你的图表，并在领先脉冲仅被部分跟随时实时提示。全部基于公开K线的统计。",
+    "lagPendingText": "{leader} 跳动 {dir}{bps} bps——对你的币预期 {dir}{exp} bps，目前仅走出 {dir}{done} bps。",
+    "regimeTitle": "Regime Compass",
+    "regimeSub": "当前处于哪种市场状态，适合哪些工具",
+    "regimeConfidence": "置信度",
+    "regimeDrivers": "驱动因子",
+    "regimeHistory": "近期状态切换",
+    "regimeRecs": "匹配工具",
+    "regimeNeed": "K线不足，暂无法判定。",
+    "rTrendStrong": "强趋势",
+    "rdTrendStrong": "ADX 高且斜率明确：顺势交易，回调即入场机会。",
+    "rTrendWeak": "弱趋势",
+    "rdTrendWeak": "方向可见但力度不足：目标收紧，留意背离。",
+    "rRange": "震荡区间",
+    "rdRange": "横盘市场：在边缘交易，成交量分布显示价值区。",
+    "rVolExpand": "波动扩张",
+    "rdVolExpand": "波动率骤增但没有趋势：降低仓位，用提醒代替盯盘。",
+    "rLiqStorm": "清算风暴",
+    "rdLiqStorm": "强制清算与极端资金费率主导：价格猎杀磁力位——打开流动性水平。",
+    "dAdx": "ADX",
+    "dRv": "波动比",
+    "dSlope": "斜率",
+    "dFunding": "资金费率",
+    "dBreadth": "市场宽度",
+    "dLiq": "5分钟清算",
+    "actAvwap": "启用 AVWAP",
+    "actSr": "支撑/阻力",
+    "actDiv": "背离",
+    "actVp": "成交量分布",
+    "actAlerts": "启用提醒",
+    "actLiq": "清算磁力位",
+    "clockTitle": "Clock Edge",
+    "clockSub": "用你自己的图表数据看季节性",
+    "clockHours": "小时 (UTC)",
+    "clockDays": "星期",
+    "clockWin": "胜率",
+    "clockNowYes": "当前时段（{n} 根K线历史）：胜率 {wr}%，每 4 根K线平均 {bps} bps——统计上显著 (t ≥ 2)。",
+    "clockNowNo": "当前小时在统计上无显著特征——没有季节性优势。",
+    "clockLegend": "绿色 = 未来 4 根K线平均收益为正，红色为负；深浅 = t 值，浅色 = 不显著。仅基于已加载的K线计算。",
+    "clockNeed": "加载的K线还太少。"
+  }
+}

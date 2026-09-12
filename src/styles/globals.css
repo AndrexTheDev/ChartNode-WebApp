@@ -1,0 +1,474 @@
+/* © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   NodeChart · Design tokens
+   Colours are stored as raw HSL channels so Tailwind can apply <alpha-value>.
+   `data-theme` on <html> swaps the whole skin (wired to useAppStore.theme).
+   ========================================================================== */
+
+@layer base {
+  :root,
+  [data-theme='acid'] {
+    color-scheme: dark;
+
+    --nc-bg: 0 0% 4%; /* #0a0a0a */
+    --nc-surface: 240 6% 7%;
+    --nc-elevated: 240 6% 10%;
+    --nc-line: 110 22% 24%;
+    --nc-fg: 110 25% 93%;
+    --nc-muted: 110 9% 63%;
+    --nc-faint: 110 7% 42%;
+
+    --nc-primary: 110 100% 54%; /* #39ff14 acid green */
+    --nc-primary-fg: 110 60% 5%;
+    --nc-primary-dim: 110 100% 32%;
+    --nc-secondary: 278 100% 57%; /* #b026ff electric purple */
+    --nc-secondary-fg: 0 0% 100%;
+    --nc-accent: 186 100% 50%; /* #00f0ff */
+    --nc-danger: 344 100% 59%; /* #ff2e63 */
+    --nc-warning: 43 100% 50%; /* #ffb800 */
+    --nc-bull: 157 100% 50%; /* #00ff9d */
+    --nc-bear: 344 100% 59%; /* #ff2e63 */
+
+    --nc-glow: 0.85;
+    --nc-grid-opacity: 0.5;
+    --nc-scan-opacity: 0.035;
+
+    --nc-gutter: 1.25rem;
+    --nc-header-h: 3.75rem;
+  }
+
+  [data-theme='violet'] {
+    color-scheme: dark;
+
+    --nc-bg: 270 14% 4%;
+    --nc-surface: 270 12% 8%;
+    --nc-elevated: 270 12% 11%;
+    --nc-line: 278 40% 28%;
+    --nc-fg: 270 30% 95%;
+    --nc-muted: 270 12% 66%;
+    --nc-faint: 270 10% 45%;
+
+    --nc-primary: 278 100% 62%;
+    --nc-primary-fg: 278 60% 6%;
+    --nc-primary-dim: 278 90% 40%;
+    --nc-secondary: 110 100% 54%;
+    --nc-secondary-fg: 110 60% 5%;
+    --nc-accent: 314 100% 58%;
+    --nc-danger: 344 100% 59%;
+    --nc-warning: 43 100% 50%;
+    --nc-bull: 157 100% 50%;
+    --nc-bear: 344 100% 59%;
+
+    --nc-glow: 0.9;
+    --nc-grid-opacity: 0.45;
+    --nc-scan-opacity: 0.04;
+  }
+
+  /* High-contrast daylight skin – same layout, no neon bleed. */
+  [data-theme='light'] {
+    color-scheme: light;
+
+    --nc-bg: 220 24% 97%;
+    --nc-surface: 0 0% 100%;
+    --nc-elevated: 220 24% 94%;
+    --nc-line: 220 16% 80%;
+    --nc-fg: 222 34% 9%;
+    --nc-muted: 220 12% 36%;
+    --nc-faint: 220 10% 54%;
+
+    --nc-primary: 130 92% 24%;
+    --nc-primary-fg: 0 0% 100%;
+    --nc-primary-dim: 130 70% 34%;
+    --nc-secondary: 278 68% 44%;
+    --nc-secondary-fg: 0 0% 100%;
+    --nc-accent: 196 92% 30%;
+    --nc-danger: 348 82% 42%;
+    --nc-warning: 32 96% 40%;
+    --nc-bull: 152 68% 28%;
+    --nc-bear: 348 82% 42%;
+
+    --nc-glow: 0.12;
+    --nc-grid-opacity: 0.35;
+    --nc-scan-opacity: 0;
+  }
+
+  /* ── PREMIUM (share-to-unlock) ───────────────────────────────────────────
+     Matrix Green: phosphor CRT – near-black glass, terminal green, no purple. */
+  [data-theme='matrix'] {
+    color-scheme: dark;
+
+    --nc-bg: 140 30% 2%;
+    --nc-surface: 140 26% 5%;
+    --nc-elevated: 140 24% 8%;
+    --nc-line: 140 45% 20%;
+    --nc-fg: 120 45% 88%;
+    --nc-muted: 130 18% 58%;
+    --nc-faint: 130 14% 38%;
+
+    --nc-primary: 130 100% 45%; /* phosphor #00e63c */
+    --nc-primary-fg: 130 70% 4%;
+    --nc-primary-dim: 130 100% 26%;
+    --nc-secondary: 90 100% 55%; /* yellow-green rain */
+    --nc-secondary-fg: 90 70% 5%;
+    --nc-accent: 160 100% 50%;
+    --nc-danger: 0 100% 60%;
+    --nc-warning: 60 100% 50%;
+    --nc-bull: 130 100% 50%;
+    --nc-bear: 0 100% 60%;
+
+    --nc-glow: 1;
+    --nc-grid-opacity: 0.65;
+    --nc-scan-opacity: 0.09; /* heavy CRT scanlines */
+  }
+
+  /* Miami Vice Pink: sunset noir – indigo night, hot pink, ocean cyan. */
+  [data-theme='miami'] {
+    color-scheme: dark;
+
+    --nc-bg: 288 60% 5%;
+    --nc-surface: 288 50% 9%;
+    --nc-elevated: 288 48% 13%;
+    --nc-line: 320 60% 30%;
+    --nc-fg: 320 40% 95%;
+    --nc-muted: 320 25% 68%;
+    --nc-faint: 320 20% 46%;
+
+    --nc-primary: 330 100% 60%; /* hot pink #ff2e97 */
+    --nc-primary-fg: 330 70% 6%;
+    --nc-primary-dim: 330 100% 38%;
+    --nc-secondary: 190 100% 55%; /* ocean cyan */
+    --nc-secondary-fg: 190 70% 5%;
+    --nc-accent: 265 100% 70%;
+    --nc-danger: 344 100% 59%;
+    --nc-warning: 35 100% 55%;
+    --nc-bull: 165 100% 55%;
+    --nc-bear: 330 100% 59%;
+
+    --nc-glow: 1;
+    --nc-grid-opacity: 0.55;
+    --nc-scan-opacity: 0.05;
+  }
+
+  * {
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scrollbar-color: hsl(var(--nc-primary) / 0.4) transparent;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  /*
+   * Horizontal-Scroll-Schutz auf small mobile (320px).
+   *
+   * `overflow-x:hidden` am body allein reicht nicht: Der Ueberlauf wird dann
+   * an `html` weitergereicht und die Seite bleibt scrollbar. Grid-/Flex-Items
+   * sind per Default `min-width:auto` und wachsen auf die min-content-Breite
+   * ihres Inhalts – Wallet-Adressen, Ticker-Symbole und Monospace-Strings ohne
+   * Umbruchstelle sprengen so jede Spur. Deshalb: Items duerfen schrumpfen,
+   * und lange Tokens brechen um, statt die Box aufzuschieben.
+   *
+   * Ausgenommen sind bewusst ueberbreite Bahnen (Marquee, Scroll-Rows): die
+   * tragen `w-max`, `animate-marquee` oder `overflow-x-auto`/`nc-no-scrollbar`
+   * und clippen sich selbst.
+   */
+  :where(main, section, header, footer, aside, article) :where(div, p, li, dd, dt, span, code, pre) {
+    min-width: 0;
+  }
+
+  code,
+  pre,
+  .nc-break-anywhere {
+    overflow-wrap: anywhere;
+  }
+
+  /* Terminal-style selection */
+  ::selection {
+    background: hsl(var(--nc-primary) / 0.32);
+    color: hsl(var(--nc-fg));
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-extrabold tracking-tight text-balance;
+  }
+
+  /* Unified interaction baseline: every control animates its feedback
+     (colors, glow, press) instead of snapping – utilities still override. */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [role='option'],
+  [role='menuitem'],
+  [role='switch'] {
+    transition-property: color, background-color, border-color, box-shadow, opacity, filter, transform;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1); /* ease-cyber */
+  }
+
+  /* Tactile press feedback for every button (NeonButton parity). */
+  button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  /* Disabled buttons always read as inert – house-wide, no exceptions. */
+  button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Visible, on-brand focus ring for keyboard users */
+  :focus-visible {
+    outline: 2px solid hsl(var(--nc-primary) / 0.9);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px hsl(var(--nc-primary) / 0.18);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--nc-bg));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--nc-line));
+    border: 2px solid hsl(var(--nc-bg));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--nc-primary) / 0.55);
+  }
+}
+
+/* ==========================================================================
+   Components
+   ========================================================================== */
+
+@layer components {
+  /* Angled "cut corner" plates – the signature NodeChart silhouette. */
+  .nc-clip {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+  .nc-clip-sm {
+    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  }
+  .nc-clip-lg {
+    clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  }
+
+  .nc-panel {
+    @apply relative border border-line bg-surface/80 shadow-panel backdrop-blur-sm;
+  }
+
+  .nc-panel-hover {
+    @apply transition-colors duration-300 ease-cyber hover:border-primary/60 hover:bg-elevated/70;
+  }
+
+  /* Hairline separator with a glowing centre. */
+  .nc-divider {
+    @apply relative h-px w-full border-0 bg-line/70;
+  }
+  .nc-divider::after {
+    content: '';
+    @apply absolute inset-y-0 left-1/2 h-px w-1/3 -translate-x-1/2;
+    background: linear-gradient(90deg, transparent, hsl(var(--nc-primary) / 0.8), transparent);
+  }
+
+  .nc-chip {
+    @apply inline-flex items-center gap-1.5 border border-line bg-surface/70 px-2.5 py-1 font-mono text-2xs uppercase tracking-cyber text-muted;
+  }
+
+  .nc-eyebrow {
+    @apply inline-flex items-center gap-2 font-mono text-2xs uppercase tracking-mega text-primary;
+  }
+
+  .nc-input {
+    @apply w-full border border-line bg-bg/70 px-3 py-2 font-mono text-sm text-fg placeholder:text-faint
+           transition-[border-color,box-shadow,background-color] duration-200
+           hover:border-line/90 focus:border-primary focus:shadow-neon-sm focus:outline-none;
+  }
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+@layer utilities {
+  .neon-text {
+    text-shadow:
+      0 0 6px hsl(var(--nc-primary) / calc(0.55 * var(--nc-glow))),
+      0 0 22px hsl(var(--nc-primary) / calc(0.3 * var(--nc-glow)));
+  }
+  .neon-text-secondary {
+    text-shadow:
+      0 0 6px hsl(var(--nc-secondary) / calc(0.55 * var(--nc-glow))),
+      0 0 22px hsl(var(--nc-secondary) / calc(0.3 * var(--nc-glow)));
+  }
+  .neon-box {
+    box-shadow:
+      0 0 0 1px hsl(var(--nc-primary) / 0.4),
+      0 0 calc(20px * var(--nc-glow)) -4px hsl(var(--nc-primary) / 0.6);
+  }
+
+  .text-gradient-neon {
+    @apply bg-text-shine bg-clip-text text-transparent;
+    background-size: 200% 100%;
+  }
+
+  /* Glitch layers: put `data-text="SAME"` on the element. */
+  .nc-glitch {
+    position: relative;
+  }
+  .nc-glitch::before,
+  .nc-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .nc-glitch::before {
+    color: hsl(var(--nc-secondary));
+    animation: glitch 2.6s steps(2, end) infinite;
+    mix-blend-mode: screen;
+  }
+  .nc-glitch::after {
+    color: hsl(var(--nc-accent));
+    animation: glitch 3.4s steps(2, end) infinite reverse;
+    mix-blend-mode: screen;
+  }
+
+  .nc-grid {
+    @apply bg-grid-cyber bg-grid;
+    opacity: var(--nc-grid-opacity);
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 100%);
+  }
+
+  .nc-scanlines::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 bg-scanlines;
+    opacity: var(--nc-scan-opacity);
+  }
+
+  .nc-hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      hsl(var(--nc-line) / 0.55) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
+  .nc-no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .nc-no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .pause-hover:hover .group-hover\:paused {
+    animation-play-state: paused;
+  }
+
+  /* Consistent error highlight for invalid inputs. Lives in @layer utilities
+     (double attribute selector) so it outranks `border-*`/`focus:border-*`
+     utility classes on the element. */
+  input[aria-invalid='true'][aria-invalid],
+  textarea[aria-invalid='true'][aria-invalid],
+  select[aria-invalid='true'][aria-invalid] {
+    border-color: hsl(var(--nc-danger) / 0.75);
+    box-shadow: 0 0 10px -3px hsl(var(--nc-danger) / 0.55);
+  }
+}
+
+/* Hard guarantee: the invalid highlight must survive `border-<color>`
+   utilities on the element, so it lives outside the cascade layers. */
+input[aria-invalid='true'],
+textarea[aria-invalid='true'],
+select[aria-invalid='true'] {
+  border-color: hsl(var(--nc-danger) / 0.75) !important;
+  box-shadow: 0 0 10px -3px hsl(var(--nc-danger) / 0.55) !important;
+}
+
+/* ==========================================================================
+   Touch-Targets (WCAG 2.5.8 / Apple HIG / Material: min. 44x44 CSS-px)
+   ==========================================================================
+   Das Terminal ist bewusst kompakt gesetzt – `h-7` (28px) und `size-7`
+   funktionieren mit Maus, sind fuer Finger aber zu klein. Statt 81 Einzel-
+   edits an Komponenten hebt diese Regel interaktive Elemente NUR auf
+   echten Touch-Geraeten an:
+
+   · `(hover: none) and (pointer: coarse)` matcht ausschliesslich Geraete ohne
+     Hover und mit grobem Zeiger (Smartphone/Tablet). Desktop, Ultrawide und
+     Laptops mit Touchscreen behalten das kompakte Layout unveraendert.
+   · `min-height`/`min-width` statt `height`: bestehende h-9/h-10-Klassen
+     wachsen nicht ueber ihr Design hinaus, es wird nur nach unten abgesichert.
+   · `:where()` haelet die Spezifitaet bei 0, damit Klassen wie `h-7` weiterhin
+     wirken und nichts ueberschrieben wird.
+
+   Ausnahmen: sr-only-Skip-Links (1x1 bis zum Fokus, dann sichtbar), sowie
+   Elemente in bewusst dichten Zeilen, die ihre Trefferflaeche per Padding
+   selbst erweitern.
+   -------------------------------------------------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+  :where(a[href], button, [role='button'], [role='menuitem'], [role='tab'], [role='switch'], summary):where(:not(.sr-only)) {
+    min-height: 44px;
+  }
+
+  /* Breite: quadratische Icon-Buttons (size-*) UND schmale Text-Chips.
+     `1h`, `LOG`, `%`, `1x1` sind nur 26–42px breit – ebenfalls Fehltreffer-
+     risiko. Die Mindestbreite gilt fuer alle, die nicht bewusst breit sind. */
+  :where(button, [role='button'], [role='menuitem'], [role='tab'], [role='switch'], summary):where(:not(.sr-only)) {
+    min-width: 44px;
+  }
+
+  /* Links ohne Button-Charakter (Fliess-text-Links, Mailto, Logo) sollen
+     schmaler bleiben duerfen – hier zaehlt nur die Hoehe. */
+
+  /* Text-Inputs und Selects: volle Trefferhoehe, damit der Fokus nicht
+     daneben geht und die Soft-Tastatur zuverlaessig oeffnet. */
+  :where(input, select, textarea):where(:not([type='checkbox']):not([type='radio']):not(.sr-only)) {
+    min-height: 44px;
+  }
+
+  /* Checkboxen/Radios in dichten Listen: Trefferflaeche ueber das Label. */
+  :where(label:has(> input[type='checkbox']), label:has(> input[type='radio'])) {
+    min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Accessibility / motion preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .nc-glitch::before,
+  .nc-glitch::after {
+    display: none;
+  }
+}
