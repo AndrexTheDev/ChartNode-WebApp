@@ -22,14 +22,16 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "api:smoke": "node scripts/run-harness.mjs api-smoke.entry.ts",
     "chart:smoke": "node scripts/run-harness.mjs chart-smoke.entry.ts",
-    "smoke": "npm run ws:smoke && npm run api:smoke && npm run chart:smoke && npm run edge:smoke",
+    "smoke": "npm run ws:smoke && npm run api:smoke && npm run chart:smoke && npm run edge:smoke && npm run smoke:modules",
+    "smoke:modules": "node scripts/run-harness.mjs modules-smoke.entry.ts",
     "beta": "node scripts/beta-test.mjs",
     "edge:smoke": "node scripts/run-harness.mjs edge-smoke.entry.ts",
     "audit:css": "node scripts/tw-missing.mjs",
     "qa:interaction": "node scripts/qa-interaction.mjs",
     "qa:i18n": "node scripts/qa-i18n-layout.mjs",
     "qa:monetization": "node scripts/qa-monetization.mjs",
-    "qa:release": "node scripts/qa-release.mjs"
+    "qa:release": "node scripts/qa-release.mjs",
+    "qa:modules": "node scripts/qa-modules.mjs"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",
