@@ -131,7 +131,6 @@ for (const [name, width, height] of VPS) {
   // 8) Börse/Chain als Klartext im Pane-Header sichtbar (Datenquelle eindeutig)
   const VENUES = ['Binance','Bybit','OKX','Bitfinex','KuCoin','Coinbase','Gate','Kraken','MEXC','Bitget','BingX','Crypto.com','Solana','Ethereum','Base','BNB Chain'];
   const headerVenue = await page.evaluate((names) => {
-    const header = document.querySelector('.sticky')?.nextElementSibling ?? document.body;
     const paneHead = [...document.querySelectorAll('div,span')].find((el) => el.className.includes?.('nc-chip') && names.some((n) => (el.textContent ?? '') === n));
     return paneHead ? (paneHead.textContent ?? '') : null;
   }, VENUES);
@@ -165,7 +164,6 @@ for (const [name, width, height] of VPS) {
         .map((c) => (c.textContent ?? '').trim());
       return { rows: document.querySelectorAll('#smart-search-listbox [role="option"]').length, chips };
     });
-    const onlyBybit = filterState.rows > 0 && filterState.chips.every((c) => c === 'Bybit' || c === 'Solana' || c === 'Ethereum' || c.includes('Chain') || c === 'Base');
     check('desktop: Smart-Search-Filter „Bybit" zeigt nur Bybit-CEX-Treffer (+ DEX)', filterState.rows > 0 && filterState.chips.filter((c) => !['Bybit'].includes(c)).every((c) => c !== 'Binance' && c !== 'OKX'), JSON.stringify(filterState));
     await page.screenshot({ path: join(OUT, 'desktop-search-bybit.png') });
     await page.keyboard.press('Escape');

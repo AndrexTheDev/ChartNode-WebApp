@@ -97,7 +97,15 @@ export function HelpExplorer() {
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryId>('all');
-  const [open, setOpen] = useState<string[]>([topics[0]?.id ?? '']);
+  // Deep-Link (#ind-RSI) öffnet direkt beim Mount – Initial-State statt
+  // setState im Effect (SSR-safe: window erst client-seitig lesen)
+  const [open, setOpen] = useState<string[]>(() => {
+    const first = topics[0]?.id ?? '';
+    if (typeof window === 'undefined') return [first];
+    const id = window.location.hash.replace('#', '');
+    if (id && !id.startsWith('sec-') && topics.some((topic) => topic.id === id)) return [id];
+    return [first];
+  });
   const inputRef = useRef<HTMLInputElement>(null);
 
   // "/" focuses the search field from anywhere on the page.
@@ -118,19 +126,14 @@ export function HelpExplorer() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // Deep-Links: /help#ind-rsi öffnet das passende Akkordeon und scrollt hin
+  // Deep-Links: nach Hydration zum Anker scrollen (Öffnen passiert im State)
   useEffect(() => {
     const id = window.location.hash.replace('#', '');
     if (!id) return;
-    const topic = topics.find((entry) => entry.id === id);
-    if (topic) {
-      setCategory('all');
-      setOpen((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    }
     window.requestAnimationFrame(() => {
       document.getElementById(id.startsWith('sec-') ? id : `trigger-${id}`)?.scrollIntoView({ block: 'center' });
     });
-  }, [topics]);
+  }, []);
 
   const normalised = query.trim().toLowerCase();
 
