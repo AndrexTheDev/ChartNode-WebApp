@@ -267,22 +267,6 @@ export function TerminalShell() {
         {/* Wrap-stable: font-swap reflow must never change the row count on
           desktop (CLS), so ≥sm keeps one scrollable line; phones still wrap. */}
         <div className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-2 px-3 py-2.5 lg:overflow-x-auto [&>*]:lg:shrink-0">
-          {/* instrument picker */}
-          <Dropdown
-            triggerLabel={t('symbol')}
-            triggerText={<span className="font-display text-sm font-bold">{activeToken.symbol}</span>}
-            menuLabel={t('symbol')}
-            align="start"
-            widthClass="w-56"
-            items={SEED_TOKENS.map((token) => ({
-              id: token.id,
-              label: token.symbol,
-              hint: token.venue,
-              selected: token.id === activeToken.id,
-              onSelect: () => setActiveToken(token),
-            }))}
-          />
-
           {/* live symbol + price */}
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="truncate font-display text-base font-extrabold tracking-tight">

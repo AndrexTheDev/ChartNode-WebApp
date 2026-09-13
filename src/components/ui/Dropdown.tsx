@@ -116,6 +116,13 @@ export function Dropdown({
       case 'Tab':
         setOpen(false);
         break;
+      case 'Escape':
+        // Panel-seitig mitbehandeln: Falls der Fokus-Träger gerade durch ein
+        // Live-Re-Render abgelöst wurde, käme das Document-Event nie an.
+        event.stopPropagation();
+        setOpen(false);
+        triggerRef.current?.focus();
+        break;
     }
   }
 

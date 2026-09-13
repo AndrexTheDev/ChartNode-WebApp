@@ -33,22 +33,51 @@ export function useFixedPopover<T extends HTMLElement, P extends HTMLElement>(
       const vw = document.documentElement.clientWidth;
       const vh = document.documentElement.clientHeight;
       const w = panel.offsetWidth;
-      const h = panel.offsetHeight;
+      // Naturhöhe messen OHNE DOM-Mutation: scrollHeight liefert die
+      // ungeklammte Inhaltshöhe. (Direktes Leeren von style.maxHeight würde
+      // mit Reacts Style-Diff kollidieren: gleicher State → kein Re-Apply →
+      // der Clamp verschwindet dauerhaft.)
+      const h = Math.max(panel.offsetHeight, panel.scrollHeight);
       let left = align === 'end' ? rect.right - w : rect.left;
       left = Math.max(4, Math.min(left, vw - w - 4));
       let top = rect.bottom + gap;
-      if (top + h > vh - 4) {
-        const above = rect.top - h - gap;
-        top = above >= 4 ? above : Math.max(4, vh - h - 4);
+      let maxHeight: number | null = null;
+      const spaceBelow = vh - 4 - top;
+      const spaceAbove = rect.top - 4 - gap;
+      if (h > spaceBelow) {
+        // flippen, wenn oben mehr Platz ist – sonst Höhe klemmen + scrollen,
+        // damit das Panel immer vollständig in die Ansicht passt
+        if (spaceAbove > spaceBelow) {
+          top = Math.max(4, rect.top - h - gap);
+          maxHeight = Math.max(120, rect.top - gap - 8);
+        } else {
+          maxHeight = Math.max(120, spaceBelow);
+        }
       }
-      setStyle({ position: 'fixed', top: `${Math.round(top)}px`, left: `${Math.round(left)}px`, visibility: 'visible' });
+      setStyle({
+        position: 'fixed',
+        top: `${Math.round(top)}px`,
+        left: `${Math.round(left)}px`,
+        visibility: 'visible',
+        ...(maxHeight != null ? { maxHeight: `${Math.round(maxHeight)}px`, overflowY: 'auto' as const } : {}),
+      });
     };
     apply();
     const raf = requestAnimationFrame(apply);
+    // Webfont-Swap lässt Inhalte nachträglich wachsen → per ResizeObserver
+    // und fonts.ready neu vermessen, damit der Clamp immer greift
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+    ro?.observe(panelRef.current as Element);
+    let alive = true;
+    document.fonts?.ready.then(() => {
+      if (alive) apply();
+    }).catch(() => {});
     window.addEventListener('resize', apply);
     window.addEventListener('scroll', apply, true);
     return () => {
+      alive = false;
       cancelAnimationFrame(raf);
+      ro?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('scroll', apply, true);
     };
