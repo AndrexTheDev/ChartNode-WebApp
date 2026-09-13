@@ -29,6 +29,29 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
         ],
       },
+      // Crawl-/Share-Assets am Edge puffern: Suchmaschinen & Social-Bots
+      // holen sie häufig, der Inhalt ändert sich selten.
+      {
+        source: '/sitemap.xml',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' }],
+      },
+      {
+        source: '/robots.txt',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400' }],
+      },
+      {
+        source: '/og.png',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800' }],
+      },
+      {
+        source: '/icon.svg',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800' }],
+      },
+      // HTML: Edge darf 5 min puffern, Browser immer validieren
+      {
+        source: '/((?!_next|api|sitemap\\.xml|robots\\.txt|og\\.png|icon\\.svg).*)',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate, s-maxage=300, stale-while-revalidate=86400' }],
+      },
     ];
   },
 };

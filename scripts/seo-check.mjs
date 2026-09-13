@@ -220,5 +220,51 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
-console.log(`\n${fails === 0 ? '✔' : '✖'} seo-check M1: ${fails === 0 ? 'alle Head/Metadaten sauber' : `${fails} Failure(s)`}`);
+/* ---------------------------------- M3 ---------------------------------- */
+// Sitemap: gepflegte lastmod-Werte statt Build-Zeitstempel
+const sm = sitemapXml;
+const entries = [...sm.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
+const locOf = (e) => e.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? '';
+const modOf = (e) => e.match(/<lastmod>([^<]+)<\/lastmod>/)?.[1] ?? '';
+const EXPECTED_LASTMOD = { '': '2026-09-14', '/help': '2026-09-13', '/legal/terms': '2026-08-01', '/legal/privacy': '2026-08-01', '/legal/disclaimer': '2026-08-01' };
+for (const [path, mod] of Object.entries(EXPECTED_LASTMOD)) {
+  const rows = entries.filter((e) => {
+    const loc = locOf(e).replace(`${SITE}/`, '');
+    const p = loc.replace(/^(de|en|es|ru|zh)/, '');
+    return p === path;
+  });
+  const ok = rows.length === 5 && rows.every((e) => modOf(e).startsWith(mod));
+  check(`sitemap: lastmod ${mod} für ${path || '/'} (5 Locales)`, ok, rows.map(modOf).join(','));
+}
+const distinctMods = new Set(entries.map(modOf)).size;
+check('sitemap: lastmod unterscheidet Routen (kein Build-Timestamp)', distinctMods >= 3, `distinct=${distinctMods}`);
+
+// Cache-Header: SEO-Assets am Edge, HTML s-maxage
+const cc = async (path) => (await fetch(`${BASE}${path}`)).headers.get('cache-control') ?? '';
+const ccSitemap = await cc('/sitemap.xml');
+check('M3: sitemap.xml Edge-Cache 1h', ccSitemap.includes('max-age=3600') && ccSitemap.includes('s-maxage=3600'), ccSitemap);
+const ccRobots = await cc('/robots.txt');
+check('M3: robots.txt Edge-Cache 1h', ccRobots.includes('s-maxage=3600'), ccRobots);
+const ccOg = await cc('/og.png');
+check('M3: og.png Edge-Cache 7d', ccOg.includes('s-maxage=604800'), ccOg);
+const ccHtml = await cc('/de/help');
+check('M3: HTML s-maxage=300 + must-revalidate', ccHtml.includes('s-maxage=300') && ccHtml.includes('must-revalidate'), ccHtml);
+
+// Duplikate: Parameter/Case/Slash müssen kanonisch kollabieren
+const paramRes = await fetch(`${BASE}/de/terminal?ticker=SOL&price=150`);
+const paramHtml = await paramRes.text();
+const paramCanon = paramHtml.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+const paramRobots = paramHtml.match(/<meta name="robots" content="([^"]+)"/)?.[1];
+check('M3: ?ticker=-Duplikat kanonisiert + noindex', paramCanon === `${SITE}/de/terminal` && /noindex/.test(paramRobots ?? ''), `${paramCanon} / ${paramRobots}`);
+const slash = await fetch(`${BASE}/de/help/`, { redirect: 'manual' });
+check('M3: Trailing-Slash 308 auf /de/help', slash.status === 308 && (slash.headers.get('location') ?? '').endsWith('/de/help'), `${slash.status} ${slash.headers.get('location')}`);
+const caseLoc = await fetch(`${BASE}/DE`, { redirect: 'manual' });
+const caseFinal = await fetch(`${BASE}/DE`);
+const caseHtml = await caseFinal.text();
+const caseCanon = caseHtml.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+check('M3: Case-Variante /DE redirectet & kanonisiert auf /de', caseLoc.status === 307 || caseLoc.status === 308 ? caseCanon === `${SITE}/de` : caseCanon === `${SITE}/de`, `${caseLoc.status} ${caseCanon}`);
+const root = await fetch(`${BASE}/`, { redirect: 'manual' });
+check('M3: / redirectet auf Locale (307/308)', root.status === 307 || root.status === 308, `${root.status}`);
+
+console.log(`\n${fails === 0 ? '✔' : '✖'} seo-check M1–M3: ${fails === 0 ? 'Metadaten, Structured Data & Crawl-Hygiene sauber' : `${fails} Failure(s)`}`);
 process.exit(fails === 0 ? 0 : 1);

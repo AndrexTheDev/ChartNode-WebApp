@@ -2,15 +2,8 @@
 import type { MetadataRoute } from 'next';
 import { routing } from '@/i18n/routing';
 import { SITE_URL } from '@/lib/constants';
-
-/** Routes that should appear in the sitemap (the terminal is `noindex`). */
-const ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
-  { path: '', priority: 1, changeFrequency: 'weekly' },
-  { path: '/help', priority: 0.7, changeFrequency: 'monthly' },
-  { path: '/legal/terms', priority: 0.3, changeFrequency: 'yearly' },
-  { path: '/legal/disclaimer', priority: 0.3, changeFrequency: 'yearly' },
-  { path: '/legal/privacy', priority: 0.3, changeFrequency: 'yearly' },
-];
+/** Indexierbare Routen samt gepflegtem Inhalts-Stand (siehe lib/sitemap-meta). */
+import { ROUTE_SEO } from '@/lib/sitemap-meta';
 
 function url(locale: string, path: string) {
   return `${SITE_URL}/${locale}${path}`;
@@ -21,12 +14,10 @@ function url(locale: string, path: string) {
  * five languages plus `x-default`. Generated at build time.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
-
-  return ROUTES.flatMap((route) =>
+  return ROUTE_SEO.flatMap((route) =>
     routing.locales.map((locale) => ({
       url: url(locale, route.path),
-      lastModified,
+      lastModified: new Date(route.lastmod),
       changeFrequency: route.changeFrequency,
       priority: route.priority,
       alternates: {
