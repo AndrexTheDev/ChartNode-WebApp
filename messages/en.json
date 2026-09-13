@@ -1139,7 +1139,16 @@
     "tweet": "Found an insane setup for {ticker} on NodeChart. Zero fees, real-time on-chain data. #Crypto #Trading"
   },
   "ads": {
-    "sponsored": "Sponsored"
+    "sponsored": "Sponsored",
+    "claimBonus": "Claim Bonus",
+    "partnerDeals": "Partner Deals",
+    "partnerNote": "Sponsored partner offers help fund NodeChart.",
+    "toastText": "Bonus available – sponsored partner offer",
+    "toastCta": "View",
+    "fallbackTitle": "Partner offer",
+    "fallbackText": "Your browser blocked the new window. Open the offer directly:",
+    "fallbackCta": "Open offer",
+    "close": "Close"
   },
   "onchain": {
     "button": "On-Chain",

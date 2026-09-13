@@ -41,9 +41,11 @@ import { useRouter } from '@/i18n/navigation';
 import { Dropdown, type DropdownItem } from '@/components/ui/Dropdown';
 import { ToolMenu } from '@/components/ui/ToolMenu';
 import { AdSlot } from '@/components/ads/AdManager';
+import { SmartlinkKit } from '@/components/ads/SmartlinkKit';
 import { OnChainPanel } from '@/components/onchain/OnChainPanel';
 import { ProMetricsPanel } from '@/components/pro/ProMetricsPanel';
 import { requestPopunder } from '@/lib/ads/adsterra';
+import { offerToast, SMARTLINKS_ENABLED } from '@/lib/ads/smartlinks';
 import { ExchangePicker } from './ExchangePicker';
 import { ChartGrid } from '@/components/chart/ChartGrid';
 import { SEED_TOKENS } from '@/lib/constants';
@@ -450,7 +452,17 @@ export function TerminalShell() {
               align="right"
               engaged={whaleEnabled}
               items={[
-                { key: 'share', label: ts('button'), icon: Share2, onClick: () => openShare('chart') },
+                {
+                  key: 'share',
+                  label: ts('button'),
+                  icon: Share2,
+                  onClick: () => {
+                    openShare('chart');
+                    // Post-Action-Offer: Share läuft IMMER zuerst, der Toast
+                    // kommt verzögert + gedeckelt (Cap/Interval im Kit).
+                    offerToast('action:share');
+                  },
+                },
                 {
                   key: 'whale',
                   label: tw('title'),
@@ -723,6 +735,11 @@ export function TerminalShell() {
         </div>
       </div>
 
+      {/* sponsored strip (Smartlink-Kit) – empty:hidden ⇒ unsichtbar ohne Kit */}
+      {SMARTLINKS_ENABLED ? (
+        <div id="sponsor-strip" className="mx-2 mb-1 flex flex-wrap items-center gap-2 empty:mx-0 empty:hidden" />
+      ) : null}
+
       {/* mobile ad container (Adsterra native strip) – null without config */}
       <AdSlot variant="mobile" />
 
@@ -775,6 +792,8 @@ export function TerminalShell() {
       />
       <SupportModal />
       <SupportNudge />
+      {/* Smartlink-Kit (Terminal): Sponsored-Strip + Post-Action-Offers */}
+      <SmartlinkKit surface="app" />
 
       {/* desktop ad container (Adsterra native rail) – null without config */}
       <AdSlot variant="desktop" />

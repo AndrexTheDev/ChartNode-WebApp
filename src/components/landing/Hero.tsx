@@ -1,6 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
-import { ArrowRight, Radio, Terminal } from 'lucide-react';
+import { ArrowRight, Gift, Landmark, Radio, Terminal } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { SmartlinkCta } from '@/components/ads/SmartlinkCta';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { NeonPanel } from '@/components/ui/NeonPanel';
 import { StatusLed } from '@/components/ui/StatusLed';
@@ -15,6 +16,7 @@ interface HeroProps {
 export async function Hero({ locale }: HeroProps) {
   const t = await getTranslations({ locale, namespace: 'hero' });
   const tt = await getTranslations({ locale, namespace: 'ticker' });
+  const tads = await getTranslations({ locale, namespace: 'ads' });
 
   const stats = [
     { key: 'cost', value: t('stats.cost.value'), label: t('stats.cost.label') },
@@ -54,6 +56,24 @@ export async function Hero({ locale }: HeroProps) {
         </div>
 
         <p className="font-mono text-2xs uppercase tracking-cyber text-faint">{t('hint')}</p>
+
+        {/* sponsored partner offers – gekennzeichnet (rel=sponsored + Badge),
+            echter Anker → blocker-resistent, Kit tracked nur Cap/Events */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <SmartlinkCta
+            label={tads('claimBonus')}
+            badge={tads('sponsored')}
+            leading={<Gift className="size-3.5" aria-hidden />}
+          />
+          <SmartlinkCta
+            label={tads('partnerDeals')}
+            badge={tads('sponsored')}
+            leading={<Landmark className="size-3.5" aria-hidden />}
+          />
+          <span className="max-w-56 font-mono text-2xs leading-snug tracking-cyber text-faint">
+            {tads('partnerNote')}
+          </span>
+        </div>
 
         <dl className="mt-2 grid max-w-lg grid-cols-2 gap-px border border-line/70 bg-line/40 sm:grid-cols-4">
           {stats.map((stat) => (

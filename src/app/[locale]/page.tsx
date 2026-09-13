@@ -6,6 +6,7 @@ import { BenefitSection } from '@/components/landing/BenefitSection';
 import { CtaSection } from '@/components/landing/CtaSection';
 import { Hero } from '@/components/landing/Hero';
 import { Ticker } from '@/components/landing/Ticker';
+import { SmartlinkKit } from '@/components/ads/SmartlinkKit';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { softwareApplicationLd } from '@/lib/jsonld';
 import { assertLocale } from '@/lib/locale-param';
@@ -47,6 +48,8 @@ export default async function LandingPage({ params }: PageProps) {
       <Ticker locale={locale} />
       <BenefitSection locale={locale} />
       <CtaSection locale={locale} />
+      {/* Smartlink-Kit (Landing): Enhancement, Cap-Tracking, Fallback-Modal */}
+      <SmartlinkKit surface="landing" />
     </>
   );
 }

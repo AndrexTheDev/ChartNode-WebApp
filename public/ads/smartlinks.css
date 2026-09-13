@@ -1,0 +1,259 @@
+/* © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
+   Adsterra-Smartlink-Kit – Dark/Cyberpunk/Crypto-Optik (NodeChart-Designsprache)
+   Klassen-Prefix nc-sl-* ; überschreibt keine App-Styles. */
+
+:root {
+  --nc-sl-bg: #0a0e17;
+  --nc-sl-panel: #0f1524;
+  --nc-sl-border: #1e2a44;
+  --nc-sl-neon: #00ff9d;
+  --nc-sl-cyan: #00e5ff;
+  --nc-sl-text: #e6edf7;
+  --nc-sl-muted: #7d8aa5;
+}
+
+/* ---------- Disclosure-Badge (Pflicht-Label, immer sichtbar) ---------- */
+.nc-sl-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font: 700 9px/1.5 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--nc-sl-cyan);
+  border: 1px solid color-mix(in srgb, var(--nc-sl-cyan) 45%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--nc-sl-cyan) 8%, transparent);
+  vertical-align: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---------- Secondary CTA Buttons (Landing) ---------- */
+.nc-sl-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  font: 700 14px/1 'Exo 2', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--nc-sl-text);
+  background: linear-gradient(135deg, #101a30 0%, #0c1222 100%);
+  border: 1px solid var(--nc-sl-border);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.nc-sl-cta:hover,
+.nc-sl-cta:focus-visible {
+  border-color: var(--nc-sl-neon);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--nc-sl-neon) 35%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--nc-sl-neon) 8%, transparent);
+  transform: translateY(-1px);
+}
+
+/* ---------- Teaser-Cards ---------- */
+.nc-sl-card {
+  position: relative;
+  background: var(--nc-sl-panel);
+  border: 1px solid var(--nc-sl-border);
+  border-radius: 10px;
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.nc-sl-card:hover {
+  border-color: color-mix(in srgb, var(--nc-sl-cyan) 60%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--nc-sl-cyan) 18%, transparent);
+}
+.nc-sl-card > .nc-sl-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  margin: 0;
+}
+
+/* ---------- Sponsored-Leiste (Terminal-Header / Rail) ---------- */
+.nc-sl-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nc-sl-strip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font: 600 12px/1 'Manrope', system-ui, sans-serif;
+  color: var(--nc-sl-text);
+  background: linear-gradient(135deg, #12192e 0%, #0d1322 100%);
+  border: 1px solid var(--nc-sl-border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.nc-sl-strip-btn:hover,
+.nc-sl-strip-btn:focus-visible {
+  border-color: var(--nc-sl-neon);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--nc-sl-neon) 30%, transparent);
+}
+.nc-sl-strip-icon {
+  font-size: 14px;
+}
+
+/* ---------- Offer-Toast (rechts unten, unaufdringlich) ---------- */
+.nc-sl-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 380px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--nc-sl-panel) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nc-sl-neon) 40%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 55%), 0 0 16px color-mix(in srgb, var(--nc-sl-neon) 15%, transparent);
+  backdrop-filter: blur(8px);
+  animation: nc-sl-slide-in 0.25s ease-out;
+}
+.nc-sl-toast p {
+  margin: 0;
+  font: 600 13px/1.3 'Manrope', system-ui, sans-serif;
+  color: var(--nc-sl-text);
+}
+.nc-sl-toast > .nc-sl-badge {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  margin: 0;
+  background: var(--nc-sl-panel);
+}
+.nc-sl-toast-cta {
+  flex: none;
+  padding: 7px 14px;
+  font: 700 12px/1 'Exo 2', system-ui, sans-serif;
+  color: #04120b;
+  background: linear-gradient(135deg, var(--nc-sl-neon), var(--nc-sl-cyan));
+  border-radius: 5px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.nc-sl-toast-close {
+  flex: none;
+  padding: 2px 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--nc-sl-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.nc-sl-toast-close:hover {
+  color: var(--nc-sl-text);
+}
+@keyframes nc-sl-slide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Fallback-Modal (Popup-Blocker) ---------- */
+.nc-sl-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(4 7 13 / 72%);
+  backdrop-filter: blur(6px);
+  animation: nc-sl-fade 0.18s ease-out;
+}
+.nc-sl-modal {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  padding: 28px 26px 22px;
+  text-align: center;
+  background: var(--nc-sl-panel);
+  border: 1px solid color-mix(in srgb, var(--nc-sl-cyan) 45%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 60%), 0 0 32px color-mix(in srgb, var(--nc-sl-cyan) 12%, transparent);
+}
+.nc-sl-modal > .nc-sl-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  margin: 0;
+}
+.nc-sl-modal h3 {
+  margin: 0 0 8px;
+  font: 800 20px/1.2 'Exo 2', system-ui, sans-serif;
+  color: var(--nc-sl-text);
+}
+.nc-sl-modal p {
+  margin: 0 0 20px;
+  font: 400 14px/1.5 'Manrope', system-ui, sans-serif;
+  color: var(--nc-sl-muted);
+}
+.nc-sl-btn-primary {
+  display: inline-block;
+  width: 100%;
+  padding: 13px 20px;
+  font: 800 14px/1 'Exo 2', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  color: #04120b;
+  background: linear-gradient(135deg, var(--nc-sl-neon), var(--nc-sl-cyan));
+  border-radius: 7px;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.nc-sl-btn-ghost {
+  margin-top: 10px;
+  padding: 8px 16px;
+  font: 600 13px/1 'Manrope', system-ui, sans-serif;
+  color: var(--nc-sl-muted);
+  background: none;
+  border: 1px solid var(--nc-sl-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nc-sl-btn-ghost:hover {
+  color: var(--nc-sl-text);
+  border-color: var(--nc-sl-muted);
+}
+@keyframes nc-sl-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 640px) {
+  .nc-sl-toast {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+    max-width: none;
+  }
+  .nc-sl-strip {
+    gap: 6px;
+  }
+}
+
+/* Reduzierte Bewegung respektieren */
+@media (prefers-reduced-motion: reduce) {
+  .nc-sl-toast,
+  .nc-sl-modal-backdrop {
+    animation: none;
+  }
+  .nc-sl-cta,
+  .nc-sl-strip-btn,
+  .nc-sl-card {
+    transition: none;
+  }
+}

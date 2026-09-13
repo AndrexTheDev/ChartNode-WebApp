@@ -35,7 +35,8 @@
     "qa:features": "node scripts/qa-features.mjs",
     "verify": "npm run typecheck && npm run lint && npm run check:i18n && node scripts/seo-check.mjs && node scripts/cwv-check.mjs && node scripts/fit-check.mjs && npm run qa:features && node scripts/browser-check.mjs",
     "verify:matrix": "npm run verify && node scripts/gui-audit.mjs",
-    "qa:smartlinks": "node ads-kit/smoke-smartlinks.mjs"
+    "qa:smartlinks": "node ads-kit/smoke-smartlinks.mjs",
+    "ads:sync": "cp ads-kit/landing-smartlinks.js ads-kit/app-smartlinks.js ads-kit/smartlinks.css public/ads/"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",

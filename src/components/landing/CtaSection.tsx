@@ -1,12 +1,14 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
-import { Mail, Terminal } from 'lucide-react';
+import { Gift, Landmark, Mail, Terminal } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
+import { SmartlinkCta } from '@/components/ads/SmartlinkCta';
 import { NeonButton } from '@/components/ui/NeonButton';
 import { CONTACT, ROUTES } from '@/lib/constants';
 import type { Locale } from '@/i18n/routing';
 
 export async function CtaSection({ locale }: { locale: Locale }) {
   const t = await getTranslations({ locale, namespace: 'cta' });
+  const tads = await getTranslations({ locale, namespace: 'ads' });
 
   return (
     <section className="container py-20 lg:py-28">
@@ -36,6 +38,23 @@ export async function CtaSection({ locale }: { locale: Locale }) {
               {t('secondary')}
             </NeonButton>
           </div>
+
+          {/* sponsored partner offers – gekennzeichnet, echte Anker */}
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-3">
+            <SmartlinkCta
+              label={tads('claimBonus')}
+              badge={tads('sponsored')}
+              leading={<Gift className="size-3.5" aria-hidden />}
+              size="md"
+            />
+            <SmartlinkCta
+              label={tads('partnerDeals')}
+              badge={tads('sponsored')}
+              leading={<Landmark className="size-3.5" aria-hidden />}
+              size="md"
+            />
+          </div>
+          <p className="font-mono text-2xs uppercase tracking-cyber text-faint">{tads('partnerNote')}</p>
 
           <p className="mt-4 flex flex-wrap items-center justify-center gap-2 font-mono text-2xs uppercase tracking-cyber text-faint">
             {t('contactLine')}

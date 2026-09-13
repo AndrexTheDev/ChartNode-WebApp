@@ -41,6 +41,7 @@ import { useHydrated } from '@/store/useHydrated';
 import { feedId } from '@/websockets/types';
 import { aggregateCandles, baseForCustomInterval } from '@/lib/charttypes';
 import { detectPatterns } from '@/lib/patterns';
+import { offerToast } from '@/lib/ads/smartlinks';
 import type { Pane } from '@/store/types';
 import type { PriceChartHandle } from './PriceChart';
 import { DrawingToolbar } from './DrawingToolbar';
@@ -233,6 +234,8 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
         candle.v ?? 0,
       ]),
     );
+    // Post-Action-Offer: Export läuft zuerst, Toast verzögert + gedeckelt.
+    offerToast('action:export-csv');
   }
 
   function exportPng(): void {
@@ -242,6 +245,7 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
     link.href = url;
     link.download = `nodechart-${token.symbol.replace('/', '')}-${timeframe}.png`;
     link.click();
+    offerToast('action:export-png');
   }
 
   const tokenItems: DropdownItem[] = SEED_TOKENS.map((entry) => ({
