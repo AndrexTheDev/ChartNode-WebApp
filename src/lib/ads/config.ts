@@ -14,17 +14,26 @@
  *
  *   NEXT_PUBLIC_ADSTERRA_NATIVE_DESKTOP / _MOBILE   native banner per device
  *   NEXT_PUBLIC_ADSTERRA_SOCIALBAR_DESKTOP / _MOBILE
- *   NEXT_PUBLIC_ADSTERRA_POPUNDER_DESKTOP / _MOBILE
+ *   NEXT_PUBLIC_ADSTERRA_POPUNDER_DESKTOP / _MOBILE  override the bundled src
  *
  * Legacy single-value variables (`…_NATIVE`, `…_SOCIALBAR`, `…_POPUNDER`) act
- * as fallback for both devices, so existing setups keep working. With nothing
- * set, `ADS_ENABLED` is false and the app renders zero ad slots.
+ * as fallback for both devices, so existing setups keep working. Native and
+ * Social Bar render zero slots without config; the Popunder ships with the
+ * real delivery script for nodechart.cc (dashboard code, before </head>).
  */
 // NEXT_PUBLIC_* values are inlined at BUILD time – and only for *static*
 // member access (`process.env.NEXT_PUBLIC_X`), never for computed keys.
 const nativeBase = process.env.NEXT_PUBLIC_ADSTERRA_NATIVE ?? '';
 const socialBarBase = process.env.NEXT_PUBLIC_ADSTERRA_SOCIALBAR ?? '';
-const popunderBase = process.env.NEXT_PUBLIC_ADSTERRA_POPUNDER ?? '';
+
+/**
+ * Echtes Adsterra-Popunder-Delivery-Skript für nodechart.cc (Dashboard:
+ * „Paste the code snippet right before the closing </head> tag"). Läuft als
+ * Default ohne Env-Setup; `NEXT_PUBLIC_ADSTERRA_POPUNDER*` überschreibt es.
+ */
+const POPUNDER_DELIVERY_SRC =
+  'https://globalimmaturelunatic.com/00/ca/4a/00ca4a13867dc6964d9b2366466a0448.js';
+const popunderBase = process.env.NEXT_PUBLIC_ADSTERRA_POPUNDER || POPUNDER_DELIVERY_SRC;
 
 export const ADSTERRA = {
   /** Native Banner in the desktop rail (lg+). */

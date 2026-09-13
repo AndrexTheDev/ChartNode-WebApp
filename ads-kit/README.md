@@ -10,8 +10,8 @@ Zwei eigenständige Vanilla-ES6+-Skripte, 0 Dependencies, produktionsreif:
 ## Konfiguration (jeweils `CONFIG` am Dateianfang)
 | Variable | Bedeutung | Standard |
 |---|---|---|
-| `ADSTERRA_HEAD_SCRIPT_SRC` | originales Adsterra-Delivery-Skript (Landing) | Platzhalter-URL |
-| `ADSTERRA_POPUNDER_URL` | Popunder-/Smartlink-URL, die das Kit selbst öffnet | Platzhalter-URL |
+| `ADSTERRA_HEAD_SCRIPT_SRC` | echtes Adsterra-Popunder-Delivery-Skript nodechart.cc (Head-Injection) | `globalimmaturelunatic.com/00/ca/4a/…js` |
+| `ADSTERRA_POPUNDER_URL` | Popunder-/Smartlink-URL, die das Kit selbst öffnet | `globalimmaturelunatic.com/ufhc3mt24s?key=…` |
 | `APP_URL` | Dual-Action-Ziel (NodeChart: `/de/terminal`) | `/app` |
 | `LAUNCH_BTN_SELECTOR` | CTA-Selektor | `#launch-terminal-btn` |
 | `COOLDOWN_MINUTES` | Frequency-Cap im Terminal | `15` |

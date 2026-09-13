@@ -149,7 +149,9 @@
     }
     let win = null;
     try {
-      win = window.open(url, '_blank', 'noopener,noreferrer');
+      // KEIN 'noopener' im Features-String: Chrome gibt dann null zurück und
+      // das Kit würde einen erfolgreichen Open als Blockade fehldeuten.
+      win = window.open(url, '_blank');
     } catch (err) {
       log('window.open-Fehler –', err && err.message);
     }

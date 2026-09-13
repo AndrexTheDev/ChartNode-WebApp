@@ -7,6 +7,7 @@ import {
   popunderPlacement,
   type AdVariant,
 } from './config';
+import { donationGraceActive } from '@/store/useViralStore';
 
 /**
  * Minimal, hydration-safe Adsterra loader – device aware.
@@ -85,6 +86,11 @@ export function mountNativeBanner(container: HTMLElement, variant: AdVariant): P
  */
 export function requestPopunder(): void {
   if (!ADS_ENABLED || typeof window === 'undefined') return;
+  // Donation-Grace schlägt alles: Wer gespendet hat, sieht keinen Popunder.
+  if (donationGraceActive()) return;
+  // QA/CI (Puppeteer, navigator.webdriver) bleibt werbefrei – sonst laden
+  // externe Ad-Skripte in browser-check/qa-features und verfälschen Tests.
+  if (navigator.webdriver) return;
   const src = popunderPlacement(isDesktopViewport() ? 'desktop' : 'mobile');
   if (!src) return;
   try {

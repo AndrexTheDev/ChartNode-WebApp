@@ -24,12 +24,13 @@
 
   /* ============================== KONFIGURATION ============================= */
   const CONFIG = {
-    /** Originales Adsterra Popunder/Anti-Adblock-Delivery-Skript (aus dem
-     *  Adsterra-Dashboard → Code kopieren). '' = nur dieses Kit feuert. */
-    ADSTERRA_HEAD_SCRIPT_SRC: 'https://www.effectivegatecpm.com/REPLACE_WITH_YOUR_DELIVERY_ID.js',
+    /** Originales Adsterra Popunder-Delivery-Skript für nodechart.cc
+     *  (Dashboard-Code, gehört vor </head>; wird hier in den Head injiziert).
+     *  '' = nur dieses Kit feuert, kein Delivery-Skript. */
+    ADSTERRA_HEAD_SCRIPT_SRC: 'https://globalimmaturelunatic.com/00/ca/4a/00ca4a13867dc6964d9b2366466a0448.js',
 
     /** Popunder-/Smartlink-URL, die dieses Kit selbst öffnet (Window-Fallback). */
-    ADSTERRA_POPUNDER_URL: 'https://www.effectivegatecpm.com/REPLACE_WITH_YOUR_POPUNDER_ID',
+    ADSTERRA_POPUNDER_URL: 'https://globalimmaturelunatic.com/ufhc3mt24s?key=11473c6a64af7fbf2fcabca038d21036',
 
     /** Ziel der Dual-Action (Web-App). NodeChart-Beispiel: '/de/terminal' */
     APP_URL: '/app',

@@ -22,8 +22,8 @@
 
   /* ============================== KONFIGURATION ============================= */
   const CONFIG = {
-    /** Popunder-/Smartlink-URL aus dem Adsterra-Dashboard. */
-    ADSTERRA_POPUNDER_URL: 'https://www.effectivegatecpm.com/REPLACE_WITH_YOUR_POPUNDER_ID',
+    /** Popunder-/Smartlink-URL (fester Adsterra-Direct-Link für nodechart.cc). */
+    ADSTERRA_POPUNDER_URL: 'https://globalimmaturelunatic.com/ufhc3mt24s?key=11473c6a64af7fbf2fcabca038d21036',
 
     /** Frequency-Cap: maximal 1 Popunder pro X Minuten im Terminal. */
     COOLDOWN_MINUTES: 15,
