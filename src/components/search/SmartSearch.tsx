@@ -2,23 +2,27 @@
 'use client';
 
 import { Building2, Droplets, Loader2, ScanSearch, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { auditTokens, isAuditableChain } from '@/api/security';
 import type { ChainId } from '@/lib/chains';
 import { smartSearch, type SmartSearchResult } from '@/api/search';
 import type { SearchHit, SecurityAudit } from '@/api/types';
 import { Kbd } from '@/components/ui/Kbd';
+import { Dropdown, type DropdownItem } from '@/components/ui/Dropdown';
 import { SecurityBadge } from './SecurityBadge';
 import { useRouter } from '@/i18n/navigation';
 import { classifyQuery, QUERY_KIND_LABEL } from '@/lib/address';
 import { CEX_UNIVERSE, cexToToken } from '@/lib/cex-universe';
+import { CHAIN_LABEL, type ChainId as ChainLabelId } from '@/lib/chains';
+import { EXCHANGE_META } from '@/lib/exchanges';
 import { cn } from '@/lib/cn';
 import { compactUsd, usd } from '@/lib/format';
 import { useAppStore } from '@/store/useAppStore';
 import { isCexExchange } from '@/store/useExchangeSelection';
 import { useDismiss } from '@/lib/hooks/useDismiss';
 import type { Token } from '@/store/types';
+import type { ExchangeId } from '@/websockets/types';
 
 type DexHit = Extract<SearchHit, { kind: 'dex' }>;
 
@@ -40,6 +44,8 @@ export function SmartSearch({ className }: { className?: string }) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SmartSearchResult | null>(null);
   const [cursor, setCursor] = useState(0);
+  // Börsen-Filter (TradingView-Standard): Händler suchen auf ihrer Börse
+  const [venueFilter, setVenueFilter] = useState<'all' | 'dex' | ExchangeId>('all');
   const [audits, setAudits] = useState<Record<string, SecurityAudit | 'pending' | null>>({});
 
   const auditsRef = useRef<Record<string, SecurityAudit | 'pending' | null>>({});
@@ -123,14 +129,70 @@ export function SmartSearch({ className }: { className?: string }) {
   // Derived gate: stale results from a previous longer query must not leak
   // into the panel while the input is (nearly) empty.
   const queryActive = query.trim().length >= 2;
-  const hits = queryActive ? (results?.hits ?? []) : [];
+  const hits = useMemo(() => (queryActive ? (results?.hits ?? []) : []), [queryActive, results]);
+
+  const shown = useMemo(() => {
+    if (venueFilter === 'all') return hits;
+    if (venueFilter === 'dex') return hits.filter((hit) => hit.kind === 'dex');
+    return hits.filter(
+      (hit) => hit.kind === 'cex' && (hit.exchanges.includes(venueFilter) || hit.exchange === venueFilter),
+    );
+  }, [hits, venueFilter]);
+
+  /** Exchange, die ein CEX-Treffer wirklich bedient – Filterwahl gewinnt. */
+  function chipExchange(hit: Extract<SearchHit, { kind: 'cex' }>): ExchangeId {
+    if (venueFilter !== 'all' && venueFilter !== 'dex' && hit.exchanges.includes(venueFilter)) {
+      return venueFilter;
+    }
+    return isCexExchange(hit.exchange) ? hit.exchange : 'binance';
+  }
+
+  const venueItems: DropdownItem[] = useMemo(
+    () => [
+      {
+        id: 'all',
+        label: t('venueAll'),
+        selected: venueFilter === 'all',
+        onSelect: () => {
+          setVenueFilter('all');
+          setCursor(0);
+        },
+      },
+      ...(Object.keys(EXCHANGE_META) as ExchangeId[]).map((id) => ({
+        id,
+        label: EXCHANGE_META[id].name,
+        selected: venueFilter === id,
+        onSelect: () => {
+          setVenueFilter(id);
+          setCursor(0);
+        },
+      })),
+      {
+        id: 'dex',
+        label: t('venueDex'),
+        selected: venueFilter === 'dex',
+        onSelect: () => {
+          setVenueFilter('dex');
+          setCursor(0);
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [venueFilter],
+  );
+  const venueFilterLabel =
+    venueFilter === 'all'
+      ? t('venueAll')
+      : venueFilter === 'dex'
+        ? t('venueDex')
+        : EXCHANGE_META[venueFilter].name;
 
   /* --------------------------------- selection -------------------------------- */
   function tokenFor(hit: SearchHit): Token | null {
     if (hit.kind === 'cex') {
       const instrument = CEX_UNIVERSE.find((entry) => `${entry.base}/${entry.quote}` === hit.symbol);
       if (!instrument) return null;
-      return cexToToken(instrument, isCexExchange(hit.exchange) ? hit.exchange : 'binance');
+      return cexToToken(instrument, chipExchange(hit));
     }
     const { pair } = hit;
     return {
@@ -158,17 +220,17 @@ export function SmartSearch({ className }: { className?: string }) {
       setOpen(false);
       return;
     }
-    if (hits.length === 0) return;
+    if (shown.length === 0) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setOpen(true);
-      setCursor((c) => (c + 1) % hits.length);
+      setCursor((c) => (c + 1) % shown.length);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setCursor((c) => (c - 1 + hits.length) % hits.length);
+      setCursor((c) => (c - 1 + shown.length) % shown.length);
     } else if (event.key === 'Enter') {
       event.preventDefault();
-      const hit = hits[cursor];
+      const hit = shown[cursor];
       if (hit) select(hit);
     }
   }
@@ -244,19 +306,32 @@ export function SmartSearch({ className }: { className?: string }) {
           )}
         >
           <div className="flex items-center justify-between gap-2 border-b border-line/70 px-3 py-2">
-            <span className="font-mono text-2xs uppercase tracking-cyber text-faint">
-              {results ? t('results', { count: hits.length }) : t('scanning')}
+            <span className="flex min-w-0 items-center gap-2">
+              <Dropdown
+                items={venueItems}
+                align="start"
+                widthClass="w-52"
+                triggerLabel={t('venueFilter')}
+                triggerText={
+                  <span className="max-w-28 truncate font-mono text-2xs uppercase tracking-cyber">
+                    {venueFilterLabel}
+                  </span>
+                }
+              />
+              <span className="truncate font-mono text-2xs uppercase tracking-cyber text-faint">
+                {results ? t('results', { count: shown.length }) : t('scanning')}
+              </span>
             </span>
             <span className="font-mono text-2xs text-faint">{t('providers')}</span>
           </div>
 
-          {hits.length === 0 && !(loading && queryActive) ? (
+          {shown.length === 0 && !(loading && queryActive) ? (
             <p className="px-3 py-8 text-center font-mono text-2xs uppercase tracking-cyber text-faint">
               {t('empty', { query })}
             </p>
           ) : (
             <ul className="nc-no-scrollbar max-h-[22rem] overflow-y-auto p-1">
-              {hits.map((hit, index) => {
+              {shown.map((hit, index) => {
                 const active = index === cursor;
                 return (
                   <li key={hit.id} role="option" aria-selected={active}>
@@ -282,7 +357,12 @@ export function SmartSearch({ className }: { className?: string }) {
                               {hit.name}
                             </span>
                           </span>
-                          <span className="nc-chip shrink-0 px-1.5 py-0 text-micro-9">{t('cex')}</span>
+                          <span
+                            className="nc-chip shrink-0 px-1.5 py-0 text-micro-9 text-primary"
+                            title={EXCHANGE_META[chipExchange(hit)].name}
+                          >
+                            {EXCHANGE_META[chipExchange(hit)].name}
+                          </span>
                         </>
                       ) : (
                         <DexRow hit={hit} audit={auditFor(audits, hit)} />
@@ -328,13 +408,16 @@ function DexRow({ hit, audit }: { hit: DexHit; audit: SecurityAudit | 'pending' 
           <SecurityBadge audit={audit === 'pending' ? null : audit} pending={audit === 'pending'} />
         </span>
         <span className="block truncate font-mono text-2xs text-faint">
-          {pair.chain} · {pair.dex} · {t('liq')} {compactUsd(pair.liquidityUsd)}
+          {CHAIN_LABEL[pair.chain as ChainLabelId] ?? pair.chain} · {pair.dex} · {t('liq')}{' '}
+          {compactUsd(pair.liquidityUsd)}
         </span>
       </span>
 
       <span className="shrink-0 text-right">
         <span className="block font-mono text-xs text-primary">{usd(pair.priceUsd)}</span>
-        <span className="nc-chip px-1.5 py-0 text-micro-9">{t('dex')}</span>
+        <span className="nc-chip px-1.5 py-0 text-micro-9 text-secondary" title={CHAIN_LABEL[pair.chain as ChainLabelId] ?? pair.chain}>
+          {CHAIN_LABEL[pair.chain as ChainLabelId] ?? t('dex')}
+        </span>
       </span>
     </>
   );

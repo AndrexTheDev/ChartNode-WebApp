@@ -689,7 +689,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
     return before;
   };
   const wave2Labels = await menuLabels();
-  check('wave2 entries present (S/R Auto, Divergenzen, Alert)', wave2Labels.includes('S/R Auto') && wave2Labels.includes('Divergenzen') && wave2Labels.includes('Alert'));
+  check('wave2 entries present (S/R Auto, Divergenzen, Alerts-Manager)', wave2Labels.includes('S/R Auto') && wave2Labels.includes('Divergenzen') && wave2Labels.some((l) => l.startsWith('Alerts')));
   const srBefore = await chipByLabel('S/R Auto');
   await wait(900);
   const srAfter = await analysePressed('S/R Auto');
@@ -699,34 +699,68 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   const divAfter = await analysePressed('Divergenzen');
   check('divergence entry toggles markers on', divBefore === 'false' && divAfter === 'true', `${divBefore} → ${divAfter}`);
 
-  // price alert: arm → click the chart → chip shows the count → third state clears
-  await chipByLabel('Alert');
-  await wait(200);
+  // price alert: Tools → Alerts-Manager → Chart-Klick-Modus → Chart-Klick setzt den Alert
+  await pro.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+  await wait(300);
+  await pro.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim().startsWith('Alerts'))?.click());
+  await wait(600);
+  const armClicked = await pro.evaluate(() => {
+    const btn = [...document.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === 'Chart-Klick-Modus');
+    if (!btn) return false;
+    btn.click();
+    return true;
+  });
+  await wait(500);
   const alertBox = await (await pro.$('canvas'))?.boundingBox();
   if (alertBox) await pro.mouse.click(alertBox.x + alertBox.width * 0.5, alertBox.y + alertBox.height * 0.4);
   await wait(600);
-  const alertChipText = await pro.evaluate(() => [...document.querySelectorAll('button')].map((b) => (b.textContent ?? '').trim()).find((text) => text.startsWith('Alerts')));
-  check('alert chip arms and a chart click creates the alert', Boolean(alertChipText), String(alertChipText));
+  await pro.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+  await wait(300);
+  const toolsAlertLabel = await pro.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].map((b) => (b.textContent ?? '').trim()).find((text) => text.startsWith('Alerts')));
+  await pro.keyboard.press('Escape');
+  await wait(200);
+  check('alerts manager arms chart-click and a chart click creates the alert', armClicked && Boolean(toolsAlertLabel) && toolsAlertLabel !== 'Alerts', String(toolsAlertLabel));
   const alertLines = await pro.evaluate(() => {
     const stored = localStorage.getItem('nc-chart-v1');
     return { persisted: stored ? stored.includes('alerts') : null };
   });
   check('alerts persist across reloads (non-expiring, wave-4)', alertLines.persisted === true, JSON.stringify(alertLines));
-  await chipByLabel(alertChipText ?? 'Alerts');
+  await pro.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
   await wait(300);
-  const alertCleared = await pro.evaluate(() => [...document.querySelectorAll('button')].map((b) => (b.textContent ?? '').trim()).includes('Alert'));
-  check('alert chip third state clears all alerts', alertCleared);
+  await pro.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim().startsWith('Alerts'))?.click());
+  await wait(600);
+  const alertCleared = await pro.evaluate((delLabel) => {
+    const btns = [...document.querySelectorAll('[role="dialog"] button[aria-label]')].filter(
+      (b) => b.getAttribute('aria-label') === delLabel,
+    );
+    if (btns.length === 0) return false;
+    btns[0].click();
+    return true;
+  }, 'Löschen');
+  await wait(400);
+  await pro.keyboard.press('Escape');
+  await wait(300);
+  await pro.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+  await wait(300);
+  const labelAfterClear = await pro.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].map((b) => (b.textContent ?? '').trim()).find((text) => text.startsWith('Alerts')));
+  await pro.keyboard.press('Escape');
+  await wait(200);
+  check('alerts manager clears all alerts', alertCleared && labelAfterClear === 'Alerts', String(labelAfterClear));
 
-  // compare overlay select
-  const compareSelect = await pro.$('select[aria-label="Vergleich"]');
-  check('compare overlay select present', Boolean(compareSelect));
-  if (compareSelect) {
+  // compare overlay dropdown (Design-System statt nativem Select)
+  const compareTrigger = await pro.evaluate(() => {
+    const b = [...document.querySelectorAll('.sticky button[aria-haspopup="listbox"]')].find((x) => (x.getAttribute('aria-label') ?? '') === 'Vergleich');
+    if (!b) return false;
+    b.click();
+    return true;
+  });
+  check('compare overlay dropdown present', compareTrigger);
+  if (compareTrigger) {
+    await wait(400);
     const picked = await pro.evaluate(() => {
-      const select = document.querySelector('select[aria-label="Vergleich"]');
-      const option = [...(select?.options ?? [])].find((entry) => entry.textContent?.trim() === 'ETH');
-      if (!select || !option) return false;
-      select.value = option.value;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+      const opt = [...document.querySelectorAll('[role="listbox"] button')].find((b) => (b.textContent ?? '').trim().startsWith('ETH/USDT'));
+      if (!opt) return false;
+      opt.click();
       return true;
     });
     check('compare offers a second symbol (ETH)', picked);
@@ -734,12 +768,13 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
     const comparePersisted = await pro.evaluate(() => (localStorage.getItem('nc-chart-v1') ?? '').includes('compare'));
     check('compare selection persists in the chart workspace', comparePersisted);
     await pro.evaluate(() => {
-      const select = document.querySelector('select[aria-label="Vergleich"]');
-      if (select) {
-        select.value = '';
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      [...document.querySelectorAll('.sticky button[aria-haspopup="listbox"]')].find((x) => (x.getAttribute('aria-label') ?? '') === 'Vergleich')?.click();
     });
+    await wait(400);
+    await pro.evaluate(() => {
+      [...document.querySelectorAll('[role="listbox"] button')].find((b) => (b.textContent ?? '').trim() === 'Kein Vergleich')?.click();
+    });
+    await wait(300);
   }
 
   // session strip (day change, range position, realized vol)
@@ -1056,8 +1091,10 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // alerts manager
   await resetDialogs();
-  await clickChip('Alerts');
-  check('alerts chip opens the manager', await expectDialog('Alert-Manager'));
+  await w4.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+  await wait(300);
+  await w4.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim().startsWith('Alerts'))?.click());
+  check('alerts menu entry opens the manager', await expectDialog('Alert-Manager'));
   await setNum(0, 1);
   await w4.evaluate(() => {
     const dlg = [...document.querySelectorAll('[role="dialog"]')].pop();

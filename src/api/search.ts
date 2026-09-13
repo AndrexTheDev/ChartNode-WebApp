@@ -35,6 +35,7 @@ export async function smartSearch(query: string, signal?: AbortSignal): Promise<
       symbol: `${instrument.base}/${instrument.quote}`,
       name: instrument.name,
       exchange: instrument.exchanges[0] ?? 'binance',
+      exchanges: instrument.exchanges,
     }));
 
     const dexPairs = await searchDex(query, signal);

@@ -107,6 +107,70 @@ for (const [name, width, height] of VPS) {
   });
   check(`${name}: kein Coin-Dropdown in Toolbar, Chart-Header-Picker bleibt`, pickers.inToolbar === 0 && pickers.inPane >= 1, JSON.stringify(pickers));
 
+  // 5) toter ALERT-Chip entfernt (funktionierender Weg: Tools → Alerts)
+  const alertChip = await page.evaluate(() =>
+    [...document.querySelectorAll('.sticky button, .sticky label')]
+      .filter((el) => (el.textContent ?? '').trim().toLowerCase() === 'alert').length,
+  );
+  check(`${name}: kein toter ALERT-Chip in der Toolbar`, alertChip === 0, `gefunden: ${alertChip}`);
+
+  // 6) kein natives <select> mehr in der Toolbar (Compare ist jetzt Design-Dropdown)
+  const nativeSelects = await page.evaluate(() => document.querySelectorAll('.sticky select').length);
+  check(`${name}: kein natives Select in der Toolbar`, nativeSelects === 0, `gefunden: ${nativeSelects}`);
+
+  // 7) Compare-Dropdown öffnet sich im Design-System und passt in die Ansicht
+  await page.evaluate(() =>
+    [...document.querySelectorAll('.sticky button[aria-haspopup="listbox"]')]
+      .find((b) => /vergleich|compare/i.test(b.getAttribute('aria-label') ?? ''))?.click(),
+  );
+  await wait(600);
+  fit = await panelFit(page);
+  check(`${name}: Compare-Dropdown vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
+  check(`${name}: Escape schließt Compare-Dropdown`, await closePanels(page));
+
+  // 8) Börse/Chain als Klartext im Pane-Header sichtbar (Datenquelle eindeutig)
+  const VENUES = ['Binance','Bybit','OKX','Bitfinex','KuCoin','Coinbase','Gate','Kraken','MEXC','Bitget','BingX','Crypto.com','Solana','Ethereum','Base','BNB Chain'];
+  const headerVenue = await page.evaluate((names) => {
+    const header = document.querySelector('.sticky')?.nextElementSibling ?? document.body;
+    const paneHead = [...document.querySelectorAll('div,span')].find((el) => el.className.includes?.('nc-chip') && names.some((n) => (el.textContent ?? '') === n));
+    return paneHead ? (paneHead.textContent ?? '') : null;
+  }, VENUES);
+  check(`${name}: Venue-Klartext-Chip im Pane-Header`, headerVenue != null, headerVenue ?? 'kein Chip');
+
+  // 9) ExchangePicker-Trigger zeigt vollen Börsennamen (nicht nur Kürzel)
+  const pickerName = await page.evaluate((names) => {
+    const b = [...document.querySelectorAll('button[aria-label]')].find((x) => x.getAttribute('aria-label') === 'Datenquelle');
+    const txt = b?.textContent ?? '';
+    return names.find((n) => txt.includes(n)) ?? null;
+  }, VENUES);
+  check(`${name}: Datenquelle-Trigger zeigt Börsen-Klartext`, pickerName != null, pickerName ?? 'kein Name');
+
+  // 10) Smart-Search: Börsen-Filter greift (nur desktop, braucht Such-Panel)
+  if (name === 'desktop') {
+    await page.click('input[role="combobox"]');
+    await page.type('input[role="combobox"]', 'btc', { delay: 40 });
+    await wait(1500);
+    await page.evaluate(() =>
+      [...document.querySelectorAll('button[aria-haspopup="listbox"]')]
+        .find((b) => (b.getAttribute('aria-label') ?? '') === 'Börse filtern')?.click(),
+    );
+    await wait(400);
+    await page.evaluate(() =>
+      [...document.querySelectorAll('[role="listbox"] button, [role="menu"] button')]
+        .find((b) => (b.textContent ?? '').trim() === 'Bybit')?.click(),
+    );
+    await wait(900);
+    const filterState = await page.evaluate(() => {
+      const chips = [...document.querySelectorAll('#smart-search-listbox [role="option"] .nc-chip')]
+        .map((c) => (c.textContent ?? '').trim());
+      return { rows: document.querySelectorAll('#smart-search-listbox [role="option"]').length, chips };
+    });
+    const onlyBybit = filterState.rows > 0 && filterState.chips.every((c) => c === 'Bybit' || c === 'Solana' || c === 'Ethereum' || c.includes('Chain') || c === 'Base');
+    check('desktop: Smart-Search-Filter „Bybit" zeigt nur Bybit-CEX-Treffer (+ DEX)', filterState.rows > 0 && filterState.chips.filter((c) => !['Bybit'].includes(c)).every((c) => c !== 'Binance' && c !== 'OKX'), JSON.stringify(filterState));
+    await page.screenshot({ path: join(OUT, 'desktop-search-bybit.png') });
+    await page.keyboard.press('Escape');
+  }
+
   await page.close();
 }
 

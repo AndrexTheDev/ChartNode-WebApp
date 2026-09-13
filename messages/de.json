@@ -248,7 +248,8 @@
       "more": "Mehr",
       "help": "Hilfe-Center",
       "edge": "Edge"
-    }
+    },
+    "compareNone": "Kein Vergleich"
   },
   "cta": {
     "eyebrow": "Bereit",
@@ -756,7 +757,10 @@
     "danger": "Scam / Honeypot",
     "unknown": "Ungeprüft",
     "auditing": "Prüfe …",
-    "liq": "Liq"
+    "liq": "Liq",
+    "venueAll": "Alle Börsen",
+    "venueDex": "Nur DEX / On-Chain",
+    "venueFilter": "Börse filtern"
   },
   "whales": {
     "title": "Whale-Flow",
@@ -816,7 +820,9 @@
       "unsupportedTimeframe": "keine {timeframe}-Kerzen",
       "unlisted": "Paar nicht gelistet",
       "restricted": "in deiner Region eingeschränkt"
-    }
+    },
+    "manualShort": "Manuell",
+    "manualHint": "Börse manuell gewählt – Auto übergibt die Wahl wieder der Messung"
   },
   "chart": {
     "toolbar": {
@@ -1059,7 +1065,8 @@
       "waiting": "Warte auf die erste Kerze …",
       "dexWaiting": "DEX-Pool – Kerzen folgen",
       "rerouted": "Börse umgeroutet",
-      "liquidity": "{amount} Liquidität"
+      "liquidity": "{amount} Liquidität",
+      "venueHint": "Datenquelle: {venue}"
     },
     "replay": {
       "title": "Bar-Replay",
@@ -1430,7 +1437,9 @@
       "armed": "scharf",
       "fired": "ausgelöst",
       "del": "Löschen",
-      "foot": "400 nicht verfallende Alerts kosten anderswo 60 $/Monat. Hier: ein Danke im Tip-Jar."
+      "foot": "400 nicht verfallende Alerts kosten anderswo 60 $/Monat. Hier: ein Danke im Tip-Jar.",
+      "arm": "Chart-Klick-Modus",
+      "armHint": "Scharf stellen: nächsten Punkt im Chart klicken, um dort einen Alert zu setzen"
     },
     "patterns": {
       "title": "Chartmuster-Scanner",

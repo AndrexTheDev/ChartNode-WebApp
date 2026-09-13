@@ -26,7 +26,8 @@ import { selectActiveToken, selectChartType, selectLayout, selectPanes, selectTi
 import { selectDexQuote, useMarketStore } from '@/store/useMarketStore';
 import { fetchDexCandles } from '@/api/geckoterminal';
 import { downloadCsv } from '@/lib/export';
-import type { ChainId } from '@/lib/chains';
+import { CHAIN_LABEL, type ChainId } from '@/lib/chains';
+import { EXCHANGE_META } from '@/lib/exchanges';
 import {
   selectCompare,
   selectDrawings,
@@ -35,7 +36,7 @@ import {
   selectSyncTimeframe,
   useChartStore,
 } from '@/store/useChartStore';
-import { useExchangeSelection } from '@/store/useExchangeSelection';
+import { isCexExchange, useExchangeSelection } from '@/store/useExchangeSelection';
 import { useHydrated } from '@/store/useHydrated';
 import { feedId } from '@/websockets/types';
 import { aggregateCandles, baseForCustomInterval } from '@/lib/charttypes';
@@ -201,6 +202,12 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
 
   const ticker = `$${token.base}`;
   const venue = isCex ? (selection?.exchange ?? '—') : (dexQuote?.chain ?? token.chain ?? 'dex');
+  // Klartext-Name der Datenquelle: Händler müssen auf einen Blick sehen,
+  // welche Börse/Chain das Pane speist (TradingView-Standard: Exchange-Label)
+  const dexChain = dexQuote?.chain ?? token.chain;
+  const venueName = isCex
+    ? (EXCHANGE_META[selection?.exchange ?? 'binance']?.name ?? venue)
+    : (CHAIN_LABEL[dexChain as ChainId] ?? venue);
 
   function chooseToken(tokenId: string): void {
     if (index === 0) {
@@ -240,7 +247,10 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
   const tokenItems: DropdownItem[] = SEED_TOKENS.map((entry) => ({
     id: entry.id,
     label: entry.symbol,
-    hint: entry.venue,
+    hint:
+      entry.venue === 'CEX'
+        ? EXCHANGE_META[isCexExchange(entry.exchange) ? entry.exchange : 'binance'].name
+        : (CHAIN_LABEL[entry.chain as ChainId] ?? entry.venue),
     selected: entry.id === token.id,
     onSelect: () => chooseToken(entry.id),
   }));
@@ -264,6 +274,12 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusLed tone={status === 'open' ? 'ok' : status === 'reconnecting' ? 'warn' : 'idle'} />
             <span className="truncate">{token.symbol}</span>
+            <span
+              className="nc-chip shrink-0 border-line/70 px-1 py-0 text-micro-9 uppercase tracking-cyber text-faint"
+              title={t('pane.venueHint', { venue: venueName })}
+            >
+              {venueName}
+            </span>
             <span className="min-w-0 truncate font-mono text-micro-9 uppercase tracking-cyber text-faint">
               {index === 0 ? t('pane.primary') : t('pane.index', { n: index + 1 })}
             </span>

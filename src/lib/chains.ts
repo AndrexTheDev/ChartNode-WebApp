@@ -43,6 +43,43 @@ export type ChainId =
   | 'hyperevm'
   | 'core';
 
+/** Human-readable chain names for venue display (all locales – brand names). */
+export const CHAIN_LABEL: Record<ChainId, string> = {
+  ethereum: 'Ethereum',
+  base: 'Base',
+  arbitrum: 'Arbitrum',
+  polygon: 'Polygon',
+  bsc: 'BNB Chain',
+  avalanche: 'Avalanche',
+  optimism: 'Optimism',
+  solana: 'Solana',
+  fantom: 'Fantom',
+  gnosis: 'Gnosis',
+  celo: 'Celo',
+  cronos: 'Cronos',
+  kava: 'Kava',
+  metis: 'Metis',
+  mantle: 'Mantle',
+  manta: 'Manta',
+  zksync: 'zkSync Era',
+  linea: 'Linea',
+  scroll: 'Scroll',
+  blast: 'Blast',
+  mode: 'Mode',
+  berachain: 'Berachain',
+  sonic: 'Sonic',
+  sei: 'Sei',
+  sui: 'Sui',
+  aptos: 'Aptos',
+  ton: 'TON',
+  tron: 'Tron',
+  pulsechain: 'PulseChain',
+  unichain: 'Unichain',
+  worldchain: 'World Chain',
+  hyperevm: 'HyperEVM',
+  core: 'Core',
+};
+
 export const CHAIN_IDS: ChainId[] = [
   'ethereum',
   'base',

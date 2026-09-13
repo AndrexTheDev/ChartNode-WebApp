@@ -34,5 +34,5 @@ export interface SecurityAudit {
 }
 
 export type SearchHit =
-  | { kind: 'cex'; id: string; symbol: string; name: string; exchange: string }
+  | { kind: 'cex'; id: string; symbol: string; name: string; exchange: string; exchanges: string[] }
   | { kind: 'dex'; id: string; pair: DexPair };

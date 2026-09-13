@@ -248,7 +248,8 @@
       "more": "更多",
       "help": "帮助中心",
       "edge": "Edge"
-    }
+    },
+    "compareNone": "无对比"
   },
   "cta": {
     "eyebrow": "开始使用",
@@ -756,7 +757,10 @@
     "danger": "骗局 / 蜜罐",
     "unknown": "未审计",
     "auditing": "审计中…",
-    "liq": "流动性"
+    "liq": "流动性",
+    "venueAll": "所有交易所",
+    "venueDex": "仅 DEX / 链上",
+    "venueFilter": "按交易所筛选"
   },
   "whales": {
     "title": "鲸鱼流向",
@@ -816,7 +820,9 @@
       "unsupportedTimeframe": "无 {timeframe} K 线",
       "unlisted": "未上架该交易对",
       "restricted": "在你所在地区受限"
-    }
+    },
+    "manualShort": "手动",
+    "manualHint": "手动选择的交易所 – Auto 将选择权交回延迟排名"
   },
   "chart": {
     "toolbar": {
@@ -1059,7 +1065,8 @@
       "waiting": "等待第一根K线…",
       "dexWaiting": "DEX 池——K线稍后加载",
       "rerouted": "已切换交易所",
-      "liquidity": "流动性 {amount}"
+      "liquidity": "流动性 {amount}",
+      "venueHint": "数据源:{venue}"
     },
     "replay": {
       "title": "K线回放",
@@ -1430,7 +1437,9 @@
       "armed": "布防中",
       "fired": "已触发",
       "del": "删除",
-      "foot": "400 条永不过期警报在别处要 60 美元/月。这里：小费罐里的一句谢谢。"
+      "foot": "400 条永不过期警报在别处要 60 美元/月。这里：小费罐里的一句谢谢。",
+      "arm": "图表点击模式",
+      "armHint": "启用后点击图表上的某点即可在该处设置提醒"
     },
     "patterns": {
       "title": "形态扫描器",

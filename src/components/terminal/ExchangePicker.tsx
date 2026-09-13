@@ -113,8 +113,16 @@ export function ExchangePicker({ symbol, timeframe, selected, rerouted, classNam
         triggerText={
           <span className="flex items-center gap-1.5">
             <span className="font-display text-2xs font-bold uppercase tracking-cyber">
-              {meta?.short ?? selected}
+              {meta?.name ?? selected}
             </span>
+            {manual && (
+              <span
+                className="nc-chip shrink-0 border-accent/50 px-1 py-0 text-micro-9 text-accent"
+                title={tx('manualHint')}
+              >
+                {tx('manualShort')}
+              </span>
+            )}
             {selectedReach?.ms != null && (
               <span className="font-mono text-micro-9 tabular-nums text-faint">{selectedReach.ms}ms</span>
             )}

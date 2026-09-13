@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
-import { Dropdown } from '@/components/ui/Dropdown';
+import { Dropdown, type DropdownItem } from '@/components/ui/Dropdown';
 import { ToolMenu } from '@/components/ui/ToolMenu';
 import { AdSlot } from '@/components/ads/AdManager';
 import { OnChainPanel } from '@/components/onchain/OnChainPanel';
@@ -47,6 +47,7 @@ import { requestPopunder } from '@/lib/ads/adsterra';
 import { ExchangePicker } from './ExchangePicker';
 import { ChartGrid } from '@/components/chart/ChartGrid';
 import { SEED_TOKENS } from '@/lib/constants';
+import { EXCHANGE_META } from '@/lib/exchanges';
 import { cn } from '@/lib/cn';
 import { compactUsd, pct, usd } from '@/lib/format';
 import { realizedVolPct, sessionStats } from '@/lib/premium';
@@ -61,8 +62,6 @@ import {
   useAppStore,
 } from '@/store/useAppStore';
 import {
-  selectAlertArm,
-  selectAlerts,
   selectAvwapArm,
   selectCompare,
   selectDivOn,
@@ -92,7 +91,7 @@ import { useHydrated } from '@/store/useHydrated';
 import { useViralStore } from '@/store/useViralStore';
 import { selectOnChainOpen, useOnChainStore } from '@/store/useOnChainStore';
 import { selectProOpen, useProStore } from '@/store/useProStore';
-import { useExchangeSelection } from '@/store/useExchangeSelection';
+import { isCexExchange, useExchangeSelection } from '@/store/useExchangeSelection';
 import { selectWhaleEnabled, useWhaleStore } from '@/store/useWhaleStore';
 import { feedId, type FeedStatus } from '@/websockets/types';
 import type { ChartLayoutId, ChartType } from '@/store/types';
@@ -172,11 +171,6 @@ export function TerminalShell() {
   const toggleSr = useChartStore((s) => s.toggleSr);
   const divOn = useChartStore(selectDivOn);
   const toggleDiv = useChartStore((s) => s.toggleDiv);
-  const alertArm = useChartStore(selectAlertArm);
-  const setAlertArm = useChartStore((s) => s.setAlertArm);
-  const activeAlerts = useChartStore((s) => s.alerts.filter((alert) => !alert.fired).length);
-  const removeAlert = useChartStore((s) => s.removeAlert);
-  const alertsList = useChartStore(selectAlerts);
   const compare = useChartStore(selectCompare);
   const setCompare = useChartStore((s) => s.setCompare);
   const axisLog = useChartStore((s) => s.axisLog);
@@ -216,7 +210,24 @@ export function TerminalShell() {
   const setScriptLabOpen = useChartStore((state) => state.setScriptLabOpen);
   const [customDraft, setCustomDraft] = useState(10);
   const activeToken = useAppStore(selectActiveToken);
-  const setActiveToken = useAppStore((s) => s.setActiveToken);
+  const compareToken = useMemo(
+    () => (compare ? (TOKEN_INDEX[compare] ?? null) : null),
+    [compare],
+  );
+  const compareItems = useMemo<DropdownItem[]>(
+    () => [
+      { id: 'none', label: t('compareNone'), selected: !compare, onSelect: () => setCompare(null) },
+      ...SEED_TOKENS.filter((token) => token.venue === 'CEX' && token.id !== activeToken.id).map((token) => ({
+        id: token.id,
+        label: token.symbol,
+        hint: EXCHANGE_META[isCexExchange(token.exchange) ? token.exchange : 'binance'].name,
+        selected: compare === token.id,
+        onSelect: () => setCompare(token.id),
+      })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [compare, activeToken.id, setCompare],
+  );
   const watchlist = useAppStore(selectWatchlist);
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
 
@@ -638,37 +649,18 @@ export function TerminalShell() {
               },
             ]}
           />
-          <Chip
-            active={hydrated && (alertArm || activeAlerts > 0)}
-            onClick={() => {
-              if (alertArm) {
-                setAlertArm(false);
-              } else if (activeAlerts > 0) {
-                // third state: clear every pending alert
-                for (const alert of alertsList) removeAlert(alert.id);
-              } else {
-                setAlertArm(true);
-              }
-            }}
-          >
-            {activeAlerts > 0 && !alertArm ? t('alerts', { n: activeAlerts }) : t('alert')}
-          </Chip>
-          <label className="nc-chip shrink-0 cursor-pointer" title={t('compare')}>
-            <span className="sr-only">{t('compare')}</span>
-            <select
-              value={hydrated ? (compare ?? '') : ''}
-              onChange={(event) => setCompare(event.target.value || null)}
-              aria-label={t('compare')}
-              className="cursor-pointer bg-transparent font-mono text-2xs uppercase tracking-cyber outline-none transition-colors hover:text-fg focus:text-fg"
-            >
-              <option value="">{t('compare')}</option>
-              {SEED_TOKENS.filter((token) => token.venue === 'CEX' && token.id !== activeToken.id).map((token) => (
-                <option key={token.id} value={token.id}>
-                  {token.base}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Dropdown
+            items={compareItems}
+            align="start"
+            widthClass="w-44"
+            triggerLabel={t('compare')}
+            title={t('compare')}
+            triggerText={
+              <span className="font-mono text-2xs uppercase tracking-cyber">
+                {compareToken ? compareToken.base : t('compare')}
+              </span>
+            }
+          />
           <Chip active={hydrated && axisLog} onClick={toggleAxisLog}>
             {t('log')}
           </Chip>

@@ -248,7 +248,8 @@
       "more": "More",
       "help": "Help center",
       "edge": "Edge"
-    }
+    },
+    "compareNone": "No comparison"
   },
   "cta": {
     "eyebrow": "Ready",
@@ -756,7 +757,10 @@
     "danger": "Scam / Honeypot",
     "unknown": "Unaudited",
     "auditing": "Auditing…",
-    "liq": "Liq"
+    "liq": "Liq",
+    "venueAll": "All exchanges",
+    "venueDex": "DEX / on-chain only",
+    "venueFilter": "Filter by exchange"
   },
   "whales": {
     "title": "Whale flow",
@@ -816,7 +820,9 @@
       "unsupportedTimeframe": "no {timeframe} candles",
       "unlisted": "pair not listed",
       "restricted": "restricted in your region"
-    }
+    },
+    "manualShort": "Manual",
+    "manualHint": "Exchange picked manually – Auto hands the choice back to the latency ranking"
   },
   "chart": {
     "toolbar": {
@@ -1059,7 +1065,8 @@
       "waiting": "Waiting for the first candle…",
       "dexWaiting": "DEX pool – candles follow",
       "rerouted": "venue rerouted",
-      "liquidity": "{amount} liquidity"
+      "liquidity": "{amount} liquidity",
+      "venueHint": "Data source: {venue}"
     },
     "replay": {
       "title": "Bar Replay",
@@ -1430,7 +1437,9 @@
       "armed": "armed",
       "fired": "fired",
       "del": "Delete",
-      "foot": "400 non-expiring alerts cost $60/mo elsewhere. Here: a thanks in the tip jar."
+      "foot": "400 non-expiring alerts cost $60/mo elsewhere. Here: a thanks in the tip jar.",
+      "arm": "Chart-click mode",
+      "armHint": "Arm it, then click a point on the chart to place an alert there"
     },
     "patterns": {
       "title": "Chart pattern scanner",

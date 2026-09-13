@@ -30,6 +30,8 @@ export function AlertsPanelModal({ symbol, lastPrice, open, onClose }: AlertsPan
   const alerts = useChartStore((state) => state.alerts);
   const addAlertFull = useChartStore((state) => state.addAlertFull);
   const removeAlert = useChartStore((state) => state.removeAlert);
+  const alertArm = useChartStore((state) => state.alertArm);
+  const setAlertArm = useChartStore((state) => state.setAlertArm);
 
   const [kind, setKind] = useState<'price' | 'pct'>('price');
   const [dir, setDir] = useState<'above' | 'below'>('above');
@@ -82,6 +84,22 @@ export function AlertsPanelModal({ symbol, lastPrice, open, onClose }: AlertsPan
             className="border border-line px-2 py-1 font-mono text-2xs uppercase tracking-cyber text-muted hover:text-fg"
           >
             {t('alerts.testbeep')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAlertArm(!alertArm);
+              if (!alertArm) onClose();
+            }}
+            title={t('alerts.armHint')}
+            className={cn(
+              'flex items-center gap-1 border px-2 py-1 font-mono text-2xs uppercase tracking-cyber transition-colors',
+              alertArm
+                ? 'border-secondary/60 bg-secondary/12 text-secondary'
+                : 'border-line text-muted hover:border-secondary/50 hover:text-secondary',
+            )}
+          >
+            <Plus size={11} aria-hidden /> {t('alerts.arm')}
           </button>
         </div>
 

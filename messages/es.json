@@ -248,7 +248,8 @@
       "more": "Más",
       "help": "Centro de ayuda",
       "edge": "Edge"
-    }
+    },
+    "compareNone": "Sin comparación"
   },
   "cta": {
     "eyebrow": "Listo",
@@ -756,7 +757,10 @@
     "danger": "Estafa / Honeypot",
     "unknown": "Sin auditar",
     "auditing": "Auditando…",
-    "liq": "Liq"
+    "liq": "Liq",
+    "venueAll": "Todos los exchanges",
+    "venueDex": "Solo DEX / on-chain",
+    "venueFilter": "Filtrar por exchange"
   },
   "whales": {
     "title": "Flujo de ballenas",
@@ -816,7 +820,9 @@
       "unsupportedTimeframe": "sin velas de {timeframe}",
       "unlisted": "par no listado",
       "restricted": "restringido en tu región"
-    }
+    },
+    "manualShort": "Manual",
+    "manualHint": "Exchange elegido manualmente – Auto devuelve la elección al ranking de latencia"
   },
   "chart": {
     "toolbar": {
@@ -1059,7 +1065,8 @@
       "waiting": "Esperando la primera vela…",
       "dexWaiting": "Pool DEX: las velas llegarán",
       "rerouted": "mercado redirigido",
-      "liquidity": "{amount} de liquidez"
+      "liquidity": "{amount} de liquidez",
+      "venueHint": "Fuente de datos: {venue}"
     },
     "replay": {
       "title": "Bar Replay",
@@ -1430,7 +1437,9 @@
       "armed": "armada",
       "fired": "disparada",
       "del": "Borrar",
-      "foot": "400 alertas permanentes cuestan 60 $/mes en otros lares. Aquí: un gracias en el tip-jar."
+      "foot": "400 alertas permanentes cuestan 60 $/mes en otros lares. Aquí: un gracias en el tip-jar.",
+      "arm": "Modo clic en chart",
+      "armHint": "Actívalo y haz clic en un punto del chart para colocar una alerta"
     },
     "patterns": {
       "title": "Escáner de patrones",
