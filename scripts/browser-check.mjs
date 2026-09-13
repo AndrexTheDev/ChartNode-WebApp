@@ -1560,7 +1560,23 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 } catch (error) {
   check(`browser run completed (${error instanceof Error ? error.message : 'error'})`, false);
 } finally {
-  await browser.close();
+    // M5: Help-Deep-Link öffnet das passende Akkordeon
+  const dl = await browser.newPage();
+  await dl.goto(`${BASE}/de/help#ind-RSI`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await wait(2500);
+  const dlState = await dl.evaluate(() => ({
+    expanded: document.getElementById('trigger-ind-RSI')?.getAttribute('aria-expanded') ?? null,
+    inView: (() => {
+      const el = document.getElementById('trigger-ind-RSI');
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight;
+    })(),
+  }));
+  check('help deep link #ind-RSI opens + scrolls accordion', dlState.expanded === 'true' && dlState.inView, JSON.stringify(dlState));
+await dl.close();
+
+await browser.close();
 }
 
 console.log(`\n${failures === 0 ? '✔ browser check OK' : `✖ ${failures} failure(s)`}\n`);

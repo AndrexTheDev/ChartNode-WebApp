@@ -63,13 +63,15 @@ export function softwareApplicationLd(locale: Locale, features: string[]) {
   };
 }
 
-export function faqPageLd(items: { question: string; answer: string }[]) {
+export function faqPageLd(items: { question: string; answer: string; url?: string }[]) {
   return {
     '@type': 'FAQPage',
     '@id': `${SITE_URL}/#faq`,
     mainEntity: items.map((item) => ({
       '@type': 'Question',
       name: item.question,
+      // Anker auf den sichtbaren Help-Abschnitt → LD und Seite verknüpft
+      ...(item.url ? { url: item.url } : {}),
       acceptedAnswer: { '@type': 'Answer', text: item.answer },
     })),
   };

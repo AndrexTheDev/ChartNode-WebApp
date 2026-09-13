@@ -220,6 +220,29 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
+/* ---------------------------------- M5 ---------------------------------- */
+// Help-Center: Sektionen mit Headings, Anker, TOC, SSR-Inhalt, FAQ-LD-Urls
+for (const locale of LOCALES) {
+  const html = await (await fetch(`${BASE}/${locale}/help`)).text();
+  const tag = `${locale}/help [M5]`;
+  const h2 = (html.match(/<h2[\s>]/gi) ?? []).length;
+  const h3 = (html.match(/<h3[\s>]/gi) ?? []).length;
+  check(`${tag}: ≥8 h2 (TOC+Sektionen) & ≥40 h3 (Einträge)`, h2 >= 8 && h3 >= 40, `h2=${h2} h3=${h3}`);
+  const levels = [...html.matchAll(/<h([1-6])[\s>]/gi)].map((m) => Number(m[1]));
+  let skip = false;
+  for (let i = 1; i < levels.length; i += 1) if (levels[i] - levels[i - 1] > 1) skip = true;
+  check(`${tag}: Hierarchie ohne Skip`, levels[0] === 1 && !skip, JSON.stringify(levels.slice(0, 6)));
+  check(`${tag}: Sektions-Anker sec-indicators/sec-metrics`, html.includes('id="sec-indicators"') && html.includes('id="sec-metrics"'));
+  const tocLinks = (html.match(/href="#sec-[a-zA-Z]+"/g) ?? []).length;
+  check(`${tag}: TOC mit ≥6 Anker-Links`, tocLinks >= 6, `n=${tocLinks}`);
+  check(`${tag}: Indikator-Deep-Link-Anker SSR (ind-RSI)`, html.includes('trigger-ind-RSI') || html.includes('panel-ind-RSI'));
+  const ld = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => JSON.parse(m[1]));
+  const graph = ld.flatMap((x) => (Array.isArray(x['@graph']) ? x['@graph'] : [x]));
+  const faq = graph.find((g) => g['@type'] === 'FAQPage');
+  const withUrl = (faq?.mainEntity ?? []).filter((q) => String(q.url ?? '').includes(`/help#`)).length;
+  check(`${tag}: FAQ-LD-Fragen tragen Help-Anker-URLs`, withUrl >= 10, `n=${withUrl}`);
+}
+
 /* ---------------------------------- M4 ---------------------------------- */
 // Landing-Semantik: H1-Keyword, Heading-Hierarchie, interne Links, Anker, imgs
 for (const locale of LOCALES) {

@@ -626,7 +626,8 @@
         "question": "Was zeigt Clock Edge?",
         "answer": "Clock Edge zerlegt deine geladenen Kerzen nach UTC-Stunde und Wochentag und misst für jede Zeit die Win-Rate und die durchschnittliche Rendite der nächsten vier Kerzen. Der t-Wert sagt, ob ein Muster statistisch auffällig ist; nur signifikante Zellen (mindestens 30 Beobachtungen, t ≥ 2) werden als Edge gewertet. Alles rechnet lokal im Browser aus genau den Kerzen, die dein Feed liefert."
       }
-    ]
+    ],
+    "toc": "Inhalt"
   },
   "legal": {
     "back": "Zurück zur Startseite",

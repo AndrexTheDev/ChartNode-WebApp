@@ -626,7 +626,8 @@
         "question": "¿Qué muestra Clock Edge?",
         "answer": "Clock Edge divide tus velas cargadas por hora UTC y día de la semana y mide, para cada franja, la tasa de acierto y el rendimiento medio de las siguientes cuatro velas. El valor t indica si el patrón es estadísticamente notable; solo las celdas significativas (al menos 30 observaciones, t ≥ 2) cuentan como ventaja. Todo se calcula localmente en el navegador con exactamente las velas que entrega tu feed."
       }
-    ]
+    ],
+    "toc": "Contenido"
   },
   "legal": {
     "back": "Volver al inicio",

@@ -118,6 +118,20 @@ export function HelpExplorer() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // Deep-Links: /help#ind-rsi öffnet das passende Akkordeon und scrollt hin
+  useEffect(() => {
+    const id = window.location.hash.replace('#', '');
+    if (!id) return;
+    const topic = topics.find((entry) => entry.id === id);
+    if (topic) {
+      setCategory('all');
+      setOpen((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    }
+    window.requestAnimationFrame(() => {
+      document.getElementById(id.startsWith('sec-') ? id : `trigger-${id}`)?.scrollIntoView({ block: 'center' });
+    });
+  }, [topics]);
+
   const normalised = query.trim().toLowerCase();
 
   const filtered = useMemo(() => {
@@ -133,7 +147,11 @@ export function HelpExplorer() {
   }, [topics, category, normalised]);
 
   function toggle(id: string) {
-    setOpen((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setOpen((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      if (!prev.includes(id)) window.history.replaceState(null, '', `#${id}`);
+      return next;
+    });
   }
 
   return (
@@ -219,8 +237,24 @@ export function HelpExplorer() {
           </a>
         </NeonPanel>
       ) : (
-        <ul className="flex flex-col gap-px border border-line/70 bg-line/40">
-          {filtered.map((topic) => {
+        <div className="flex flex-col gap-10">
+          {CATEGORIES.filter(
+            (cat) => cat !== 'all' && filtered.some((topic) => topic.category === cat),
+          ).map((cat) => (
+            <section key={cat} id={`sec-${cat}`} aria-labelledby={`sechead-${cat}`}>
+              <h2
+                id={`sechead-${cat}`}
+                className="mb-3 flex items-baseline gap-2 font-display text-lg font-black uppercase tracking-cyber text-fg sm:text-xl"
+              >
+                {t(`categories.${cat}`)}
+                <span className="font-mono text-2xs text-faint">
+                  {filtered.filter((topic) => topic.category === cat).length}
+                </span>
+              </h2>
+              <ul className="flex flex-col gap-px border border-line/70 bg-line/40">
+                {filtered
+                  .filter((topic) => topic.category === cat)
+                  .map((topic) => {
             const isOpen = open.includes(topic.id);
             return (
               <li key={topic.id} className="bg-bg/85">
@@ -279,10 +313,13 @@ export function HelpExplorer() {
                     {topic.answer}
                   </p>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
+                  </li>
+                );
+              })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
 
       {/* ----------------------------- shortcuts --------------------------- */}

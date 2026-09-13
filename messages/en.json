@@ -626,7 +626,8 @@
         "question": "What does Clock Edge show?",
         "answer": "Clock Edge splits your loaded candles by UTC hour and weekday and measures, for each slot, the win rate and average return of the next four candles. The t-value tells you whether a pattern is statistically notable; only significant cells (at least 30 observations, t ≥ 2) count as an edge. Everything is computed locally in the browser from exactly the candles your feed delivered."
       }
-    ]
+    ],
+    "toc": "Contents"
   },
   "legal": {
     "back": "Back to home",
