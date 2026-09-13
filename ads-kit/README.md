@@ -33,3 +33,32 @@ Events zum Andocken eigener UI: `pu:fired`, `pu:blocked`, `pu:adblocked`
   Browsern erlaubte Pfad. Exit-Trigger ohne Geste sind bewusst nur *Versuche*.
 - `win.opener = null` nach jedem Open (Reverse-Tabnabbing-Schutz).
 - Storage-Zugriffe komplett try/catch (Private Mode), Fallbacks session→memory.
+
+---
+
+# Adsterra Smartlink-Kit (Landing + Terminal)
+
+| Datei | Zweck |
+|---|---|
+| `landing-smartlinks.js` | Landing: Auto-Enhancement für `[data-smartlink]`-CTAs (Anker nativ / Buttons via `openSmartlink`), `[data-smartlink-card]`-Teaser (primary = Smartlink mit Badge, `toast` = echte Aktion + Offer-Toast), Fallback-Modal bei Popup-Blockade, Cap 3/h |
+| `app-smartlinks.js` | Terminal: `mountSponsorBar('#sponsor-strip')` (gelabelte Angebots-Leiste), `hookActionOffer('.js-export-chart')` (Post-Action-Toast NACH der Feature-Aktion, niemals davor), Cap 3/h + 10-min-Toast-Interval |
+| `smartlinks.css` | Dark/Cyberpunk-Styling: `nc-sl-*` (CTA clip-path neon, Badge, Strip, Toast, Modal) |
+| `smartlinks-demo.html` | Live-Demo beider Teile: `npx serve ads-kit` → `/smartlinks-demo.html` |
+
+## Smartlink-Konfiguration (`CONFIG` am Dateianfang)
+| Variable | Bedeutung | Standard |
+|---|---|---|
+| `SMARTLINK_MAIN_URL` | fester Adsterra-Direct-Link | `globalimmaturelunatic.com/ufhc3mt24s?key=…` |
+| `MAX_TRIGGERS_PER_HOUR` | Opportunistic-Opens pro Stunde | `3` |
+| `MIN_TOAST_INTERVAL_MINUTES` | Mindestabstand Offer-Toasts | `10` |
+| `LABEL` | Disclosure-Text (DE `Anzeige`, ES `Patrocinado`) | `Sponsored` |
+| `OFFER_DELAY_MS` | Verzögerung Post-Action-Toast (nur App) | `800` |
+| `RESPECT_DNT` / `SKIP_BOTS` | DNT-/WebDriver-Guard (QA/CI sauber) | `true` |
+| `DEBUG` | Console-Logs | `false` |
+
+Events: `sl:opened` / `sl:blocked` / `sl:capped` / `sl:toast`; Debug-API `window.SmartlinksLanding` / `window.SmartlinksApp`.
+
+## Compliance-Regeln (fest eingebaut, nicht verhandelbar)
+- Jedes Smartlink-Element trägt ein sichtbares Badge (`rel="sponsored noopener"` auf allen Ankern – auch Google-konform für Paid Links).
+- Keine Funktions-Tarnung („Exchange API Sync“ o. ä. ohne Funktion) und kein Klick-Hijacking vor Feature-Aktionen: beides = Schleichwerbung/Invalid Traffic (UWG/UCP-Richtlinie/FTC; Adsterra-Anti-Fraud sperrt Accounts; Safe-Browsing flaggt Domains).
+- „100 % immun gegen Adblocker“ gibt es nicht; maximale legale Deliverability = echte Anker + User-Geste + Fallback-Modal.

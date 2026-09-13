@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!-- © 2026 AndrexTheDev – All Rights Reserved. Siehe LICENSE.md.
+     Demo: Adsterra-Smartlink-Kit (Landing + Terminal-Mock).
+     Lokal testen:  npx serve ads-kit   →  http://localhost:3000/smartlinks-demo.html -->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NodeChart – Smartlink-Kit Demo</title>
+  <link rel="stylesheet" href="./smartlinks.css" />
+  <style>
+    body { margin: 0; background: #070b13; color: #e6edf7; font-family: 'Manrope', system-ui, sans-serif; }
+    main { max-width: 960px; margin: 0 auto; padding: 40px 20px 120px; }
+    h1, h2 { font-family: 'Exo 2', system-ui, sans-serif; }
+    h1 { color: #00ff9d; }
+    section { margin-bottom: 56px; }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card-title { font-weight: 800; margin: 0 0 6px; }
+    .card-text { color: #7d8aa5; font-size: 14px; margin: 0; }
+    .terminal { background: #0a0e17; border: 1px solid #1e2a44; border-radius: 12px; overflow: hidden; }
+    .terminal-header { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 10px 14px; border-bottom: 1px solid #1e2a44; flex-wrap: wrap; }
+    .terminal-title { font-family: 'JetBrains Mono', monospace; color: #00e5ff; font-size: 13px; }
+    .chart-mock { height: 260px; display: flex; align-items: center; justify-content: center;
+      color: #2c3a5c; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: repeating-linear-gradient(0deg, transparent 0 39px, #101828 39px 40px),
+                  repeating-linear-gradient(90deg, transparent 0 39px, #101828 39px 40px); }
+    .app-btn { padding: 8px 14px; font: 600 12px/1 'Manrope', sans-serif; color: #e6edf7;
+      background: #101a30; border: 1px solid #1e2a44; border-radius: 6px; cursor: pointer; }
+    .app-btn:hover { border-color: #00ff9d; }
+    .hint { color: #7d8aa5; font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>⬡ NodeChart – Smartlink-Kit Demo</h1>
+  <p class="hint">Öffne die DevTools-Konsole und setze <code>DEBUG = true</code> in den CONFIG-Blöcken für Logs.
+    Events: <code>sl:opened</code>, <code>sl:blocked</code>, <code>sl:capped</code>, <code>sl:toast</code>.</p>
+
+  <!-- ======================= 1) LANDINGPAGE ======================= -->
+  <section>
+    <h2>1 · Landing – Secondary CTAs (data-smartlink)</h2>
+    <div class="row">
+      <!-- Anker-Variante: native Navigation, blocker-resistent -->
+      <a class="nc-sl-cta" href="#" data-smartlink>🎁 Claim Bonus</a>
+      <!-- Button-Variante: window.open + Fallback-Modal -->
+      <button class="nc-sl-cta" type="button" data-smartlink>🏦 Partner Exchanges</button>
+      <button class="nc-sl-cta" type="button" data-smartlink>🖥 View Live Demo</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Landing – Teaser-Cards (data-smartlink-card)</h2>
+    <div class="cards">
+      <div class="nc-sl-card" data-smartlink-card>
+        <p class="card-title">⚡ 100x Leverage Bonus</p>
+        <p class="card-text">Exklusives Partner-Angebot – neuer Tab, Landing bleibt offen.</p>
+      </div>
+      <div class="nc-sl-card" data-smartlink-card="toast" data-href="#terminal-section">
+        <p class="card-title">📚 Was ist On-Chain-Analyse?</p>
+        <p class="card-text">Echter Info-Link (scrollt zum Terminal) + transparenter Offer-Toast.</p>
+      </div>
+      <div class="nc-sl-card">
+        <p class="card-title">🛡 Normale Card</p>
+        <p class="card-text">Kein data-Attribut → kein Smartlink. Bleibt unangetastet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2) TERMINAL-MOCK ==================== -->
+  <section id="terminal-section">
+    <h2>3 · Terminal – Sponsored-Strip + Post-Action-Offers</h2>
+    <div class="terminal">
+      <div class="terminal-header">
+        <span class="terminal-title">SOL/USDT · 1m · Binance</span>
+        <!-- Mount-Point für app-smartlinks.js -->
+        <div id="sponsor-strip"></div>
+        <div class="row">
+          <button class="app-btn js-export-chart" type="button">⬇ Export Chart</button>
+          <button class="app-btn js-share-analysis" type="button">🔗 Share Analysis</button>
+        </div>
+      </div>
+      <div class="chart-mock">[ CHART PLACEHOLDER – Export/Share klicken, dann 0,8 s warten ]</div>
+    </div>
+    <p class="hint">„Export Chart"/„Share Analysis" führen ihre (Demo-)Aktion immer ungestört aus;
+      der Offer-Toast erscheint verzögert, gedeckelt auf 3 Smartlink-Opens/Std + 10 min Toast-Interval.</p>
+  </section>
+</main>
+
+<!-- Demo-„App-Logik" der Feature-Buttons (läuft VOR jedem Offer-Toast) -->
+<script>
+  document.querySelector('.js-export-chart').addEventListener('click', () => {
+    console.info('[demo] Chart exportiert ✓ (Feature läuft ungestört)');
+  });
+  document.querySelector('.js-share-analysis').addEventListener('click', () => {
+    console.info('[demo] Analyse geteilt ✓ (Feature läuft ungestört)');
+  });
+</script>
+<script src="./landing-smartlinks.js" defer></script>
+<script src="./app-smartlinks.js" defer></script>
+</body>
+</html>
