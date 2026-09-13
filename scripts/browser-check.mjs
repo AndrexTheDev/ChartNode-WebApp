@@ -1576,6 +1576,17 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   check('help deep link #ind-RSI opens + scrolls accordion', dlState.expanded === 'true' && dlState.inView, JSON.stringify(dlState));
 await dl.close();
 
+// M7: Share-Modal teilt URL mit Ticker+Preis (Card zeigt das echte Setup)
+const sh = await browser.newPage();
+await sh.goto(`${BASE}/de/terminal?qa=1&ticker=SOL&price=150`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+await sh.waitForSelector('canvas', { timeout: 30000 });
+await wait(3500);
+await sh.evaluate(() => window.__NC__.useViralStore.getState().openShare('chart'));
+await wait(800);
+const shareText = await sh.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.textContent).join(' '));
+check('share modal url carries ticker+price for social cards', shareText.includes('ticker=SOL') && /price=\d/.test(shareText), shareText.slice(0, 120));
+await sh.close();
+
 await browser.close();
 }
 

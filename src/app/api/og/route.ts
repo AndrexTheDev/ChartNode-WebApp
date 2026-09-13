@@ -1,6 +1,6 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 import type { NextRequest } from 'next/server';
-import { buildOgSvg, OG_HEIGHT, OG_WIDTH, sanitizePrice, sanitizeTicker } from '@/lib/og';
+import { buildOgSvg, OG_HEIGHT, OG_WIDTH, ogLocale, sanitizePrice, sanitizeTicker } from '@/lib/og';
 
 /**
  * Dynamic social card: `/api/og?ticker=SOL&price=150&change=2.4&locale=de`.
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     ticker: sanitizeTicker(params.get('ticker')),
     price: sanitizePrice(params.get('price')),
     changePct: Number.isFinite(changeRaw) ? Math.max(-99.99, Math.min(99.99, changeRaw)) : null,
-    locale: params.get('locale') ?? 'en',
+    locale: ogLocale(params.get('locale')),
   });
 
   return new Response(svg, {

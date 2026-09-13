@@ -200,6 +200,7 @@ export function TerminalShell() {
       useAppStore,
       useWhaleStore,
       useProStore,
+      useViralStore,
     };
   }, []);
   const [patternsOpen, setPatternsOpen] = useState(false);

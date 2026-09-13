@@ -10,7 +10,7 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 | M4 | Landing-Semantik & Content-SEO | H1-Keyword-Cluster ×5 Locales, Heading-Hierarchie ohne Skip (NeonPanel-titleTag), interne Links/Anker verifiziert, img-Alt/Size-Guard, Font-Preload-Check | ✔ done |
 | M5 | Help-Center-SEO | Kategorien-Sektionen mit h2 + Anker-ids (`#sec-indicators` …), H3-Akkordeon (ARIA), server-gerenderte TOC mit Zählern, Deep-Links (`#ind-RSI` öffnet + scrollt), Hash-Sharing, FAQ-LD mit Anker-URLs | ✔ done |
 | M6 | Core Web Vitals | Font-Budget 32→18 woff2 (latin-ext raus, ungenutzte Weights raus), cwv-check.mjs (LCP/CLS/TBT desktop+mobile, Preload-/Third-Party-Budget), M3-Cache-Header greifen | ✔ done |
-| M7 | Social Cards & Sharing | OG pro Locale-Text, Twitter-Card-Validator-Check, Telegram/WhatsApp-Preview, /api/og-Parameter härten | offen |
+| M7 | Social Cards & Sharing | OG-SVG-Copy ×5 Locales (locale war tot), Locale-Whitelist (Prototype-Guard), Bot-Fetch-Checks (Telegram/Twitter/FB), Card-Image=//api/og mit Ticker, Share-URL trägt ticker+price | ✔ done |
 | M8 | Technische Hygiene | 404/Redirect-Matrix, Trailing-Slash/Case-Duplikate, www-vs-apex Canonical, Locale-Detect vs. Crawler | offen |
 | M9 | SEO-Regressionssuite | seo-check final (alle Module asserten), in CI-artigen Ablauf neben fit-check/browser-check | offen |
 

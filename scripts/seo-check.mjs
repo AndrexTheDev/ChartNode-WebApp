@@ -220,6 +220,34 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
+/* ---------------------------------- M7 ---------------------------------- */
+// Social Cards: lokalisierte OG-SVGs, Injection-Guards, Bot-Fetch, Card-Images
+const og = async (qs) => (await fetch(`${BASE}/api/og${qs}`)).text();
+const ogDe = await og('?ticker=SOL&locale=de');
+check('M7: OG-Card de lokalisiert', ogDe.includes('kein Account') && ogDe.includes('Echtzeit'), '');
+const ogZh = await og('?ticker=SOL&locale=zh');
+check('M7: OG-Card zh lokalisiert', ogZh.includes('终端'), '');
+const ogEn = await og('?ticker=SOL&locale=en');
+check('M7: OG-Card en lokalisiert', ogEn.includes('no account'), '');
+const ogInj = await og('?ticker=%3Csvg%20onload%3Dalert(1)%3E&locale=de');
+check('M7: OG-Injection gesannt (kein onload-Markup)', !ogInj.includes('onload='), '');
+const ogProto = await og('?ticker=BTC&locale=constructor');
+check('M7: locale=constructor fällt auf EN zurück', ogProto.includes('no account'), '');
+for (const locale of ['de', 'en']) {
+  const html = await (await fetch(`${BASE}/${locale}/terminal?ticker=SOL&price=150`)).text();
+  const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/)?.[1] ?? '';
+  const twImage = html.match(/<meta name="twitter:image" content="([^"]+)"/)?.[1] ?? html.match(/<meta property="twitter:image" content="([^"]+)"/)?.[1] ?? '';
+  check(`M7 ${locale}: Card-Image = /api/og mit Ticker`, ogImage.includes('/api/og?ticker=SOL') && twImage.includes('/api/og?ticker=SOL'), `${ogImage} | ${twImage}`);
+}
+const tDe = (await (await fetch(`${BASE}/de`)).text()).match(/<meta property="og:title" content="([^"]+)"/)?.[1];
+const tEn = (await (await fetch(`${BASE}/en`)).text()).match(/<meta property="og:title" content="([^"]+)"/)?.[1];
+check('M7: OG-Titel lokalisiert (de ≠ en)', Boolean(tDe && tEn && tDe !== tEn), `${tDe} | ${tEn}`);
+for (const bot of ['TelegramBot/1.0', 'Twitterbot/1.0', 'facebookexternalhit/1.1']) {
+  const res = await fetch(`${BASE}/de/terminal?ticker=SOL`, { headers: { 'user-agent': bot } });
+  const body = await res.text();
+  check(`M7: Bot ${bot.split('/')[0]} erhält 200 + OG-Titel`, res.status === 200 && body.includes('og:title'), `${res.status}`);
+}
+
 /* ---------------------------------- M6 ---------------------------------- */
 // Font-Budget: gebündelte woff2-Dateien im Build (Subsets × Weight-Schnitt)
 import { readdirSync } from 'node:fs';

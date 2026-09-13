@@ -18,6 +18,20 @@ export interface OgInput {
   locale: string;
 }
 
+/** Card-Copy je Locale – Social-Karten sprechen die Sprache des Links. */
+const OG_STRINGS: Record<string, { tagline: string; footer: string }> = {
+  en: { tagline: 'real-time · zero fees · on-chain', footer: 'CEX + DEX terminal · no account · no keys · nodechart' },
+  de: { tagline: 'Echtzeit · keine Gebühren · On-Chain', footer: 'CEX + DEX Terminal · kein Account · keine Keys · nodechart' },
+  es: { tagline: 'tiempo real · sin comisiones · on-chain', footer: 'Terminal CEX + DEX · sin cuenta · sin claves · nodechart' },
+  ru: { tagline: 'реальное время · без комиссий · on-chain', footer: 'CEX + DEX терминал · без аккаунта · без ключей · nodechart' },
+  zh: { tagline: '实时 · 零费用 · 链上', footer: 'CEX + DEX 终端 · 无需账户 · 无需密钥 · nodechart' },
+};
+
+/** Whitelist-Fallback: unbekannte/?constructor-Locales landen auf EN. */
+export function ogLocale(raw: string | null): string {
+  return raw && Object.prototype.hasOwnProperty.call(OG_STRINGS, raw) ? raw : 'en';
+}
+
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
@@ -49,6 +63,7 @@ export function buildOgSvg(input: OgInput): string {
   const change =
     input.changePct === null ? null : `${up ? '+' : ''}${input.changePct.toFixed(2)}%`;
   const changeColor = up ? '#00ff9d' : '#ff2e63';
+  const copy = OG_STRINGS[ogLocale(input.locale)] ?? OG_STRINGS.en ?? { tagline: '', footer: '' };
 
   const grid = Array.from({ length: 11 }, (_, i) => {
     const x = 60 + i * 108;
@@ -100,14 +115,14 @@ export function buildOgSvg(input: OgInput): string {
   ${
     price
       ? `<text x="64" y="330" font-family="monospace" font-size="56" fill="#39ff14">$${price}</text>`
-      : `<text x="64" y="330" font-family="monospace" font-size="40" fill="#7d9c7d">real-time · zero fees · on-chain</text>`
+      : `<text x="64" y="330" font-family="monospace" font-size="40" fill="#7d9c7d">${copy.tagline}</text>`
   }
   ${
     change
       ? `<text x="${price ? 64 + price.length * 34 + 40 : 64}" y="330" font-family="monospace" font-size="44" fill="${changeColor}">${change}</text>`
       : ''
   }
-  <text x="64" y="580" font-family="monospace" font-size="28" fill="#7d9c7d">CEX + DEX terminal · no account · no keys · nodechart</text>
+  <text x="64" y="580" font-family="monospace" font-size="28" fill="#7d9c7d">${copy.footer}</text>
   <text x="${OG_WIDTH - 40}" y="580" text-anchor="end" font-family="monospace" font-size="28" fill="#39ff14" opacity="0.8">$${ticker}</text>
 </svg>`;
 }
