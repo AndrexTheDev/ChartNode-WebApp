@@ -1,9 +1,9 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import Script from 'next/script';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname } from '@/i18n/navigation';
 import { detectAdBlockOnce } from '@/lib/ads/adblock';
 import { mountNativeBanner, whenIdle } from '@/lib/ads/adsterra';
 import {
@@ -18,34 +18,146 @@ import { donationGraceActive, useViralStore, WALL_COOLDOWN_MS } from '@/store/us
 import { ShareModal } from '../share/ShareModal';
 import { SupportModal } from './SupportModal';
 
+/** Social Bar: max. Versuche (Initial + Netz-Retry + Retry nach Wall-Close). */
+const SOCIAL_MAX_TRIES = 3;
+
+/**
+ * Misst nach dem Load die selbst verankerte Social Bar (fixed, bodennah) und
+ * legt ihre Höhe als `--nc-socialbar-h` ab – das Terminal reserviert darunter
+ * auf Mobile genau diesen Platz, damit die Bar nie UI verdeckt (Desktop
+ * bleibt Overlay, die Bar schwebt dort über der Chart-Fläche).
+ * Best-Effort mit Retries: Adsterra rendert die Bar teils verzögert nach dem
+ * Script-Load; findet sich nichts Fixiertes, bleibt die Variable bei 0.
+ */
+function findSocialBarHeight(): number {
+  const isOurs = (el: Element) =>
+    (el.id !== '' && el.id.startsWith('nc-')) ||
+    (typeof el.className === 'string' && el.className.includes('nc-'));
+  let height = 0;
+  const consider = (el: Element, depth: number) => {
+    if (height > 0 || depth > 2 || isOurs(el)) return;
+    const cs = window.getComputedStyle(el as HTMLElement);
+    if (cs.position === 'fixed' && cs.display !== 'none' && cs.visibility !== 'hidden') {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      const bottomAnchored = Math.abs(window.innerHeight - rect.bottom) < 48;
+      if (bottomAnchored && rect.height >= 20 && rect.height <= 220) {
+        height = Math.max(height, rect.height);
+        return;
+      }
+    }
+    for (const child of Array.from(el.children)) consider(child, depth + 1);
+  };
+  for (const child of Array.from(document.body.children)) consider(child, 0);
+  return height;
+}
+
+function measureSocialBar(): void {
+  const attempt = (left: number) => {
+    window.setTimeout(() => {
+      let h = 0;
+      try {
+        h = findSocialBarHeight();
+      } catch {
+        /* Messung ist Best-Effort */
+      }
+      if (h > 0) {
+        document.documentElement.style.setProperty('--nc-socialbar-h', `${Math.ceil(h)}px`);
+        return;
+      }
+      if (left > 0) attempt(left - 1);
+    }, 900);
+  };
+  attempt(4); // ≈ 0,9 / 1,8 / 2,7 / 3,6 / 4,5 s nach Load
+}
+
 /**
  * Global monetization layer – mounted once in the root layout.
  *
- *  · Social Bar (Adsterra) anchors itself to the viewport bottom, all pages.
+ *  · Social Bar (Adsterra, echtes Delivery-Skript aus config.ts) läuft NUR auf
+ *    den App-Seiten (…/terminal) und verankert sich selbst am Viewport-Boden.
+ *    Injection zur Laufzeit per `body.appendChild` = „right above the closing
+ *    </body> tag", lazy (Timer) und mit `data-cfasync="false"` gegen Cloudflare
+ *    Rocket Loader. Anti-Blocker-Strategie (transparent, keine Maskierung):
+ *      – onerror ⇒ detectAdBlockOnce(): echter Blocker ⇒ Cyberpunk-Soft-Wall
+ *        (bittet um Deaktivierung/Spende), Netz-Flake ⇒ 1 stiller Retry;
+ *      – Wall-Close ⇒ ein weiterer Retry (Blocker ggf. gerade deaktiviert);
+ *      – Donation-Grace & navigator.webdriver ⇒ gar keine Injection.
  *  · Ad-block detection runs once per session; a blocked visitor sees the
  *    cyberpunk soft-wall (unless supporter or inside the 7-day cooldown).
  *    `?adwall=1` forces it open – used by the browser proof and for demos.
  *  · Hosts <SupportModal/> + <ShareModal/> so both work on every route.
  *
  * Renders no markup of its own besides the modals → zero hydration risk and
- * zero layout shift when ads are disabled (the default in development).
+ * zero layout shift when ads are disabled.
  */
 function AdManagerInner() {
   const [wallOpen, setWallOpen] = useState(false);
-  // Body-level, self-anchoring format -> canonical next/script idle loader.
-  // Resolved client-side (device class), rendered only once known, so the
-  // server HTML stays ad-free and hydration-neutral.
-  const [socialSrc, setSocialSrc] = useState<string | null>(null);
+  const pathname = usePathname();
+  /** „APP page" im Monetization-Sinn: das Charting-Terminal. */
+  const isAppPage = pathname.includes('/terminal');
+
+  const socialSrcRef = useRef<string | null>(null);
+  const socialTries = useRef(0);
+  const socialDone = useRef(false);
+  const socialBlocked = useRef(false);
+
+  const injectSocial = useCallback(
+    // Benannte Function-Expression: legale Selbstreferenz für die Retries
+    // (react-hooks verbietet den Zugriff auf das eigene const vor Deklaration).
+    function inject(src: string): void {
+      if (socialDone.current || socialTries.current >= SOCIAL_MAX_TRIES) return;
+      socialTries.current += 1;
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.setAttribute('data-cfasync', 'false');
+      script.dataset.ncSocialTry = String(socialTries.current);
+      script.onload = () => {
+        socialDone.current = true;
+        measureSocialBar();
+      };
+      script.onerror = () => {
+        script.remove();
+        void detectAdBlockOnce().then((blocked) => {
+          if (blocked) {
+            // Transparente Gegenmaßnahme: Soft-Wall statt stiller Verlust.
+            socialBlocked.current = true;
+            socialDone.current = true;
+            setWallOpen(true);
+          } else if (socialTries.current < SOCIAL_MAX_TRIES) {
+            inject(src); // Netz-Flake, kein Blocker → stiller Retry
+          } else {
+            socialDone.current = true;
+          }
+        });
+      };
+      document.body.appendChild(script); // Laufzeit-Äquivalent zu „vor </body>"
+    },
+    [],
+  );
 
   useEffect(() => {
-    if (!ADS_ENABLED) return;
-    // Deferred: never setState synchronously inside an effect (lint rule),
-    // and the device class is only meaningful client-side anyway.
-    const timer = setTimeout(() => {
-      setSocialSrc(socialBarPlacement(isDesktopViewport() ? 'desktop' : 'mobile') || null);
-    }, 0);
+    if (!isAppPage || !ADS_ENABLED) return;
+    if (donationGraceActive()) return; // Spende schlägt alles – auch die Bar
+    if (navigator.webdriver) return; // QA/CI (Puppeteer) bleibt werbefrei
+    const src = socialBarPlacement(isDesktopViewport() ? 'desktop' : 'mobile');
+    if (!src) return;
+    socialSrcRef.current = src;
+    // Deferred: nie synchrone Arbeit/setState im Effect; die Bar darf nie mit
+    // Chart-Seeding oder First Paint um die Main Thread kämpfen.
+    const timer = setTimeout(() => injectSocial(src), 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isAppPage, injectSocial]);
+
+  const closeWall = useCallback(() => {
+    setWallOpen(false);
+    // Wall eben geschlossen ⇒ Blocker ggf. gerade deaktiviert: letzter Versuch.
+    if (socialBlocked.current && socialSrcRef.current && socialTries.current < SOCIAL_MAX_TRIES) {
+      socialBlocked.current = false;
+      socialDone.current = false;
+      injectSocial(socialSrcRef.current);
+    }
+  }, [injectSocial]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,8 +194,7 @@ function AdManagerInner() {
 
   return (
     <>
-      {socialSrc ? <Script src={socialSrc} strategy="lazyOnload" data-cfasync="false" /> : null}
-      <SupportModal open={wallOpen} onClose={() => setWallOpen(false)} />
+      <SupportModal open={wallOpen} onClose={closeWall} />
       <ShareModal />
     </>
   );

@@ -24,7 +24,15 @@
 // NEXT_PUBLIC_* values are inlined at BUILD time – and only for *static*
 // member access (`process.env.NEXT_PUBLIC_X`), never for computed keys.
 const nativeBase = process.env.NEXT_PUBLIC_ADSTERRA_NATIVE ?? '';
-const socialBarBase = process.env.NEXT_PUBLIC_ADSTERRA_SOCIALBAR ?? '';
+
+/**
+ * Echtes Adsterra-Social-Bar-Delivery-Skript für nodechart.cc (Dashboard:
+ * „Insert it right above the closing </body> tag"). Läuft als Default ohne
+ * Env-Setup; `NEXT_PUBLIC_ADSTERRA_SOCIALBAR*` überschreibt es.
+ */
+const SOCIALBAR_DELIVERY_SRC =
+  'https://globalimmaturelunatic.com/e2/b2/33/e2b23323b70ad88bcd24fec9985a99b5.js';
+const socialBarBase = process.env.NEXT_PUBLIC_ADSTERRA_SOCIALBAR || SOCIALBAR_DELIVERY_SRC;
 
 /**
  * Echtes Adsterra-Popunder-Delivery-Skript für nodechart.cc (Dashboard:

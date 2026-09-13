@@ -274,7 +274,7 @@ export function TerminalShell() {
   const connected = status === 'open';
 
   return (
-    <div className="flex min-h-[calc(100dvh-var(--nc-header-h))] pb-10 xl:flex-row">
+    <div className="flex min-h-[calc(100dvh-var(--nc-header-h))] pb-10 max-lg:pb-[max(2.5rem,calc(var(--nc-socialbar-h,0px)+env(safe-area-inset-bottom)))] xl:flex-row">
       <div className="flex min-w-0 flex-1 flex-col">
       {/* ------------------------------- toolbar ---------------------------- */}
       <div className="sticky top-header z-40 border-b border-line/80 bg-bg/85 backdrop-blur-xl">
