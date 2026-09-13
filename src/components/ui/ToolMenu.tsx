@@ -3,7 +3,8 @@
 
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useClampToViewport } from '@/lib/useClampToViewport';
+import { createPortal } from 'react-dom';
+import { useFixedPopover } from '@/lib/useFixedPopover';
 import { cn } from '@/lib/cn';
 
 export interface ToolMenuItem {
@@ -37,13 +38,17 @@ interface ToolMenuProps {
 export function ToolMenu({ id, label, icon: Icon, items, align = 'left', engaged = false }: ToolMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const panelRef = useClampToViewport<HTMLDivElement>(open);
+  const { triggerRef, panelRef, style: anchorStyle } = useFixedPopover<HTMLButtonElement, HTMLDivElement>(
+    open,
+    align === 'right' ? 'end' : 'start',
+  );
   const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
     function onPointerDown(event: MouseEvent | TouchEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const node = event.target as Node;
+      if (!rootRef.current?.contains(node) && !panelRef.current?.contains(node)) setOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
@@ -56,11 +61,12 @@ export function ToolMenu({ id, label, icon: Icon, items, align = 'left', engaged
       document.removeEventListener('touchstart', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [open, panelRef]);
 
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         data-menu-trigger={id}
         aria-haspopup="menu"
@@ -79,15 +85,15 @@ export function ToolMenu({ id, label, icon: Icon, items, align = 'left', engaged
         <ChevronDown className={cn('size-3 transition-transform duration-200', open && 'rotate-180')} aria-hidden />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           id={panelId}
           ref={panelRef}
           role="menu"
           aria-label={label}
+          style={anchorStyle}
           className={cn(
-            'nc-clip-sm absolute top-9 z-50 min-w-48 animate-fade-up [animation-duration:200ms] border border-line bg-surface/95 py-1 shadow-neon-sm backdrop-blur-xl',
-            align === 'right' ? 'right-0' : 'left-0',
+            'nc-clip-sm z-overlay min-w-48 animate-fade-up [animation-duration:200ms] border border-line bg-surface/95 py-1 shadow-neon-sm backdrop-blur-xl',
           )}
         >
           {items.map((item) => {
@@ -120,7 +126,8 @@ export function ToolMenu({ id, label, icon: Icon, items, align = 'left', engaged
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

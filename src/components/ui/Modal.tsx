@@ -89,7 +89,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
       >
         <header className="flex items-start gap-3 border-b border-line/70 px-4 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-sm font-extrabold uppercase tracking-cyber text-fg">{title}</h2>
+            <h2 className="min-w-0 font-display text-sm font-extrabold uppercase tracking-cyber text-fg [overflow-wrap:anywhere]">{title}</h2>
             {subtitle && <p className="mt-0.5 font-mono text-2xs text-muted">{subtitle}</p>}
           </div>
           <button

@@ -1,11 +1,11 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 'use client';
 
-import { useId, useRef, useState, type ReactNode } from 'react';
-import { useClampToViewport } from '@/lib/useClampToViewport';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { useFixedPopover } from '@/lib/useFixedPopover';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { useDismiss } from '@/lib/hooks/useDismiss';
 
 export interface DropdownItem {
   id: string;
@@ -49,10 +49,29 @@ export function Dropdown({
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const rootRef = useDismiss<HTMLDivElement>(open, () => setOpen(false));
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useClampToViewport<HTMLUListElement>(open);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { triggerRef, panelRef, style: anchorStyle } = useFixedPopover<HTMLButtonElement, HTMLUListElement>(open, align);
   const listId = useId();
+
+  // Panel lebt im Portal → Outside-Click muss Wrapper UND Panel kennen.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent | TouchEvent) => {
+      const node = event.target as Node;
+      if (!rootRef.current?.contains(node) && !panelRef.current?.contains(node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, panelRef]);
 
   function toggle() {
     setOpen((prev) => {
@@ -134,7 +153,7 @@ export function Dropdown({
         </span>
       </button>
 
-      {open && (
+      {open && createPortal(
         <ul
           id={listId}
           ref={panelRef}
@@ -142,12 +161,12 @@ export function Dropdown({
           aria-label={menuLabel ?? triggerLabel}
           tabIndex={-1}
           onKeyDown={onListKeyDown}
+          style={anchorStyle}
           className={cn(
-            'nc-clip absolute top-[calc(100%+6px)] z-overlay max-h-80 overflow-y-auto',
+            'nc-clip z-overlay max-h-80 overflow-y-auto',
             'border border-line bg-elevated/95 p-1 shadow-[0_24px_60px_-20px_rgb(0_0_0/0.95)] backdrop-blur-md',
             'animate-fade-up nc-no-scrollbar',
             widthClass,
-            align === 'end' ? 'right-0' : 'left-0',
           )}
         >
           {items.map((item, index) => (
@@ -172,7 +191,7 @@ export function Dropdown({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-medium">{item.label}</span>
                   {item.hint && (
-                    <span className="block truncate font-mono text-2xs text-faint">{item.hint}</span>
+                    <span className="block font-mono text-2xs leading-relaxed text-faint [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">{item.hint}</span>
                   )}
                 </span>
                 {item.badge && (
@@ -182,7 +201,8 @@ export function Dropdown({
               </button>
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   );

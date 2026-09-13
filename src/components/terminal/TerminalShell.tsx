@@ -2,6 +2,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useFixedPopover } from '@/lib/useFixedPopover';
 import {
   Activity,
   Anchor,
@@ -196,6 +198,8 @@ export function TerminalShell() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [patternsOpen, setPatternsOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const { triggerRef: customTriggerRef, panelRef: customPanelRef, style: customAnchorStyle } =
+    useFixedPopover<HTMLSpanElement, HTMLSpanElement>(customOpen, 'start');
   const scriptLabOpen = useChartStore((state) => state.scriptLabOpen);
   const setScriptLabOpen = useChartStore((state) => state.setScriptLabOpen);
   const [customDraft, setCustomDraft] = useState(10);
@@ -350,12 +354,12 @@ export function TerminalShell() {
                 {value}
               </Chip>
             ))}
-            <span className="relative shrink-0">
+            <span ref={customTriggerRef} className="relative shrink-0">
               <Chip active={hydrated && customAgg != null} onClick={() => setCustomOpen((value) => !value)}>
                 {customAgg != null ? `${customAgg}m` : t('custom.label')}
               </Chip>
-              {customOpen && (
-                <span className="absolute left-0 top-8 z-40 flex items-center gap-1 border border-line bg-surface p-2 shadow-neon-sm">
+              {customOpen && createPortal(
+                <span ref={customPanelRef} style={customAnchorStyle} className="z-overlay flex items-center gap-1 border border-line bg-surface p-2 shadow-neon-sm">
                   <input
                     type="number"
                     min={2}
@@ -385,7 +389,8 @@ export function TerminalShell() {
                   >
                     {t('custom.clear')}
                   </button>
-                </span>
+                </span>,
+                document.body,
               )}
             </span>
           </div>

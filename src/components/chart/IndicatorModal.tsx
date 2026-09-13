@@ -255,7 +255,7 @@ function LibrarySection({
               <span className="block truncate font-display text-xs font-bold text-fg">
                 {t(`indicators.${kind}.name`)}
               </span>
-              <span className="block truncate font-mono text-micro-10 text-muted">{t(`indicators.${kind}.short`)}</span>
+              <span className="block overflow-hidden font-mono text-micro-10 leading-relaxed text-muted [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">{t(`indicators.${kind}.short`)}</span>
             </span>
           </button>
         ))}
