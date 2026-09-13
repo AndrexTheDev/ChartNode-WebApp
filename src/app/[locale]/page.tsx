@@ -33,8 +33,12 @@ export default async function LandingPage({ params }: PageProps) {
   const locale = assertLocale((await params).locale);
   setRequestLocale(locale);
 
-  const tf = await getTranslations({ locale, namespace: 'features' });
-  const featureList = (tf.raw('items') as { title: string }[]).map((item) => item.title);
+  // featureList = exakt was die Landing sichtbar verspricht (9 bezahlte
+  // Konkurrenz-Features + 9 NodeChart-Uniques) → LD und Seite deckungsgleich
+  const tb = await getTranslations({ locale, namespace: 'benefit' });
+  const paid = tb.raw('paid') as { title: string }[];
+  const unique = tb.raw('unique') as { title: string }[];
+  const featureList = [...paid, ...unique].map((item) => item.title);
 
   return (
     <>

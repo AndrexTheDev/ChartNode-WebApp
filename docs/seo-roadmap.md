@@ -4,8 +4,8 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 
 | # | Modul | Inhalt | Status |
 |---|-------|--------|--------|
-| M1 | Routen-Metadaten & Crawl-Direktiven | Title/Description/Canonical/Hreflang/OG/Twitter/Robots konsistent über 5 Locales × 6 Routen; Robots.txt vs. Meta-Robots vs. Sitemap widerspruchsfrei; Social-Bots dürfen Terminal für Cards crawlen; seo-check v1 | ✔ done (Commit folgt) |
-| M2 | Strukturierte Daten (JSON-LD) | WebSite+SearchAction, Organization, BreadcrumbList (help/legal), FAQPage (help), SoftwareApplication-Feature-Refresh | offen |
+| M1 | Routen-Metadaten & Crawl-Direktiven | Title/Description/Canonical/Hreflang/OG/Twitter/Robots konsistent über 5 Locales × 6 Routen; Robots.txt vs. Meta-Robots vs. Sitemap widerspruchsfrei; Social-Bots dürfen Terminal für Cards crawlen; seo-check v1 | ✔ done `76db671` |
+| M2 | Strukturierte Daten (JSON-LD) | **@context/@graph-Fix**, WebSite+SearchAction, Organization überall, BreadcrumbList (help/legal), FAQPage (16 Fragen), DefinedTermSet-Glossar, SoftwareApplication-Refresh | ✔ done `99b75bb` |
 | M3 | Sitemap & Crawl-Budget | lastmod echt (statt Build-Datum), priority-Review, hreflang-Alternates verifizieren, Ping/Cache-Header am Edge | offen |
 | M4 | Landing-Semantik & Content-SEO | H1/H2-Hierarchie, Keyword-Cluster je Locale, internal Anchors, Footer-Keywordlinks, alt/width/height, LCP-Preload | offen |
 | M5 | Help-Center-SEO | Indikator-Doku als crawlbare Abschnitte mit Anchors + Headings, TOC, FAQ-JSON-LD gekoppelt | offen |

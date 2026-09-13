@@ -1,7 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 import type { Locale } from '@/i18n/routing';
 import { absoluteUrl } from './seo';
-import { CONTACT, SITE_NAME, SITE_URL, TAGLINE } from './constants';
+import { APP_VERSION, CONTACT, SITE_NAME, SITE_URL, TAGLINE } from './constants';
 
 /**
  * schema.org builders – every object is pure data so pages can compose them
@@ -31,6 +31,15 @@ export function websiteLd(locale: Locale) {
     description: TAGLINE,
     inLanguage: locale,
     publisher: { '@id': `${SITE_URL}/#organization` },
+    // Sitelinks-Searchbox: die Terminal-Suche versteht Ticker-Symbole
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/${locale}/terminal?ticker={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
   };
 }
 
@@ -47,6 +56,8 @@ export function softwareApplicationLd(locale: Locale, features: string[]) {
     inLanguage: locale,
     isAccessibleForFree: true,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    softwareVersion: APP_VERSION,
+    screenshot: `${SITE_URL}/og.png`,
     featureList: features,
     publisher: { '@id': `${SITE_URL}/#organization` },
   };

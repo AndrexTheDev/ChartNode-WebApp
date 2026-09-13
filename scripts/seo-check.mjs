@@ -138,14 +138,62 @@ for (const locale of LOCALES) {
 
     // JSON-LD parse-bar
     const ldBlocks = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-    if (route.jsonld) {
-      let ok = ldBlocks.length > 0;
+    let ldOk = true;
+    const ldPayloads = [];
+    for (const block of ldBlocks) {
       try {
-        for (const block of ldBlocks) JSON.parse(block);
+        ldPayloads.push(JSON.parse(block));
       } catch {
-        ok = false;
+        ldOk = false;
       }
-      check(`${tag}: JSON-LD vorhanden & parse-bar`, ok, `n=${ldBlocks.length}`);
+    }
+    check(`${tag}: JSON-LD parse-bar`, ldOk && (route.jsonld || ldPayloads.length > 0), `n=${ldPayloads.length}`);
+    // M2: ohne @context aufgelöst keine Suchmaschine die Entitäten
+    const ctxOk = ldPayloads.every((p) => p['@context'] === 'https://schema.org');
+    check(`${tag}: jeder LD-Block trägt @context schema.org`, ctxOk);
+    const graph = ldPayloads.flatMap((p) => (Array.isArray(p['@graph']) ? p['@graph'] : [p]));
+    const types = graph.map((g) => g['@type']);
+
+    if (route.name !== 'terminal') {
+      // M2: Site-Entitäten auf jeder indexierten Route
+      const org = graph.find((g) => g['@type'] === 'Organization');
+      const site = graph.find((g) => g['@type'] === 'WebSite');
+      check(`${tag}: Organization + WebSite im Graph`, Boolean(org && site), JSON.stringify(types));
+      const action = site?.potentialAction;
+      check(
+        `${tag}: WebSite-SearchAction mit query-input`,
+        action?.['@type'] === 'SearchAction' &&
+          String(action?.target?.urlTemplate ?? '').includes('{search_term_string}') &&
+          String(action?.['query-input'] ?? '').includes('required'),
+        JSON.stringify(action ?? null),
+      );
+    }
+    if (route.name === 'landing') {
+      const app = graph.find((g) => g['@type'] === 'SoftwareApplication');
+      check(
+        `${tag}: SoftwareApplication featureList ≥12 + Offer 0 + Version`,
+        (app?.featureList ?? []).length >= 12 && app?.offers?.price === '0' && typeof app?.softwareVersion === 'string',
+        `features=${(app?.featureList ?? []).length}`,
+      );
+    }
+    if (route.name === 'help') {
+      const faq = graph.find((g) => g['@type'] === 'FAQPage');
+      const qs = faq?.mainEntity ?? [];
+      const answersOk = qs.every((q) => (q?.acceptedAnswer?.text ?? '').length > 20);
+      check(`${tag}: FAQPage ≥10 Fragen mit substanziellen Antworten`, qs.length >= 10 && answersOk, `n=${qs.length}`);
+      const glossary = graph.find((g) => g['@type'] === 'DefinedTermSet');
+      check(`${tag}: DefinedTermSet ≥20 Terme`, (glossary?.hasDefinedTerm ?? []).length >= 20, `n=${(glossary?.hasDefinedTerm ?? []).length}`);
+      const bc = graph.find((g) => g['@type'] === 'BreadcrumbList');
+      check(`${tag}: BreadcrumbList Positionen [1,2]`, JSON.stringify((bc?.itemListElement ?? []).map((i) => i.position)) === '[1,2]');
+    }
+    if (route.name.startsWith('legal')) {
+      const bc = graph.find((g) => g['@type'] === 'BreadcrumbList');
+      const items = bc?.itemListElement ?? [];
+      check(
+        `${tag}: BreadcrumbList [1,2], letztes Item = Canonical`,
+        JSON.stringify(items.map((i) => i.position)) === '[1,2]' && items[1]?.item === canonical,
+        JSON.stringify(items.map((i) => i.item)),
+      );
     }
   }
 
