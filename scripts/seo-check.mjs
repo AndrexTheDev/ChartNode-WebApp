@@ -220,6 +220,28 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
+/* ---------------------------------- M4 ---------------------------------- */
+// Landing-Semantik: H1-Keyword, Heading-Hierarchie, interne Links, Anker, imgs
+for (const locale of LOCALES) {
+  const html = await (await fetch(`${BASE}/${locale}`)).text();
+  const tag = `${locale}/ [landing-M4]`;
+  const h1 = decode(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  check(`${tag}: H1 trägt Keyword-Cluster (TradingView + CEX)`, /TradingView/i.test(h1) && /CEX/i.test(h1), h1);
+  const levels = [...html.matchAll(/<h([1-6])[\s>]/gi)].map((m) => Number(m[1]));
+  let skip = false;
+  for (let i = 1; i < levels.length; i += 1) if (levels[i] - levels[i - 1] > 1) skip = true;
+  check(`${tag}: Heading-Hierarchie ohne Level-Skip`, levels[0] === 1 && !skip && levels.length >= 4, JSON.stringify(levels));
+  const termLinks = (html.match(/href="[^"]*\/terminal[^"]*"/g) ?? []).length;
+  const helpLinks = (html.match(/href="[^"]*\/help[^"]*"/g) ?? []).length;
+  const anchorLinks = (html.match(/href="[^"]*#features"/g) ?? []).length;
+  const anchorTarget = (html.match(/id="features"/g) ?? []).length;
+  check(`${tag}: interne Links (Terminal ≥1, Help ≥1, #features ≥1 + Ziel)`, termLinks >= 1 && helpLinks >= 1 && anchorLinks >= 1 && anchorTarget === 1, JSON.stringify({ termLinks, helpLinks, anchorLinks, anchorTarget }));
+  const badImgs = [...html.matchAll(/<img\b[^>]*>/gi)].filter((m) => !/alt="/.test(m[0]) || !/width="/.test(m[0]) || !/height="/.test(m[0]));
+  check(`${tag}: alle <img> mit alt+width+height`, badImgs.length === 0, badImgs.map((m) => m[0]).join('|').slice(0, 100));
+  const fontPreloads = (html.match(/<link[^>]*rel="preload"[^>]*as="font"[^>]*>/g) ?? []).length;
+  check(`${tag}: LCP-Fonts vorgeladen (preload as=font)`, fontPreloads >= 1, `n=${fontPreloads}`);
+}
+
 /* ---------------------------------- M3 ---------------------------------- */
 // Sitemap: gepflegte lastmod-Werte statt Build-Zeitstempel
 const sm = sitemapXml;

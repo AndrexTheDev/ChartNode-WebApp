@@ -42,7 +42,7 @@
   "hero": {
     "badge": "Без paywall · Без аккаунта · Реклама и донаты держат его живым",
     "titleLine1": "Decode the Market.",
-    "titleLine2": "Бесплатно, быстро, децентрализованно.",
+    "titleLine2": "Бесплатная альтернатива TradingView для CEX и DEX",
     "subtitle": "NodeChart – альтернатива TradingView, работающая целиком в твоём браузере. Единые свечи для CEX и DEX, multi-pane layouts и live-ленты – терминал тянет один независимый dev, на ненавязчивой рекламе и чаевых, никогда на paywall.",
     "ctaPrimary": "Запустить терминал",
     "ctaSecondary": "Смотреть возможности",

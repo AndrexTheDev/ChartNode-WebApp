@@ -7,7 +7,7 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 | M1 | Routen-Metadaten & Crawl-Direktiven | Title/Description/Canonical/Hreflang/OG/Twitter/Robots konsistent über 5 Locales × 6 Routen; Robots.txt vs. Meta-Robots vs. Sitemap widerspruchsfrei; Social-Bots dürfen Terminal für Cards crawlen; seo-check v1 | ✔ done `76db671` |
 | M2 | Strukturierte Daten (JSON-LD) | **@context/@graph-Fix**, WebSite+SearchAction, Organization überall, BreadcrumbList (help/legal), FAQPage (16 Fragen), DefinedTermSet-Glossar, SoftwareApplication-Refresh | ✔ done `99b75bb` |
 | M3 | Sitemap & Crawl-Budget | gepflegte lastmod-Quelle `lib/sitemap-meta.ts`, Priority-Review (help 0.8, legal 0.2), Edge-Cache-Header (sitemap/robots 1h, og/icon 7d, HTML s-maxage 300), Duplikat-Checks (Parameter/Case/Slash) | ✔ done |
-| M4 | Landing-Semantik & Content-SEO | H1/H2-Hierarchie, Keyword-Cluster je Locale, internal Anchors, Footer-Keywordlinks, alt/width/height, LCP-Preload | offen |
+| M4 | Landing-Semantik & Content-SEO | H1-Keyword-Cluster ×5 Locales, Heading-Hierarchie ohne Skip (NeonPanel-titleTag), interne Links/Anker verifiziert, img-Alt/Size-Guard, Font-Preload-Check | ✔ done |
 | M5 | Help-Center-SEO | Indikator-Doku als crawlbare Abschnitte mit Anchors + Headings, TOC, FAQ-JSON-LD gekoppelt | offen |
 | M6 | Core Web Vitals | Fonts subset/preload, Script-Strategien, Bildformate, Cloudflare-Cache-Regeln (_headers/opennext) | offen |
 | M7 | Social Cards & Sharing | OG pro Locale-Text, Twitter-Card-Validator-Check, Telegram/WhatsApp-Preview, /api/og-Parameter härten | offen |

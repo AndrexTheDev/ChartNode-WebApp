@@ -42,7 +42,7 @@
   "hero": {
     "badge": "无付费墙 · 无需账户 · 广告与捐赠维持运行",
     "titleLine1": "Decode the Market.",
-    "titleLine2": "免费、快速、去中心化。",
+    "titleLine2": "免费的 TradingView 替代品,支持 CEX 与 DEX",
     "subtitle": "NodeChart 是完全运行在浏览器中的 TradingView 替代品。统一 CEX/DEX K线、多窗格布局与实时行情——由一名独立 dev 维持：靠克制的广告与打赏，绝不靠付费墙。",
     "ctaPrimary": "启动终端",
     "ctaSecondary": "查看功能",

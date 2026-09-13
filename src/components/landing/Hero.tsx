@@ -68,6 +68,7 @@ export async function Hero({ locale }: HeroProps) {
 
       {/* ---------------------------- terminal ---------------------------- */}
       <NeonPanel
+        titleTag="p"
         className="relative shadow-panel"
         glow="lg"
         scan

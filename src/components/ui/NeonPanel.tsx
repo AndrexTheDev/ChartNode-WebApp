@@ -8,6 +8,12 @@ interface NeonPanelProps {
   bodyClassName?: string;
   /** Optional terminal-style title bar. */
   title?: ReactNode;
+  /**
+   * Semantisches Level der Titelzeile: Panels in Inhalts-Sektionen sind
+   * Überschriften (h3 unter einem h2), dekorative Panels (z. B. Hero-Demo)
+   * dürfen die Heading-Hierarchie nicht berühren → 'p'.
+   */
+  titleTag?: 'h2' | 'h3' | 'p';
   actions?: ReactNode;
   /** Cut corners (default) vs. plain rectangle. */
   clipped?: boolean;
@@ -39,7 +45,8 @@ export function NeonPanel({
   glow = 'sm',
   as: Tag = 'div',
   id,
-}: NeonPanelProps) {
+ titleTag,}: NeonPanelProps) {
+  const TitleTag = titleTag ?? 'h3';
   return (
     <Tag
       id={id}
@@ -64,7 +71,7 @@ export function NeonPanel({
               <span className="size-1.5 rounded-full bg-warning/70" />
               <span className="size-1.5 rounded-full bg-primary/70" />
             </span>
-            <h3 className="truncate font-mono text-2xs uppercase tracking-cyber text-muted">{title}</h3>
+            <TitleTag className="truncate font-mono text-2xs uppercase tracking-cyber text-muted">{title}</TitleTag>
           </div>
           {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
         </header>
