@@ -11,7 +11,7 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 | M5 | Help-Center-SEO | Kategorien-Sektionen mit h2 + Anker-ids (`#sec-indicators` …), H3-Akkordeon (ARIA), server-gerenderte TOC mit Zählern, Deep-Links (`#ind-RSI` öffnet + scrollt), Hash-Sharing, FAQ-LD mit Anker-URLs | ✔ done |
 | M6 | Core Web Vitals | Font-Budget 32→18 woff2 (latin-ext raus, ungenutzte Weights raus), cwv-check.mjs (LCP/CLS/TBT desktop+mobile, Preload-/Third-Party-Budget), M3-Cache-Header greifen | ✔ done |
 | M7 | Social Cards & Sharing | OG-SVG-Copy ×5 Locales (locale war tot), Locale-Whitelist (Prototype-Guard), Bot-Fetch-Checks (Telegram/Twitter/FB), Card-Image=//api/og mit Ticker, Share-URL trägt ticker+price | ✔ done |
-| M8 | Technische Hygiene | 404/Redirect-Matrix, Trailing-Slash/Case-Duplikate, www-vs-apex Canonical, Locale-Detect vs. Crawler | offen |
+| M8 | Technische Hygiene | echte 404 statt Soft-404 (Legal-Fallback entfernt), 404/Redirect-Matrix asserted, Locale-Detect vs. Crawler (Vary/Cache), OG/Card-URLs absolut ×30, CF-Edge-Regeln dokumentiert | ✔ done |
 | M9 | SEO-Regressionssuite | seo-check final (alle Module asserten), in CI-artigen Ablauf neben fit-check/browser-check | offen |
 
 ## M1-Details (implementiert)
@@ -20,3 +20,11 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 - `robots.txt`: Terminal-Disallow ENTFERNT (sonst sieht Googlebot das noindex-Meta nie + Social-Bots kämen nicht an die Card); explizite Allow-Regel für Twitterbot/facebookexternalhit/TelegramBot/LinkedInBot/Discordbot/WhatsApp/Slackbot.
 - help/legal: Twitter-Card + Robots-Default bzw. Description-Kappung.
 - `scripts/seo-check.mjs`: 5 Locales × 6 Routen asserten Title-Länge/Einzigartigkeit, Description-Länge, Canonical exakt, 6 Hreflang-Links, OG-Set, Twitter-Card, Robots-Meta je Route, `html[lang]`, H1 genau 1x auf Landing/Help, JSON-LD parse-bar.
+
+## M8 – Cloudflare-Edge-Regeln (im CF-Dashboard, $0)
+1. **Redirect Rule:** `http.host eq "www.nodechart.cc"` → 301 auf `https://nodechart.cc/...` (apex = Canonical, kein Split-Ranking).
+2. **Always Use HTTPS** an (Edge-Zertifikat universell).
+3. **Brotli + HTTP/2/3:** Standard an lassen (Compression-Tab).
+4. **Early Hints (103):** an – CF nutzt die Link-Preload-Header aus M3/M6 für Font-Preloads vor dem HTML.
+5. **Cache-Level:** `Standard`; HTML bleibt via `s-maxage=300` (M3) 5 min am Edge, Assets immutable.
+6. **Hot-Link-Protection für /og.png:** AUS lassen – Social-Plattformen müssen die Card laden dürfen.

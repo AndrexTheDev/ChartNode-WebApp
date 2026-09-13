@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import { Lock, Mail, Scale, ShieldAlert, type LucideIcon } from 'lucide-react';
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 
 import { LegalDocument } from '@/components/legal/LegalDocument';
 import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
@@ -28,7 +29,9 @@ interface PageProps {
 }
 
 function assertDoc(doc: string): Doc {
-  if (!(DOCS as readonly string[]).includes(doc)) return 'terms';
+  // Unbekannte Docs = echte 404 (Status ist das Noindex-Signal). Ein 200er
+  // mit Terms-Canonical wäre eine Soft-404 und verwässert den Terms-URL.
+  if (!(DOCS as readonly string[]).includes(doc)) notFound();
   return doc as Doc;
 }
 

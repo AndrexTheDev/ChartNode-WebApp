@@ -220,6 +220,33 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
+/* ---------------------------------- M8 ---------------------------------- */
+// Tech-Hygiene: 404-Matrix, Redirect-Verhalten, absolute Card-/OG-URLs
+const finalStatus = async (path, headers = {}) => {
+  const res = await fetch(`${BASE}${path}`, { headers, redirect: 'follow' });
+  return res.status;
+};
+check('M8: unbekannter Locale-Pfad /xx endet 404', (await finalStatus('/xx')) === 404);
+check('M8: unbekannte Seite /de/nope = 404', (await finalStatus('/de/nope')) === 404);
+check('M8: unbekanntes Legal-Doc = 404 (keine Soft-404)', (await finalStatus('/de/legal/nope')) === 404);
+const rootNoAl = await fetch(`${BASE}/`, { redirect: 'manual' });
+const rootDe = await fetch(`${BASE}/`, { redirect: 'manual', headers: { 'accept-language': 'de-DE,de;q=0.9' } });
+check('M8: / ohne Accept-Language → defaultLocale en', rootNoAl.status === 307 && (rootNoAl.headers.get('location') ?? '').endsWith('/en'), rootNoAl.headers.get('location'));
+check('M8: / mit Accept-Language de → /de', rootDe.status === 307 && (rootDe.headers.get('location') ?? '').endsWith('/de'), rootDe.headers.get('location'));
+const vary = (rootNoAl.headers.get('vary') ?? '') + (rootNoAl.headers.get('cache-control') ?? '');
+check('M8: Locale-Redirect nicht edge-cachebar ohne Vary', /accept-language/i.test(vary) || /no-store|no-cache|max-age=0/.test(vary), vary);
+for (const locale of LOCALES) {
+  for (const route of ROUTES) {
+    const html = await (await fetch(`${BASE}/${locale}${route.path}`)).text();
+    const urls = [
+      html.match(/<meta property="og:image" content="([^"]+)"/)?.[1],
+      html.match(/<meta property="og:url" content="([^"]+)"/)?.[1],
+      html.match(/<meta (?:name|property)="twitter:image" content="([^"]+)"/)?.[1],
+    ].filter(Boolean);
+    check(`M8 ${locale}${route.path || '/'}: OG/Card-URLs absolut (https)`, urls.every((u) => u.startsWith('https://')), urls.join('|'));
+  }
+}
+
 /* ---------------------------------- M7 ---------------------------------- */
 // Social Cards: lokalisierte OG-SVGs, Injection-Guards, Bot-Fetch, Card-Images
 const og = async (qs) => (await fetch(`${BASE}/api/og${qs}`)).text();
