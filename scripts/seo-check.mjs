@@ -220,6 +220,21 @@ const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
 check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
 check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
 
+/* ---------------------------------- M6 ---------------------------------- */
+// Font-Budget: gebündelte woff2-Dateien im Build (Subsets × Weight-Schnitt)
+import { readdirSync } from 'node:fs';
+try {
+  const woff2 = readdirSync(new URL('../.next/static/media', import.meta.url)).filter((f) => f.endsWith('.woff2'));
+  check('M6: woff2-Files im Build ≤ 20 (Subset/Weight-Schnitt)', woff2.length <= 20, `n=${woff2.length}`);
+} catch {
+  check('M6: woff2-Files im Build ≤ 20 (Subset/Weight-Schnitt)', false, '.next/static/media nicht gefunden – build nötig');
+}
+for (const locale of ['de', 'ru']) {
+  const html = await (await fetch(`${BASE}/${locale}`)).text();
+  const fonts = (html.match(/<link[^>]*rel="preload"[^>]*as="font"[^>]*>/g) ?? []).length;
+  check(`M6 ${locale}: Font-Preload-Hints ≤ 10`, fonts <= 10, `n=${fonts}`);
+}
+
 /* ---------------------------------- M5 ---------------------------------- */
 // Help-Center: Sektionen mit Headings, Anker, TOC, SSR-Inhalt, FAQ-LD-Urls
 for (const locale of LOCALES) {

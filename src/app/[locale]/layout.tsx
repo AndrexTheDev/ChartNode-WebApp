@@ -31,28 +31,30 @@ import '@/styles/globals.css';
 
 const brand = Orbitron({
   subsets: ['latin'],
-  weight: ['700', '900'],
+  weight: ['900'],
   display: 'swap',
   variable: '--font-brand',
 });
 
 const display = Exo_2({
-  subsets: ['latin', 'latin-ext', 'cyrillic'],
-  weight: ['600', '700', '800'],
+  // latin-ext: keine unserer fünf Locales braucht es – jedes Subset ist eine
+  // eigene woff2 + ein Preload-Hint mehr (CWV-Budget)
+  subsets: ['latin', 'cyrillic'],
+  weight: ['700', '800', '900'],
   display: 'swap',
   variable: '--font-display',
 });
 
 const sans = Manrope({
-  subsets: ['latin', 'latin-ext', 'cyrillic'],
-  weight: ['400', '500', '600', '700'],
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '600', '700'],
   display: 'swap',
   variable: '--font-sans',
 });
 
 const mono = JetBrains_Mono({
-  subsets: ['latin', 'latin-ext', 'cyrillic'],
-  weight: ['400', '500', '700'],
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '700'],
   display: 'swap',
   variable: '--font-mono',
 });

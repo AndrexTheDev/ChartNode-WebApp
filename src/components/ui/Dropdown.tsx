@@ -196,7 +196,7 @@ export function Dropdown({
               >
                 {item.icon && <span className="shrink-0 text-primary">{item.icon}</span>}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-medium">{item.label}</span>
+                  <span className="block truncate text-xs font-normal">{item.label}</span>
                   {item.hint && (
                     <span className="block font-mono text-2xs leading-relaxed text-faint [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">{item.hint}</span>
                   )}

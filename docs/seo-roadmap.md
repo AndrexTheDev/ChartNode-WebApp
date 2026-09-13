@@ -9,7 +9,7 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 | M3 | Sitemap & Crawl-Budget | gepflegte lastmod-Quelle `lib/sitemap-meta.ts`, Priority-Review (help 0.8, legal 0.2), Edge-Cache-Header (sitemap/robots 1h, og/icon 7d, HTML s-maxage 300), Duplikat-Checks (Parameter/Case/Slash) | ✔ done |
 | M4 | Landing-Semantik & Content-SEO | H1-Keyword-Cluster ×5 Locales, Heading-Hierarchie ohne Skip (NeonPanel-titleTag), interne Links/Anker verifiziert, img-Alt/Size-Guard, Font-Preload-Check | ✔ done |
 | M5 | Help-Center-SEO | Kategorien-Sektionen mit h2 + Anker-ids (`#sec-indicators` …), H3-Akkordeon (ARIA), server-gerenderte TOC mit Zählern, Deep-Links (`#ind-RSI` öffnet + scrollt), Hash-Sharing, FAQ-LD mit Anker-URLs | ✔ done |
-| M6 | Core Web Vitals | Fonts subset/preload, Script-Strategien, Bildformate, Cloudflare-Cache-Regeln (_headers/opennext) | offen |
+| M6 | Core Web Vitals | Font-Budget 32→18 woff2 (latin-ext raus, ungenutzte Weights raus), cwv-check.mjs (LCP/CLS/TBT desktop+mobile, Preload-/Third-Party-Budget), M3-Cache-Header greifen | ✔ done |
 | M7 | Social Cards & Sharing | OG pro Locale-Text, Twitter-Card-Validator-Check, Telegram/WhatsApp-Preview, /api/og-Parameter härten | offen |
 | M8 | Technische Hygiene | 404/Redirect-Matrix, Trailing-Slash/Case-Duplikate, www-vs-apex Canonical, Locale-Detect vs. Crawler | offen |
 | M9 | SEO-Regressionssuite | seo-check final (alle Module asserten), in CI-artigen Ablauf neben fit-check/browser-check | offen |
