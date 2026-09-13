@@ -31,7 +31,10 @@
     "qa:i18n": "node scripts/qa-i18n-layout.mjs",
     "qa:monetization": "node scripts/qa-monetization.mjs",
     "qa:release": "node scripts/qa-release.mjs",
-    "qa:modules": "node scripts/qa-modules.mjs"
+    "qa:modules": "node scripts/qa-modules.mjs",
+    "qa:features": "node scripts/qa-features.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run check:i18n && node scripts/seo-check.mjs && node scripts/cwv-check.mjs && node scripts/fit-check.mjs && npm run qa:features && node scripts/browser-check.mjs",
+    "verify:matrix": "npm run verify && node scripts/gui-audit.mjs"
   },
   "dependencies": {
     "class-variance-authority": "0.7.1",

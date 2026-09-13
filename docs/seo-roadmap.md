@@ -12,7 +12,7 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 | M6 | Core Web Vitals | Font-Budget 32→18 woff2 (latin-ext raus, ungenutzte Weights raus), cwv-check.mjs (LCP/CLS/TBT desktop+mobile, Preload-/Third-Party-Budget), M3-Cache-Header greifen | ✔ done |
 | M7 | Social Cards & Sharing | OG-SVG-Copy ×5 Locales (locale war tot), Locale-Whitelist (Prototype-Guard), Bot-Fetch-Checks (Telegram/Twitter/FB), Card-Image=//api/og mit Ticker, Share-URL trägt ticker+price | ✔ done |
 | M8 | Technische Hygiene | echte 404 statt Soft-404 (Legal-Fallback entfernt), 404/Redirect-Matrix asserted, Locale-Detect vs. Crawler (Vary/Cache), OG/Card-URLs absolut ×30, CF-Edge-Regeln dokumentiert | ✔ done |
-| M9 | SEO-Regressionssuite | seo-check final (alle Module asserten), in CI-artigen Ablauf neben fit-check/browser-check | offen |
+| M9 | SEO-Regressionssuite | `npm run verify` (typecheck → lint → i18n → seo → cwv → fit → qa-features → browser) + `verify:matrix` mit Screenshot-Matrix, Fail-Fast, Deploy-Checkliste | ✔ done |
 
 ## M1-Details (implementiert)
 - `src/lib/seo.ts`: `buildTwitter()` + `metaDescription()` (kappt auf ≤160 Zeichen an Satzgrenze) neu; Seiten nutzen gemeinsame Helper → kein Drift.
@@ -28,3 +28,10 @@ Stand: 2026-09-13 · Reihenfolge fest, jedes Modul wird einzeln implementiert UN
 4. **Early Hints (103):** an – CF nutzt die Link-Preload-Header aus M3/M6 für Font-Preloads vor dem HTML.
 5. **Cache-Level:** `Standard`; HTML bleibt via `s-maxage=300` (M3) 5 min am Edge, Assets immutable.
 6. **Hot-Link-Protection für /og.png:** AUS lassen – Social-Plattformen müssen die Card laden dürfen.
+
+## M9 – Deploy-Checkliste (vor JEDEM `cf:deploy`)
+1. `npm run build` läuft fehlerfrei (statische Pages 38/38).
+2. `npm start` lokal hoch, dann `npm run verify` → alle Suiten grün (Fail-Fast-Reihenfolge: typecheck → lint → i18n → seo-check → cwv-check → fit-check → qa-features → browser-check).
+3. Vor Release mit UI-Änderungen: `npm run verify:matrix` (zusätzlich 110+ Screenshot-Shots, Auto-Befunde 0).
+4. `git status` clean + Commit mit Lizenz-Header-Konvention.
+5. Nach Deploy: Cloudflare-Regeln aus M8 prüfen (www-301, HTTPS, Early Hints) + einmal `curl -I https://nodechart.cc/sitemap.xml` (Cache-Header aus M3).
