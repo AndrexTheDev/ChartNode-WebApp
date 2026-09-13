@@ -62,3 +62,25 @@ export const ROBOTS_DEFAULT: Metadata['robots'] = {
     'max-video-preview': -1,
   },
 };
+
+/** Twitter/X-Card passend zur OpenGraph-Konfiguration. */
+export function buildTwitter(title: string, description: string, image?: string): Metadata['twitter'] {
+  return {
+    card: 'summary_large_image',
+    title,
+    description,
+    images: [image ?? `${SITE_URL}/og.png`],
+  };
+}
+
+/**
+ * Description auf Snippet-Länge kappen (ideal 50–160 Zeichen): an der letzten
+ * Satz-/Kommagrenze vor 160 Zeichen enden, nie mitten im Wort.
+ */
+export function metaDescription(text: string, max = 160): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const boundary = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf(', '));
+  return (boundary > 60 ? cut.slice(0, boundary + 1) : cut).trim();
+}

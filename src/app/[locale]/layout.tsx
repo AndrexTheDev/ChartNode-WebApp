@@ -17,7 +17,7 @@ import { GridBackdrop } from '@/components/ui/GridBackdrop';
 import { routing } from '@/i18n/routing';
 import { assertLocale } from '@/lib/locale-param';
 import { CONTACT, SITE_NAME, SITE_URL } from '@/lib/constants';
-import { buildAlternates, buildOpenGraph, ROBOTS_DEFAULT } from '@/lib/seo';
+import { buildAlternates, buildOpenGraph, ROBOTS_DEFAULT, metaDescription } from '@/lib/seo';
 import { organizationLd, websiteLd } from '@/lib/jsonld';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { LOCALE_META } from '@/lib/locales';
@@ -84,7 +84,7 @@ export async function generateMetadata({
   const locale = assertLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'meta' });
   const title = t('title');
-  const description = t('description');
+  const description = metaDescription(t('description'));
 
   return {
     metadataBase: new URL(SITE_URL),

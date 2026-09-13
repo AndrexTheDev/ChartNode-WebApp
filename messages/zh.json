@@ -21,7 +21,8 @@
     "cycleTheme": "切换主题",
     "openPalette": "打开命令面板",
     "freeForever": "永久免费",
-    "github": "源代码"
+    "github": "源代码",
+    "terminalDescription": "一个终端内查看 CEX 与 DEX 实时图表:无限指标、绘图工具、提醒、链上数据与专业度量,浏览器免费使用。"
   },
   "theme": {
     "label": "主题",

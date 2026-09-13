@@ -6,7 +6,8 @@ import { TerminalShell } from '@/components/terminal/TerminalShell';
 import { WhaleTicker } from '@/components/whales/WhaleTicker';
 import { assertLocale } from '@/lib/locale-param';
 import { sanitizePrice, sanitizeTicker } from '@/lib/og';
-import { buildAlternates } from '@/lib/seo';
+import { buildAlternates, buildOpenGraph, buildTwitter } from '@/lib/seo';
+import { SITE_URL } from '@/lib/constants';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -24,23 +25,20 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const price = sanitizePrice(query.price ?? null);
   const ogUrl = `/api/og?ticker=${encodeURIComponent(ticker)}${price ? `&price=${encodeURIComponent(query.price ?? '')}` : ''}&locale=${locale}`;
   const title = query.ticker ? `$${ticker} · ${t('terminal')}` : t('terminal');
+  const description = t('terminalDescription');
 
   return {
     title,
-    description: t('brandTagline'),
+    description,
     alternates: buildAlternates(locale, '/terminal'),
-    openGraph: {
+    openGraph: buildOpenGraph({
+      locale,
       title,
-      description: t('brandTagline'),
-      type: 'website',
-      images: [{ url: ogUrl, width: 1200, height: 630, alt: title }],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description: t('brandTagline'),
-      images: [ogUrl],
-    },
+      description,
+      path: '/terminal',
+      image: `${SITE_URL}${ogUrl}`,
+    }),
+    twitter: buildTwitter(title, description, `${SITE_URL}${ogUrl}`),
     // Deliberately not indexed until the chart engine (Part 2) ships – we do
     // not want a thin workspace page competing with the landing page.
     robots: { index: false, follow: true },

@@ -21,7 +21,8 @@
     "cycleTheme": "Cambiar tema",
     "openPalette": "Abrir paleta de comandos",
     "freeForever": "Gratis para siempre",
-    "github": "Código"
+    "github": "Código",
+    "terminalDescription": "Gráficos en vivo de CEX y DEX en un terminal: indicadores ilimitados, herramientas de dibujo, alertas, datos on-chain y métricas pro, gratis en el navegador."
   },
   "theme": {
     "label": "Tema",

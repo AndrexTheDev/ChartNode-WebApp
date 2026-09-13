@@ -10,7 +10,7 @@ import { breadcrumbLd } from '@/lib/jsonld';
 import { NeonPanel } from '@/components/ui/NeonPanel';
 import { routing } from '@/i18n/routing';
 import { CONTACT } from '@/lib/constants';
-import { buildAlternates } from '@/lib/seo';
+import { buildAlternates, buildOpenGraph, buildTwitter, metaDescription } from '@/lib/seo';
 import { assertLocale } from '@/lib/locale-param';
 
 /** One route file serves all three legal documents in all five locales. */
@@ -43,11 +43,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const t = await getTranslations({ locale, namespace: `legal.${doc}` });
   const tl = await getTranslations({ locale, namespace: 'legal' });
   const title = t('title');
+  const description = metaDescription(t('intro'));
 
   return {
     title,
-    description: t('intro'),
+    description,
     alternates: buildAlternates(locale, `/legal/${doc}`),
+    openGraph: buildOpenGraph({ locale, title, description, path: `/legal/${doc}` }),
+    twitter: buildTwitter(title, description),
     robots: { index: true, follow: true },
     other: { 'nc:document': doc, 'nc:notice': tl('readingTime') },
   };

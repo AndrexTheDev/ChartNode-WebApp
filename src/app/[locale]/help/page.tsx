@@ -8,7 +8,7 @@ import { JsonLd } from '@/components/seo/JsonLd';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { breadcrumbLd, definedTermSetLd, faqPageLd } from '@/lib/jsonld';
 import { assertLocale } from '@/lib/locale-param';
-import { buildAlternates, buildOpenGraph } from '@/lib/seo';
+import { buildAlternates, buildOpenGraph, buildTwitter, metaDescription, ROBOTS_DEFAULT } from '@/lib/seo';
 
 interface HelpBundle {
   title: string;
@@ -30,13 +30,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const locale = assertLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'help' });
   const title = t('title');
-  const description = t('subtitle');
+  const description = metaDescription(t('subtitle'));
 
   return {
     title,
     description,
     alternates: buildAlternates(locale, '/help'),
     openGraph: buildOpenGraph({ locale, title, description, path: '/help' }),
+    twitter: buildTwitter(title, description),
+    robots: ROBOTS_DEFAULT,
   };
 }
 

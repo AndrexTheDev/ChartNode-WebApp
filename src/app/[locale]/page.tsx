@@ -9,7 +9,7 @@ import { Ticker } from '@/components/landing/Ticker';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { softwareApplicationLd } from '@/lib/jsonld';
 import { assertLocale } from '@/lib/locale-param';
-import { buildAlternates, buildOpenGraph } from '@/lib/seo';
+import { buildAlternates, buildOpenGraph, metaDescription } from '@/lib/seo';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const locale = assertLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'meta' });
   const title = t('title');
-  const description = t('description');
+  const description = metaDescription(t('description'));
 
   return {
     title,

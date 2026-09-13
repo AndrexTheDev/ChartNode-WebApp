@@ -8,8 +8,21 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        // The terminal is a client-side workspace with no crawlable content yet.
-        disallow: ['/*/terminal'],
+        // Terminal carries `robots: index:false` in its metadata – meta beats
+        // robots.txt here, because social bots must still fetch the page to
+        // read its OpenGraph/Twitter card (a disallow would kill share cards).
+      },
+      {
+        userAgent: [
+          'Twitterbot',
+          'facebookexternalhit',
+          'TelegramBot',
+          'LinkedInBot',
+          'Discordbot',
+          'WhatsApp',
+          'Slackbot',
+        ],
+        allow: '/',
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
