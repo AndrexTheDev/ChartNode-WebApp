@@ -16,6 +16,7 @@ kostenlos ($0) auf deinem Cloudflare-Account unter `nodechart.cc`.
 | GitHub-Konto | github.com (kostenlos) | ☐ |
 | Cloudflare-Konto | dash.cloudflare.com (kostenlos) | ☐ |
 | Git installiert | Terminal: `git --version` → sonst git-scm.com | ☐ |
+| Lokaler Grün-Lauf | Terminal im Projekt: `npm ci && npm run build && npm start` (2. Terminal) → `npm run verify` → alles ✔ | ☐ |
 | Dieser Ordner (`nodechart/`) auf deinem Rechner | z. B. als Download/Workspace-Kopie | ☐ |
 
 Ein Terminal öffnen und **in den Projektordner wechseln** (alle Befehle unten
@@ -97,6 +98,31 @@ git push -u origin main
 > `NEXT_PUBLIC_ADSTERRA_POPUNDER_DESKTOP`, `NEXT_PUBLIC_ADSTERRA_POPUNDER_MOBILE`.
 > Nach dem Eintragen: **Deployments → Retry deployment** (Build-Env wirkt erst beim nächsten Build).
 
+## 3b. Variante B (empfohlen): Auto-Deploy per GitHub Actions
+
+Die Dashboard-Variante (§3) baut in Cloudflares CI. Noch einfacher und
+nachvollziehbarer ist der mitgelieferte Workflow `.github/workflows/deploy.yml`:
+**jeder `git push` auf `main` läuft lokal-grün geprüft (verify-Suite) und deployt
+sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
+
+1. Cloudflare → oben rechts **My Profile → API Tokens → Create Token** →
+   Template **„Edit Cloudflare Workers"** → **Continue → Create Token**.
+   Token einmal anzeigen und kopieren.
+2. Cloudflare → beliebige Seite der **Workers & Pages**-Overview: rechts steht die
+   **Account ID** (32 Zeichen) — kopieren.
+3. GitHub → dein Repository → **Settings → Secrets and variables → Actions →
+   New repository secret**, zweimal:
+   | Name | Wert |
+   | --- | --- |
+   | `CLOUDFLARE_API_TOKEN` | Token aus Schritt 1 |
+   | `CLOUDFLARE_ACCOUNT_ID` | ID aus Schritt 2 |
+4. Fertig: ab jetzt deployt jeder Push auf `main` automatisch (Tab **Actions**
+   beobachten, ~6–8 min). Fehlt ein Secret, failt der Job sichtbar — keine
+   halben Deploys.
+
+> Beide Varianten schließen sich nicht aus; wer §3 gebaut hat, kann §3b trotzdem
+> aktivieren — gewonnen hat immer der letzte erfolgreiche Deploy.
+
 ## 4. Eigene Domain `nodechart.cc` verbinden (2 Minuten)
 
 *Nur nötig, wenn die Domain noch nicht live auf der App liegt:*
@@ -108,7 +134,16 @@ git push -u origin main
    (Dauer: Sekunden bis wenige Minuten). Voraussetzung: die Domain liegt in
    deinem Cloudflare-Account (ist sie das nicht: Domain zuerst unter
    **Websites → Add a site** hinzufügen).
-3. Danach gilt: `https://nodechart.cc` = deine App. Jeder neue `git push`
+3. **SEO-Edge-Regeln (einmalig, 2 Minuten):** Cloudflare → Domain `nodechart.cc`
+   → links im Menü:
+   | Regel | Wo | Einstellung |
+   | --- | --- | --- |
+   | www → apex | **Rules → Redirect Rules**: `http.host eq "www.nodechart.cc"` → 301 auf `https://nodechart.cc/…` | verhindert Canonical-Split |
+   | HTTPS erzwingen | **SSL/TLS → Edge Certificates → Always Use HTTPS** | an |
+   | Early Hints | **Speed → Optimization → Early Hints** | an (nutzt unsere Preload-Header) |
+   | Brotli | **Speed → Optimization → Content Optimization → Brotli** | an |
+   | Hotlink-Protection | **Scrapes/Hotlinks** | für `/og.png` AUS (Social-Cards!) |
+4. Danach gilt: `https://nodechart.cc` = deine App. Jeder neue `git push`
    aktualisiert sie automatisch in ~4 Minuten. **Das war's — du bist live.** 🎉
 
 ## 5. Live-Checkliste nach dem Deploy (1 Minute)
@@ -118,7 +153,9 @@ git push -u origin main
 | `https://nodechart.cc/de/terminal` | Chart mit Live-Candles, Wasserzeichen `www.NodeChart.cc` |
 | Sprache oben rechts wechseln (5×) | de/en/es/ru/zh vollständig übersetzt |
 | `…/de/terminal?adwall=1` | Spenden-Wall erscheint (Beweis: Monetization lebt) |
-| `https://nodechart.cc/sitemap.xml` | 36+ URLs, 5 Sprachen |
+| `https://nodechart.cc/sitemap.xml` | 25 URLs (5 Routen × 5 Sprachen), `Cache-Control` mit `s-maxage=3600` |
+| `https://nodechart.cc/de/terminal?ticker=SOL` | Social-Card-Vorschau (Telegram/Web) zeigt `$SOL`-Karte in Link-Sprache |
+| `https://nodechart.cc/xx` und `/de/legal/nope` | 404 (keine Soft-404s) |
 | Browser-Konsole (F12) | 0 Fehler, 0 Warnungen |
 
 ## 6. Troubleshooting (falls etwas zickt)

@@ -1,0 +1,47 @@
+# © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
+# Auto-Deploy: jeder Push auf main → Cloudflare Workers (Free Tier, $0).
+# Benötigte Repository-Secrets (siehe VEROEFFENTLICHEN.md §3b):
+#   CLOUDFLARE_API_TOKEN  (Template "Edit Cloudflare Workers")
+#   CLOUDFLARE_ACCOUNT_ID (Dashboard → rechts auf der Overview-Seite)
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Guard-Suite (SEO/CWV/Fit/QA) – Deploy nur grün
+        run: |
+          npm run build
+          (npm start -- -H 127.0.0.1 -p 3000 &) && sleep 4 && npm run verify
+          kill %1 || true
+
+      - name: OpenNext Cloudflare build
+        run: npm run cf:build
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
