@@ -1574,5 +1574,62 @@
     "clockNowNo": "The current hour is statistically unremarkable – no seasonality edge.",
     "clockLegend": "Green = positive, red = negative average return of the next 4 candles; intensity = t-value, faded = not significant. Computed only from your loaded candles.",
     "clockNeed": "Not enough candles loaded yet."
+  },
+  "benefit": {
+    "title": "Your edge. Not our marketing.",
+    "sub": "Everything that costs a subscription elsewhere — plus tools nobody else has. Short and sharp.",
+    "paidTitle": "Free here · paid elsewhere",
+    "uniqueTitle": "NodeChart only",
+    "free": "included",
+    "support": "One dev, one server bill, zero investors: ads and optional tips keep NodeChart running — no paywall, no account, no trackers.",
+    "paid": [
+      {
+        "feat": "Unlimited indicators per chart",
+        "gate": "free elsewhere: 2 · more on Premium"
+      },
+      {
+        "feat": "Up to 4 synced charts (TF, crosshair, zoom)",
+        "gate": "free elsewhere: 1 chart · layouts from Plus"
+      },
+      {
+        "feat": "Custom & seconds intervals",
+        "gate": "Premium plan"
+      },
+      {
+        "feat": "Volume profile & liquidation zones",
+        "gate": "Premium add-on"
+      },
+      {
+        "feat": "Strategy backtest on real candles",
+        "gate": "Premium limits"
+      },
+      {
+        "feat": "Screener across ~2,000 pairs",
+        "gate": "Essential plan"
+      },
+      {
+        "feat": "Unlimited price alerts",
+        "gate": "free elsewhere: 1 active alert"
+      },
+      {
+        "feat": "Renko, Kagi, Point & Figure, Heikin-Ashi",
+        "gate": "partly paywalled"
+      },
+      {
+        "feat": "Own scripts & imports",
+        "gate": "Pine scripts: plan tiers"
+      }
+    ],
+    "unique": [
+      "Liq Radar: liquidation zones right on the chart",
+      "Lag Oracle: measures venue latency and picks the fastest",
+      "Regime Compass: on-chain & volatility regime at a glance",
+      "Clock Edge: your statistically best trading hours",
+      "Whale Flow: live tape for orders > $10,000",
+      "Bar magnifier: raw trades inside every candle",
+      "CEX + DEX unified: 33 chains in one grid",
+      "MTF technicals matrix & market heatmap",
+      "Local & private: no account, no API key, nothing leaves your browser"
+    ]
   }
 }

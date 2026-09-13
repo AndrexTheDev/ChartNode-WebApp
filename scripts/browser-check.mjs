@@ -526,12 +526,15 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
     // token forensics: switch to the DEX WBTC token and expect GoPlus data
     await onchain.evaluate(() => {
-      const select = document.querySelector('select[aria-label]');
-      const option = [...(select?.options ?? [])].find((entry) => entry.textContent?.startsWith('WBTC'));
-      if (select && option) {
-        select.value = option.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+      const btn = [...document.querySelectorAll('button[aria-haspopup="listbox"]')]
+        .find((b) => /symbol/i.test(b.getAttribute('aria-label') ?? ''));
+      btn?.click();
+    });
+    await new Promise((r) => setTimeout(r, 450));
+    await onchain.evaluate(() => {
+      const opt = [...document.querySelectorAll('[role="listbox"] [role="option"] button')]
+        .find((b) => (b.textContent ?? '').trim().startsWith('WBTC'));
+      opt?.click();
     });
     await onchain.waitForFunction(
       () => {
@@ -1079,12 +1082,31 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   check('nudge CTA opens the tip jar', await expectDialog('bc1qeqzrlfg3edrydk4s0hecakc82gp26n5p7hkc7f', 6000));
   await closeDialog();
 
-  check('renko chip switches the chart type', await clickChip('Renko'));
+  const pickChartType = async (label) => {
+    const opened = await w4.evaluate(() => {
+      const btn = [...document.querySelectorAll('button[aria-haspopup="listbox"]')].find((b) =>
+        /candles|balken|bars|linie|fläche|area|heikin|baseline|renko|line break|kagi|point/i.test(b.getAttribute('aria-label') ?? ''));
+      if (!btn) return false;
+      btn.click();
+      return true;
+    });
+    await wait(350);
+    const picked = await w4.evaluate((l) => {
+      const opt = [...document.querySelectorAll('[role="listbox"] [role="option"] button')].find((b) =>
+        (b.textContent ?? '').trim().toLowerCase() === l.toLowerCase());
+      if (!opt) return false;
+      opt.click();
+      return true;
+    }, label);
+    await wait(600);
+    return opened && picked;
+  };
+  check('chart-type dropdown switches to renko', await pickChartType('Renko'));
   await wait(1200);
   check('renko renders without page errors', (await w4.evaluate(() => document.querySelectorAll('canvas').length)) > 0);
-  check('point & figure chip switches again', await clickChip('Point & Figure'));
+  check('chart-type dropdown switches to point & figure', await pickChartType('Point & Figure'));
   await wait(900);
-  await clickChip('Candles');
+  await pickChartType('Candles');
   await wait(400);
 
   check('custom interval popover opens', await clickChip('∿ Intervall'));
@@ -1475,17 +1497,18 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   console.log('\n— landing survival & funding copy —');
   const land = await browser.newPage();
   await land.goto(`${BASE}/de`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await land.waitForSelector('#survival', { timeout: 15000 }).catch(() => {});
+  await land.waitForSelector('#features', { timeout: 15000 }).catch(() => {});
   const landText = await land.evaluate(() => document.body.innerText);
-  check('landing renders the survival section with wallets', landText.includes('Ein Dev. Keine Investoren. Dein Tip-Jar.') && landText.includes('bc1qeqzrlfg3edrydk4s0hecakc82gp26n5p7hkc7f'));
-  check('landing hero frames funding instead of "free project"', /werbung & spenden halten es am leben/i.test(landText) && !/100 ?% ?(kostenlos|free)/i.test(landText));
-  check('landing feature grid lists wave-3 tools', landText.includes('Bar-Replay auf jedem Timeframe') && landText.includes('Strategy Lab statt Pine-Paywall') && landText.includes('Screener über ~2.000 Paare'));
-  check('landing feature grid lists wave-4 tools', landText.includes('Auto-Chartmuster statt Ultimate-Abo') && landText.includes('MTF-Technicals-Matrix') && landText.includes('Trade-Journal mit Stats'));
-  check('landing feature grid lists wave-5 tools', landText.includes('Eigene Skripte statt Pine-Paywall') && landText.includes('Hilfe zu jedem Indikator & jeder Metrik'));
-  check('landing feature grid lists wave-7 tools', landText.includes('Die Edge Suite') && landText.includes('Liq Radar') && landText.includes('Clock Edge'));
-  await land.evaluate(() => document.querySelector('#survival')?.scrollIntoView({ block: 'start' }));
+  const landHtml = await land.evaluate(() => document.body.innerHTML);
+  check('landing support line keeps funding doctrine', /ein dev, eine server-rechnung|one dev, one server bill/i.test(landText));
+  check('landing frames funding instead of \"free project\"', /werbung und optionale tipps|ads and optional tips/i.test(landText) && !/100 ?% ?(kostenlos|free)/i.test(landText));
+  check('landing benefit block lists paid-elsewhere gates', /unbegrenzt indikatoren|unlimited indicators/i.test(landText) && /premium/i.test(landText) && /screener/i.test(landText));
+  check('landing benefit block lists unique tools (wave-7)', /liq radar/i.test(landText) && /clock edge/i.test(landText) && /lag oracle/i.test(landText));
+  check('landing benefit block lists unique tools (wave-3/5)', /bar-lupe|bar magnifier/i.test(landText) && /whale-flow|whale flow/i.test(landText));
+  check('landing ist schlank (keine FAQ-/Story-Sektionen)', !landHtml.includes('id="survival"') && !landHtml.includes('id="faq"') && landText.length < 12000);
+  await land.evaluate(() => document.querySelector('#features')?.scrollIntoView({ block: 'start' }));
   await new Promise((r) => setTimeout(r, 700));
-  await land.screenshot({ path: join(artifacts, 'landing-survival.png'), fullPage: false });
+  await land.screenshot({ path: join(artifacts, 'landing-benefit.png'), fullPage: false });
   await land.close();
 
   // 9. console hygiene

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { ToolMenu } from '@/components/ui/ToolMenu';
 import { AdSlot } from '@/components/ads/AdManager';
 import { OnChainPanel } from '@/components/onchain/OnChainPanel';
@@ -196,6 +197,17 @@ export function TerminalShell() {
   const [journalOpen, setJournalOpen] = useState(false);
   const [magnifierOpen, setMagnifierOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+
+  // QA-Hook: ?qa=1 exponiert die Stores für automatisierte Feature-Tests.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.location.search.includes('qa=1')) return;
+    (window as unknown as Record<string, unknown>).__NC__ = {
+      useChartStore,
+      useAppStore,
+      useWhaleStore,
+      useProStore,
+    };
+  }, []);
   const [patternsOpen, setPatternsOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const { triggerRef: customTriggerRef, panelRef: customPanelRef, style: customAnchorStyle } =
@@ -256,32 +268,20 @@ export function TerminalShell() {
           desktop (CLS), so ≥sm keeps one scrollable line; phones still wrap. */}
         <div className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-2 px-3 py-2.5 lg:overflow-x-auto [&>*]:lg:shrink-0">
           {/* instrument picker */}
-          <div className="relative">
-            <select
-              value={SEED_TOKENS.some((token) => token.id === activeToken.id) ? activeToken.id : ''}
-              onChange={(event) => {
-                const token = SEED_TOKENS.find((entry) => entry.id === event.target.value);
-                if (token) setActiveToken(token);
-              }}
-              aria-label={t('symbol')}
-              className={cn(
-                'nc-clip-sm h-9 max-w-44 appearance-none border border-line bg-surface/70 pl-3 pr-8',
-                'font-display text-sm font-bold text-fg transition-colors hover:border-primary/60 focus:border-primary focus:outline-none',
-              )}
-            >
-              <option value="" disabled>
-                {activeToken.symbol}
-              </option>
-              {SEED_TOKENS.map((token) => (
-                <option key={token.id} value={token.id}>
-                  {token.symbol} · {token.venue}
-                </option>
-              ))}
-            </select>
-            <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-2xs text-faint">
-              ▾
-            </span>
-          </div>
+          <Dropdown
+            triggerLabel={t('symbol')}
+            triggerText={<span className="font-display text-sm font-bold">{activeToken.symbol}</span>}
+            menuLabel={t('symbol')}
+            align="start"
+            widthClass="w-56"
+            items={SEED_TOKENS.map((token) => ({
+              id: token.id,
+              label: token.symbol,
+              hint: token.venue,
+              selected: token.id === activeToken.id,
+              onSelect: () => setActiveToken(token),
+            }))}
+          />
 
           {/* live symbol + price */}
           <div className="flex min-w-0 items-baseline gap-2">
@@ -471,11 +471,19 @@ export function TerminalShell() {
         {/* chart types */}
         <div className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-1 border-t border-line/60 px-3 py-2 lg:overflow-x-auto [&>*]:lg:shrink-0">
           <Terminal className="mr-1 size-3.5 text-primary" aria-hidden />
-          {CHART_TYPES.map((type) => (
-            <Chip key={type} active={hydrated && type === chartType} onClick={() => setChartType(type as ChartType)}>
-              {t(`types.${type}`)}
-            </Chip>
-          ))}
+          <Dropdown
+            triggerLabel={t(`types.${chartType}`)}
+            triggerText={<span>{t(`types.${chartType}`)}</span>}
+            menuLabel={t(`types.${chartType}`)}
+            align="start"
+            widthClass="w-48"
+            items={CHART_TYPES.map((type) => ({
+              id: type,
+              label: t(`types.${type}`),
+              selected: hydrated && type === chartType,
+              onSelect: () => setChartType(type as ChartType),
+            }))}
+          />
 
           <span className="mx-1 h-6 w-px bg-line" aria-hidden />
 

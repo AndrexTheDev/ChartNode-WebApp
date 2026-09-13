@@ -1574,5 +1574,62 @@
     "clockNowNo": "Die aktuelle Stunde ist statistisch unauffällig – kein Saisonalitäts-Edge.",
     "clockLegend": "Grün = positive, rot = negative Durchschnitts-Rendite der nächsten 4 Kerzen; Intensität = t-Wert, heller = nicht signifikant. Nur aus deinen geladenen Kerzen gerechnet.",
     "clockNeed": "Noch zu wenig Kerzen geladen."
+  },
+  "benefit": {
+    "title": "Dein Vorteil. Nicht unser Marketing.",
+    "sub": "Alles, wofür du anderswo ein Abo brauchst — plus Werkzeuge, die es kein zweites Mal gibt. Kurz und knapp.",
+    "paidTitle": "Kostenlos hier · teuer anderswo",
+    "uniqueTitle": "Nur auf NodeChart",
+    "free": "inklusive",
+    "support": "Ein Dev, eine Server-Rechnung, keine Investoren: Werbung und optionale Tipps halten NodeChart am Laufen — kein Paywall, kein Konto, keine Tracker.",
+    "paid": [
+      {
+        "feat": "Unbegrenzt Indikatoren pro Chart",
+        "gate": "frei anderswo: 2 · mehr im Premium-Abo"
+      },
+      {
+        "feat": "Bis 4 synchronisierte Charts (TF, Crosshair, Zoom)",
+        "gate": "frei anderswo: 1 Chart · Layouts ab Plus"
+      },
+      {
+        "feat": "Eigene & Sekunden-Intervalle",
+        "gate": "Premium-Abo"
+      },
+      {
+        "feat": "Volumen-Profil & Liquidationszonen",
+        "gate": "Premium-Add-on"
+      },
+      {
+        "feat": "Strategy-Backtest auf echten Candles",
+        "gate": "Premium-Limits"
+      },
+      {
+        "feat": "Screener über ~2.000 Paare",
+        "gate": "Essential-Abo"
+      },
+      {
+        "feat": "Unbegrenzte Preis-Alerts",
+        "gate": "frei anderswo: 1 aktiver Alert"
+      },
+      {
+        "feat": "Renko, Kagi, Point & Figure, Heikin-Ashi",
+        "gate": "teilweise paywalled"
+      },
+      {
+        "feat": "Eigene Scripts & Importe",
+        "gate": "Pine-Skripte: Abo-Stufen"
+      }
+    ],
+    "unique": [
+      "Liq Radar: Liquidationszonen direkt im Chart",
+      "Lag Oracle: misst Börsen-Latenz und wählt die schnellste Venue",
+      "Regime Compass: On-Chain- & Volatilitäts-Regime auf einen Blick",
+      "Clock Edge: deine statistisch besten Trading-Stunden",
+      "Whale-Flow: Live-Tape für Orders > 10.000 $",
+      "Bar-Lupe: rohe Trades jeder einzelnen Kerze",
+      "CEX + DEX unified: 33 Chains in einem Grid",
+      "MTF-Technicals-Matrix & Markt-Heatmap",
+      "Lokal & privat: kein Konto, kein API-Key, nichts verlässt deinen Browser"
+    ]
   }
 }

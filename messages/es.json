@@ -1574,5 +1574,62 @@
     "clockNowNo": "La hora actual no es estadísticamente relevante: sin ventaja de estacionalidad.",
     "clockLegend": "Verde = rendimiento medio positivo, rojo = negativo en las próximas 4 velas; intensidad = valor t, tenue = no significativo. Calculado solo con tus velas cargadas.",
     "clockNeed": "Aún no hay suficientes velas cargadas."
+  },
+  "benefit": {
+    "title": "Tu ventaja. No nuestro marketing.",
+    "sub": "Todo por lo que en otro sitio pagas una suscripción — más herramientas que nadie más tiene. Corto y directo.",
+    "paidTitle": "Gratis aquí · de pago en otro sitio",
+    "uniqueTitle": "Solo en NodeChart",
+    "free": "incluido",
+    "support": "Un dev, una factura de servidor, cero inversores: la publicidad y las propinas opcionales mantienen NodeChart vivo — sin paywall, sin cuenta, sin trackers.",
+    "paid": [
+      {
+        "feat": "Indicadores ilimitados por gráfico",
+        "gate": "gratis en otro sitio: 2 · más en Premium"
+      },
+      {
+        "feat": "Hasta 4 gráficos sincronizados (TF, crosshair, zoom)",
+        "gate": "gratis en otro sitio: 1 gráfico · layouts desde Plus"
+      },
+      {
+        "feat": "Intervalos propios y de segundos",
+        "gate": "plan Premium"
+      },
+      {
+        "feat": "Perfil de volumen y zonas de liquidación",
+        "gate": "complemento Premium"
+      },
+      {
+        "feat": "Backtest de estrategias con velas reales",
+        "gate": "límites Premium"
+      },
+      {
+        "feat": "Screener con ~2.000 pares",
+        "gate": "plan Essential"
+      },
+      {
+        "feat": "Alertas de precio ilimitadas",
+        "gate": "gratis en otro sitio: 1 alerta activa"
+      },
+      {
+        "feat": "Renko, Kagi, Point & Figure, Heikin-Ashi",
+        "gate": "parcialmente bajo paywall"
+      },
+      {
+        "feat": "Scripts propios e importaciones",
+        "gate": "Pine: niveles de suscripción"
+      }
+    ],
+    "unique": [
+      "Liq Radar: zonas de liquidación en el propio gráfico",
+      "Lag Oracle: mide la latencia y elige el venue más rápido",
+      "Regime Compass: régimen on-chain y de volatilidad de un vistazo",
+      "Clock Edge: tus mejores horas estadísticas para operar",
+      "Whale Flow: cinta en vivo de órdenes > 10.000 $",
+      "Lupa de vela: trades brutos dentro de cada vela",
+      "CEX + DEX unificado: 33 cadenas en una rejilla",
+      "Matriz técnica MTF y heatmap de mercado",
+      "Local y privado: sin cuenta, sin API key, nada sale de tu navegador"
+    ]
   }
 }

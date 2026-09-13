@@ -2,12 +2,9 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
+import { BenefitSection } from '@/components/landing/BenefitSection';
 import { CtaSection } from '@/components/landing/CtaSection';
-import { FaqSection } from '@/components/landing/FaqSection';
-import { FeatureGrid } from '@/components/landing/FeatureGrid';
 import { Hero } from '@/components/landing/Hero';
-import { LayoutShowcase } from '@/components/landing/LayoutShowcase';
-import { SurvivalSection } from '@/components/landing/SurvivalSection';
 import { Ticker } from '@/components/landing/Ticker';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { softwareApplicationLd } from '@/lib/jsonld';
@@ -44,10 +41,7 @@ export default async function LandingPage({ params }: PageProps) {
       <JsonLd data={softwareApplicationLd(locale, featureList)} />
       <Hero locale={locale} />
       <Ticker locale={locale} />
-      <FeatureGrid locale={locale} />
-      <LayoutShowcase />
-      <SurvivalSection locale={locale} />
-      <FaqSection locale={locale} />
+      <BenefitSection locale={locale} />
       <CtaSection locale={locale} />
     </>
   );

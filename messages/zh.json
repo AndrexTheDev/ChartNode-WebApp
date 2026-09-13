@@ -1574,5 +1574,62 @@
     "clockNowNo": "当前小时在统计上无显著特征——没有季节性优势。",
     "clockLegend": "绿色 = 未来 4 根K线平均收益为正，红色为负；深浅 = t 值，浅色 = 不显著。仅基于已加载的K线计算。",
     "clockNeed": "加载的K线还太少。"
+  },
+  "benefit": {
+    "title": "你的优势，不是我们的营销。",
+    "sub": "别处要订阅才能用的功能这里都有——再加上别处没有的工具。简短直接。",
+    "paidTitle": "这里免费 · 别处收费",
+    "uniqueTitle": "NodeChart 独有",
+    "free": "包含",
+    "support": "一名开发者、一张服务器账单、零投资人：广告与自愿打赏让 NodeChart 持续运行——无付费墙、无账号、无追踪器。",
+    "paid": [
+      {
+        "feat": "每张图表指标数量不限",
+        "gate": "别处免费仅 2 个 · 更多需 Premium"
+      },
+      {
+        "feat": "最多 4 图同步（周期/十字光标/缩放）",
+        "gate": "别处免费仅 1 图 · 多布局需 Plus 起"
+      },
+      {
+        "feat": "自定义与秒级周期",
+        "gate": "Premium 套餐"
+      },
+      {
+        "feat": "成交量分布与清算区",
+        "gate": "Premium 附加"
+      },
+      {
+        "feat": "真实K线策略回测",
+        "gate": "Premium 限制"
+      },
+      {
+        "feat": "约 2,000 交易对扫描器",
+        "gate": "Essential 套餐"
+      },
+      {
+        "feat": "价格提醒数量不限",
+        "gate": "别处免费仅 1 个"
+      },
+      {
+        "feat": "Renko、Kagi、Point & Figure、Heikin-Ashi",
+        "gate": "部分付费墙"
+      },
+      {
+        "feat": "自写脚本与导入",
+        "gate": "Pine 脚本按套餐分级"
+      }
+    ],
+    "unique": [
+      "Liq Radar：清算区直接画在图上",
+      "Lag Oracle：实测交易所延迟并选最快通道",
+      "Regime Compass：链上与波动 regime 一目了然",
+      "Clock Edge：统计上最适合你的交易时段",
+      "Whale Flow：大于 1 万美元订单的实时流",
+      "Bar 放大镜：每根K线内的原始成交",
+      "CEX + DEX 统一：33 条链同屏",
+      "MTF 技术矩阵与市场热力图",
+      "本地且隐私：无账号、无 API Key、数据不出浏览器"
+    ]
   }
 }

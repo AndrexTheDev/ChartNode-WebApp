@@ -138,7 +138,6 @@ const visible = (page, sel) =>
     bg: getComputedStyle(document.body).backgroundColor,
     txt: document.body.textContent ?? '',
   }));
-  const dark = brand.bg === 'rgb(5, 7, 5)' || brand.bg === 'rgba(0, 0, 0, 0)';
   check('F5a Root-404 Status 404', res.status() === 404, String(res.status()));
   check('F5b Root-404 gebrandet (Signal verloren + Home-Link)', /Signal verloren/.test(brand.txt) && /Zurück zur Basis/.test(brand.txt), brand.txt.slice(0, 80));
   await page.screenshot({ path: join(OUT, 'f5-root-404.png') });
