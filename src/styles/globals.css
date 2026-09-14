@@ -472,3 +472,26 @@ select[aria-invalid='true'] {
     display: none;
   }
 }
+
+/* ── Native Banner (Adsterra 4:1) in der Header-Zone ───────────────────────
+   Reservierte Box = Widget-Layout 4:1 ⇒ füllt CLS-frei hinein; ohne Fill
+   kollabiert .nc-collapsed (React-State) ⇒ kein toter Raum. Mobile darf
+   etwas höher reservieren (responsive Tiles stapeln dort gern 2×2). */
+.nc-header-ad {
+  padding-top: 0.5rem;
+}
+.nc-header-ad > div {
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  max-height: 10rem;
+  overflow: hidden;
+}
+.nc-header-ad.nc-collapsed {
+  display: none;
+}
+@media (max-width: 640px) {
+  .nc-header-ad > div {
+    aspect-ratio: 2 / 1;
+    max-height: 12rem;
+  }
+}

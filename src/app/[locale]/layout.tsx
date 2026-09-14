@@ -11,6 +11,7 @@ import { LocaleDetectBanner } from '@/components/layout/LocaleDetectBanner';
 import { RateLimitOverlay } from '@/components/overlays/RateLimitOverlay';
 import { SiteFooter } from '@/components/layout/SiteFooter';
 import { SiteHeader } from '@/components/layout/SiteHeader';
+import { HeaderNativeBanner } from '@/components/ads/HeaderNativeBanner';
 import { StoreBridge } from '@/components/layout/StoreBridge';
 import { ThemeBootScript } from '@/components/layout/ThemeBootScript';
 import { GridBackdrop } from '@/components/ui/GridBackdrop';
@@ -176,6 +177,9 @@ export default async function LocaleLayout({
           </a>
 
           <SiteHeader />
+
+          {/* Native Banner (4:1) in der Header-Zone – Terminal skippt (Strip) */}
+          <HeaderNativeBanner />
 
           <main id="nc-content" className="flex-1">
             {children}

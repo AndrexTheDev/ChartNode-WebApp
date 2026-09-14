@@ -151,6 +151,9 @@ function AdManagerInner() {
 
   const closeWall = useCallback(() => {
     setWallOpen(false);
+    // Andere Ad-Flächen (Native Banner) hören auf dieses Event für ihren
+    // letzten Retry – Blocker ggf. gerade deaktiviert.
+    window.dispatchEvent(new CustomEvent('nc-adwall-closed'));
     // Wall eben geschlossen ⇒ Blocker ggf. gerade deaktiviert: letzter Versuch.
     if (socialBlocked.current && socialSrcRef.current && socialTries.current < SOCIAL_MAX_TRIES) {
       socialBlocked.current = false;

@@ -35,6 +35,16 @@ const SOCIALBAR_DELIVERY_SRC =
 const socialBarBase = process.env.NEXT_PUBLIC_ADSTERRA_SOCIALBAR || SOCIALBAR_DELIVERY_SRC;
 
 /**
+ * Echtes Adsterra-Native-Banner-Paar für nodechart.cc (Dashboard-Code:
+ * invoke.js + Container-Div, Widget-Layout 4:1). Läuft als Default ohne
+ * Env-Setup; `NEXT_PUBLIC_ADSTERRA_NATIVE_BANNER_SRC` überschreibt es.
+ */
+export const NATIVE_BANNER_SRC: string =
+  process.env.NEXT_PUBLIC_ADSTERRA_NATIVE_BANNER_SRC ||
+  'https://globalimmaturelunatic.com/2cedab945cb896ea179b566a413d953b/invoke.js';
+export const NATIVE_BANNER_CONTAINER_ID = 'container-2cedab945cb896ea179b566a413d953b';
+
+/**
  * Echtes Adsterra-Popunder-Delivery-Skript für nodechart.cc (Dashboard:
  * „Paste the code snippet right before the closing </head> tag"). Läuft als
  * Default ohne Env-Setup; `NEXT_PUBLIC_ADSTERRA_POPUNDER*` überschreibt es.
