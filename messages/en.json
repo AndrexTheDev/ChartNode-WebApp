@@ -708,7 +708,7 @@
         },
         {
           "heading": "No analytics, no advertising",
-          "body": "NodeChart uses no tracking cookies, no analytics scripts, no advertising networks and no fingerprinting. There are no third-party embeds that would leak your IP address to advertisers."
+          "body": "NodeChart uses no tracking cookies, no analytics scripts, no advertising networks and no fingerprinting. There are no third-party embeds that would leak your IP address to advertisers. A single functional cookie (NEXT_LOCALE) stores your language choice. Market-data and ad partners (e.g. Adsterra) receive your IP address as part of each request and may set their own cookies; we run no first-party tracking, analytics or fingerprinting."
         },
         {
           "heading": "Third-party data providers",

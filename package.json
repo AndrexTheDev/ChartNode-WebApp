@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
-  "description": "NodeChart – Decode the Market. Free, Fast, Decentralized. A 100% free, client-side TradingView alternative for CEX & DEX.",
+  "description": "NodeChart \u2013 Decode the Market. Free, Fast, Decentralized. A 100% free, client-side TradingView alternative for CEX & DEX.",
   "author": "AndrexTheDev <hippie.highho@gmail.com>",
   "engines": {
     "node": ">=20.9.0"

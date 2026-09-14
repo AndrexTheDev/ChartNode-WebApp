@@ -262,6 +262,15 @@ class ExchangeStream {
     }
   }
 
+  /**
+   * Sofort-Status, wenn das Betriebssystem Netzverlust meldet (`offline`-Event):
+   * TCP hängt ohne RST (wie Kabel gezogen) – ohne diesen Hook würde die UI bis
+   * zu 45 s (Watchdog) ein falsches LIVE zeigen.
+   */
+  flagOffline(): void {
+    this.propagateStatus('reconnecting', { note: 'network-offline' });
+  }
+
   private propagateStatus(
     status: FeedStatus,
     info?: { attempt?: number; note?: string | null },
@@ -417,6 +426,10 @@ class ExchangeConnection {
     for (const channel of releasedChannels) this.prune(channel);
   }
 
+  flagOffline(): void {
+    for (const stream of this.streams.values()) stream.flagOffline();
+  }
+
   reviveAll(): void {
     for (const stream of this.streams.values()) stream.revive();
   }
@@ -503,6 +516,11 @@ class CexSocketManager {
    */
   resumeAll(): void {
     for (const connection of this.connections.values()) connection.reviveAll();
+  }
+
+  /** Siehe ExchangeStream.flagOffline – Fan-out über alle Venues. */
+  markNetworkOffline(): void {
+    for (const connection of this.connections.values()) connection.flagOffline();
   }
 
   /**

@@ -708,7 +708,7 @@
         },
         {
           "heading": "Sin analítica ni publicidad",
-          "body": "NodeChart no usa cookies de rastreo, ni scripts analíticos, ni redes publicitarias, ni huella digital del navegador. Tampoco hay inserciones de terceros que filtren tu dirección IP a anunciantes."
+          "body": "NodeChart no usa cookies de rastreo, ni scripts analíticos, ni redes publicitarias, ni huella digital del navegador. Tampoco hay inserciones de terceros que filtren tu dirección IP a anunciantes. Una única cookie funcional (NEXT_LOCALE) guarda tu idioma. Los socios de datos de mercado y publicidad (p. ej. Adsterra) reciben tu dirección IP como parte de cada solicitud y pueden establecer cookies propias; no usamos rastreo, analítica ni fingerprinting propios."
         },
         {
           "heading": "Proveedores de datos externos",

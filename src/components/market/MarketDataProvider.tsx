@@ -138,11 +138,15 @@ export function MarketDataProvider() {
       if (navigator.onLine === false) return;
       cexManager.resumeAll();
     };
+    // Netzverlust SOFORT anzeigen (TCP hängt ohne RST sonst bis 45 s Watchdog)
+    const down = () => cexManager.markNetworkOffline();
     document.addEventListener('visibilitychange', wake);
     window.addEventListener('online', wake);
+    window.addEventListener('offline', down);
     return () => {
       document.removeEventListener('visibilitychange', wake);
       window.removeEventListener('online', wake);
+      window.removeEventListener('offline', down);
     };
   }, []);
 
