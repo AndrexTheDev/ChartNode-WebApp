@@ -10,9 +10,10 @@ import * as M4 from './m4-a11y.mjs';
 import * as M5 from './m5-monetization.mjs';
 import * as M6 from './m6-runtime.mjs';
 import * as M7 from './m7-deploy.mjs';
+import * as M8 from './m8-ads-deep.mjs';
 
 const ONLY = process.argv.slice(2).filter((a) => /^M\d$/.test(a.toUpperCase()));
-const MODULES = [M1, M2, M3, M4, M5, M6, M7];
+const MODULES = [M1, M2, M3, M4, M5, M6, M8, M7]; // M7 (cf:build) stets zuletzt
 
 const results = [];
 for (const mod of MODULES) {
