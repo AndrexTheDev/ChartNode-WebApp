@@ -38,12 +38,22 @@ const SIDEBAR_BREAKPOINT = '(min-width: 1280px)';
  */
 export function SidebarBanner() {
   const t = useTranslations('ads');
+  // Ehrlicher Demo-Weg (?addemo=1): Rail + klar beschrifteter Platzhalter statt
+  // iframe – zum Sichtbar-Testen ohne Ad-Netz/Blocker. Keine Fake-Werbung.
+  const [demo] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('addemo') === '1',
+  );
   const [filled, setFilled] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const holderRef = useRef<HTMLDivElement | null>(null);
   const done = useRef(false);
 
   useEffect(() => {
+    if (demo) {
+      done.current = true;
+      setFilled(true);
+      return;
+    }
     if (donationGraceActive() || navigator.webdriver) {
       setCollapsed(true);
       return;
@@ -139,7 +149,7 @@ export function SidebarBanner() {
       window.clearTimeout(armCollapse);
       mq.removeEventListener('change', apply);
     };
-  }, []);
+  }, [demo]);
 
   if (collapsed) return null;
 
@@ -161,7 +171,19 @@ export function SidebarBanner() {
         data-sidebar-banner=""
         style={{ width: SIDEBAR_BANNER_WIDTH, height: filled ? undefined : SIDEBAR_BANNER_HEIGHT }}
         className="mx-auto flex items-start justify-center overflow-hidden"
-      />
+      >
+        {demo && (
+          <div
+            style={{ width: SIDEBAR_BANNER_WIDTH, height: SIDEBAR_BANNER_HEIGHT }}
+            className="flex flex-col items-center justify-center gap-2 border border-dashed border-line/70 bg-surface/40 p-2 text-center font-mono text-micro-9 uppercase tracking-cyber text-faint"
+          >
+            <span className="text-primary">160 × 600</span>
+            <span>Ad-Frame</span>
+            <span>Demo-Platzhalter</span>
+            <span className="normal-case tracking-normal">(addemo=1 – hier füllt das echte Adsterra-Banner im freien Netz)</span>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
