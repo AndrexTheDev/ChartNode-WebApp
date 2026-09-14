@@ -42,6 +42,7 @@ import { Dropdown, type DropdownItem } from '@/components/ui/Dropdown';
 import { ToolMenu } from '@/components/ui/ToolMenu';
 import { AdSlot } from '@/components/ads/AdManager';
 import { SmartlinkKit } from '@/components/ads/SmartlinkKit';
+import { SidebarBanner } from '@/components/ads/SidebarBanner';
 import { OnChainPanel } from '@/components/onchain/OnChainPanel';
 import { ProMetricsPanel } from '@/components/pro/ProMetricsPanel';
 import { requestPopunder } from '@/lib/ads/adsterra';
@@ -275,6 +276,8 @@ export function TerminalShell() {
 
   return (
     <div className="flex min-h-[calc(100dvh-var(--nc-header-h))] pb-[max(2.5rem,calc(var(--nc-dock-offset,0px)+env(safe-area-inset-bottom)))] xl:flex-row">
+      {/* linke Sidebar: Banner 160×600, Desktop only (xl-Row-Layout) */}
+      <SidebarBanner />
       <div className="flex min-w-0 flex-1 flex-col">
       {/* sponsored strip (Smartlink-Kit) – Header-Zone über der Toolbar:
           auf Mobile sonst hinter der wrappenden Toolbar im Toast-Bereich */}

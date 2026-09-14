@@ -203,6 +203,26 @@ for (const vp of VIEWPORTS) {
   await new Promise((r) => setTimeout(r, 800));
   a = await audit(p, 'top');
   t(`${vp.id} terminal: Offer-Toast erschienen`, a.toastCount >= 1);
+  /* linke Sidebar (Banner 160×600): Desktop Rail, Mobile nichts */
+  const sb = await p.evaluate((frag) => {
+    const holder = document.querySelector('[data-sidebar-banner]');
+    const aside = holder?.closest('aside');
+    const cs = aside ? getComputedStyle(aside) : null;
+    return {
+      present: !!aside,
+      display: cs ? cs.display : null,
+      width: aside ? Math.round(aside.getBoundingClientRect().width) : 0,
+      loaded: performance.getEntriesByType('resource').filter((e) => e.name.includes(frag)).length,
+      iframe: !!holder?.querySelector('iframe'),
+    };
+  }, '91280e044de251872788eee6dcbddc079');
+  if (vp.width >= 1280) {
+    // Doktrin: reservierter Rail ODER sauber kollabiert (Loader-Error/Flake)
+    t(`${vp.id} terminal: Rail reserviert oder sauber kollabiert`, (sb.present && sb.display !== 'none' && sb.width >= 160 && sb.width <= 200) || (sb.loaded >= 1 && !sb.present), 'w=' + sb.width + ' loaded=' + sb.loaded);
+    t(`${vp.id} terminal: invoke.js-Loader versucht`, sb.loaded >= 1);
+  } else {
+    t(`${vp.id} terminal: keine Sidebar-Injection unter xl`, sb.loaded === 0 && (sb.display === 'none' || !sb.present), 'display=' + sb.display);
+  }
   t(`${vp.id} terminal: kein Horizontal-Overflow`, !a.hOverflow);
   t(`${vp.id} terminal: Toast liegt auf keinem Control`, a.controlOverlaps.length === 0, a.controlOverlaps.join(','));
   t(`${vp.id} terminal: alles klickbar (nichts verdeckt)`, a.blocked.length === 0, a.blocked.join(','));

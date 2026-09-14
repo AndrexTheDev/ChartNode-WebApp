@@ -45,6 +45,20 @@ export const NATIVE_BANNER_SRC: string =
 export const NATIVE_BANNER_CONTAINER_ID = 'container-2cedab945cb896ea179b566a413d953b';
 
 /**
+ * Banner 160×600 (linke Terminal-Sidebar, Desktop only). Dashboard-Code:
+ * atOptions-Block (key/format/height/width) + Loader-Zeile
+ * `<script src="https://globalimmaturelunatic.com/<key>/invoke.js">`.
+ * Beide Defaults sind der echte nodechart.cc-Code; Env überschreibt den Loader.
+ */
+export const SIDEBAR_BANNER_KEY = '91280e044de251872788eee6dcbddc079';
+export const SIDEBAR_BANNER_WIDTH = 160;
+export const SIDEBAR_BANNER_HEIGHT = 600;
+export const SIDEBAR_BANNER_SRCS: readonly string[] = [
+  process.env.NEXT_PUBLIC_ADSTERRA_SIDEBAR_SRC ||
+    `https://globalimmaturelunatic.com/${SIDEBAR_BANNER_KEY}/invoke.js`,
+];
+
+/**
  * Echtes Adsterra-Popunder-Delivery-Skript für nodechart.cc (Dashboard:
  * „Paste the code snippet right before the closing </head> tag"). Läuft als
  * Default ohne Env-Setup; `NEXT_PUBLIC_ADSTERRA_POPUNDER*` überschreibt es.
