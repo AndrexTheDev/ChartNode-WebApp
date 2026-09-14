@@ -1,6 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // MODUL 1 — STATIK: Lizenz-Header, Secrets, Env-Abdeckung, i18n-Parität
 // (5 Locales), Routing-/Legal-Vollständigkeit, Doktrin-Konstanten.
+import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { ROOT, LOCALES, makeReporter } from './lib.mjs';
@@ -97,7 +98,20 @@ export async function run() {
   );
   check('Persist-Keys nodechart:store:v1 + nc-viral-v1', all.includes('nodechart:store:v1') && all.includes('nc-viral-v1'));
 
-  /* 8 · Deploy-Konfiguration vorhanden */
+  /* 8 · Build-Gates: typecheck + lint müssen 0 Fehler liefern */
+  for (const [name, cmd] of [['typecheck (tsc --noEmit)', 'npm run typecheck'], ['lint (eslint 0/0)', 'npm run lint']]) {
+    let ok = true;
+    let info = '';
+    try {
+      execSync(cmd, { cwd: ROOT, encoding: 'utf8', timeout: 300000, stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      ok = false;
+      info = String(e.stdout || e.message).split('\n').filter(Boolean).slice(-2).join(' ');
+    }
+    check(name, ok, info.slice(0, 140));
+  }
+
+  /* 9 · Deploy-Konfiguration vorhanden */
   check('wrangler.jsonc vorhanden', existsSync(join(ROOT, 'wrangler.jsonc')));
   check('cf:build-Skript vorhanden (OpenNext/Cloudflare)', readFileSync(join(ROOT, 'package.json'), 'utf8').includes('opennextjs-cloudflare build'));
 

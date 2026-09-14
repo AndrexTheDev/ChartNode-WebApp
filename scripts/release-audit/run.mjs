@@ -7,9 +7,12 @@ import * as M1 from './m1-static.mjs';
 import * as M2 from './m2-routing-seo.mjs';
 import * as M3 from './m3-terminal.mjs';
 import * as M4 from './m4-a11y.mjs';
+import * as M5 from './m5-monetization.mjs';
+import * as M6 from './m6-runtime.mjs';
+import * as M7 from './m7-deploy.mjs';
 
 const ONLY = process.argv.slice(2).filter((a) => /^M\d$/.test(a.toUpperCase()));
-const MODULES = [M1, M2, M3, M4]; // wächst: M5 Monetization, M6 Runtime/Edge, M7 Deploy
+const MODULES = [M1, M2, M3, M4, M5, M6, M7];
 
 const results = [];
 for (const mod of MODULES) {

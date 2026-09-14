@@ -10,7 +10,7 @@ const LOCALES = ['de', 'en', 'es', 'ru', 'zh'];
 const HTML_LANG = { de: 'de-DE', en: 'en', es: 'es-ES', ru: 'ru-RU', zh: 'zh-Hans' };
 const ROUTES = [
   { path: '', name: 'landing', robots: 'index', h1: 1, jsonld: true },
-  { path: '/terminal', name: 'terminal', robots: 'noindex', h1: null, jsonld: false },
+  { path: '/terminal', name: 'terminal', robots: 'index', h1: 1, jsonld: false },
   { path: '/help', name: 'help', robots: 'index', h1: 1, jsonld: false },
   { path: '/legal/terms', name: 'legal-terms', robots: 'index', h1: 1, jsonld: false },
   { path: '/legal/privacy', name: 'legal-privacy', robots: 'index', h1: 1, jsonld: false },
@@ -217,9 +217,13 @@ check('robots.txt: Sitemap-Zeile + kein Terminal-Disallow', robotsTxt.includes('
 check('robots.txt: Social-Bots erlaubt', robotsTxt.includes('Twitterbot') && robotsTxt.includes('facebookexternalhit') && robotsTxt.includes('TelegramBot'));
 const sitemapXml = await (await fetch(`${BASE}/sitemap.xml`)).text();
 const sitemapUrls = (sitemapXml.match(/<loc>/g) ?? []).length;
-// 5 indexierbare Routen (Terminal = noindex, bewusst draußen) × 5 Locales
-check('sitemap.xml: 25 URLs (5 Routen × 5 Locales, Terminal=noindex)', sitemapUrls === 25, `n=${sitemapUrls}`);
-check('sitemap.xml: keine Terminal-URLs', !sitemapXml.includes('/terminal'), '');
+// 6 indexierbare Routen (Terminal-Basis index, Param-Varianten noindex) × 5 Locales
+check('sitemap.xml: 30 URLs (6 Routen × 5 Locales, Terminal-Basis index)', sitemapUrls === 30, `n=${sitemapUrls}`);
+check(
+  'sitemap.xml: genau 5 Terminal-Basis-URLs, keine Param-Varianten',
+  (sitemapXml.match(/\/terminal<\/loc>/g) || []).length === 5 && !sitemapXml.includes('/terminal?'),
+  'n=' + (sitemapXml.match(/\/terminal<\/loc>/g) || []).length,
+);
 
 /* ---------------------------------- M8 ---------------------------------- */
 // Tech-Hygiene: 404-Matrix, Redirect-Verhalten, absolute Card-/OG-URLs

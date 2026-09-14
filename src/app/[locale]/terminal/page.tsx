@@ -39,9 +39,10 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       image: `${SITE_URL}${ogUrl}`,
     }),
     twitter: buildTwitter(title, description, `${SITE_URL}${ogUrl}`),
-    // Chart-Engine ist live ⇒ Terminal ist eine vollwertige Produktseite;
-    // Canonical bündelt ?ticker/-price-Varianten auf den Basispfad.
-    robots: { index: true, follow: true },
+    // Chart-Engine ist live ⇒ Basis-Terminal ist eine vollwertige Produkt-
+    // seite (index); geteilte ?ticker/-price-Varianten bleiben noindex und
+    // kanonisieren auf den Basispfad (Duplicate-Content-Doktrin).
+    robots: { index: !query.ticker && !query.price, follow: true },
   };
 }
 

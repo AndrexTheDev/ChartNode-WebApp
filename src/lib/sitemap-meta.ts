@@ -18,6 +18,9 @@ export interface RouteSeo {
 export const ROUTE_SEO: RouteSeo[] = [
   // Landing: UI-/SEO-Runde (Dropdown-Fit, Venue-Klartext, SEO M1/M2)
   { path: '', priority: 1, changeFrequency: 'weekly', lastmod: '2026-09-14' },
+  // Terminal: Chart-Engine live ⇒ indexierbare Produktseite (Basispfad;
+  // ?ticker/-price-Varianten bleiben noindex + canonical auf Basis)
+  { path: '/terminal', priority: 0.9, changeFrequency: 'weekly', lastmod: '2026-09-14' },
   // Help: Indikator-/Metrik-Glossar + FAQ (SEO-M2-Graph)
   { path: '/help', priority: 0.8, changeFrequency: 'monthly', lastmod: '2026-09-13' },
   // Legal: Lizenz-/Compliance-Stand (Wave ad0009f), ändert sich selten

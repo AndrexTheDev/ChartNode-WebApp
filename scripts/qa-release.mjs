@@ -80,7 +80,7 @@ console.log('\n— A: Konsolen-Scan (Start + Interaktions-Batterie) —');
   }
   // 3) Theme-Zyklus (light → matrix-gated → zurück acid)
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(300);
   await page.evaluate(() => {
@@ -89,7 +89,7 @@ console.log('\n— A: Konsolen-Scan (Start + Interaktions-Batterie) —');
   });
   await wait(500);
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(300);
   await page.evaluate(() => {
@@ -100,7 +100,7 @@ console.log('\n— A: Konsolen-Scan (Start + Interaktions-Batterie) —');
   await page.keyboard.press('Escape'); // evtl. Share-Gate
   await wait(200);
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(300);
   await page.evaluate(() => {
@@ -220,7 +220,7 @@ console.log('\n— B1: Verbindungsverlust mitten in der Session —');
   }));
   // UI bleibt bedienbar: Menü öffnen/schließen
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(400);
   const menuOpen = await page.evaluate(() => document.querySelectorAll('[role="option"]').length > 0);
@@ -268,7 +268,7 @@ console.log('\n— B2: Kaltstart ohne Internet (alle externen Endpunkte tot) —
   check('B2b kein Crash / keine Page-Errors im Offline-Kaltstart', rec.pageerrors.length === 0, rec.pageerrors.join(' | '));
   // Interaktion bleibt möglich
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(400);
   const menuOpen = await page.evaluate(() => document.querySelectorAll('[role="option"]').length > 0);
@@ -281,6 +281,7 @@ console.log('\n— B2: Kaltstart ohne Internet (alle externen Endpunkte tot) —
 console.log('\n— B3: Click-Storm (alle sichtbaren Buttons rapid-fire) —');
 {
   const page = await browser.newPage();
+  await page.setViewport({ width: 1440, height: 900 }); // Desktop: Header voll ausgeklappt
   const rec = attachRecorder(page);
   await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('canvas', { timeout: 30000 });
@@ -316,7 +317,7 @@ console.log('\n— B3: Click-Storm (alle sichtbaren Buttons rapid-fire) —');
   check('B3c Terminal intact (Canvases)', after.canvases >= 1, String(after.canvases));
   // Bedienbarkeit danach
   await page.evaluate(() => {
-    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Design')?.click();
+    [...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.match(/^(Design|Theme|Diseño|Дизайн|设计)$/i))?.click();
   });
   await wait(400);
   const usable = await page.evaluate(() => document.querySelectorAll('[role="option"]').length > 0);
@@ -435,7 +436,9 @@ console.log('\n— C: Finale Checkliste —');
 
   // C6: Werbeflächen (Container im Production-Build präsent, lautlos ohne Env)
   const adManager = readFileSync(resolve(root, 'src/components/ads/AdManager.tsx'), 'utf8');
-  check('C6 Werbeflächen: AdManager mit next/script lazyOnload + Container-Slots', /lazyOnload/.test(adManager) && /data-ad-slot|AdRig|AdSlot/.test(adManager));
+  // Doktrin: hydration-safe MANUELLE Injection (data-cfasync=false, Retries,
+  // Blocker-Detect) statt next/script + benannte Container-Slots.
+  check('C6 Werbeflächen: AdManager manuell hydrations-safe + Container-Slots', /data-cfasync/.test(adManager) && /appendChild/.test(adManager) && /data-ad-slot/.test(adManager));
 
   // C7: Crypto-Clipboard (Fallback-Kette) – B5b live + qa-monetization
   const wallets = readFileSync(resolve(root, 'src/components/support/WalletsList.tsx'), 'utf8');
