@@ -5,9 +5,10 @@
 import { writeReport } from './lib.mjs';
 import * as M1 from './m1-static.mjs';
 import * as M2 from './m2-routing-seo.mjs';
+import * as M3 from './m3-terminal.mjs';
 
 const ONLY = process.argv.slice(2).filter((a) => /^M\d$/.test(a.toUpperCase()));
-const MODULES = [M1, M2]; // wächst mit jedem Schritt (M3 Terminal, M4 A11y, M5 Monetization, M6 Runtime, M7 Deploy)
+const MODULES = [M1, M2, M3]; // wächst mit jedem Schritt (M4 A11y, M5 Monetization, M6 Runtime, M7 Deploy)
 
 const results = [];
 for (const mod of MODULES) {

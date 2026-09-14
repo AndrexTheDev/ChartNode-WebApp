@@ -59,6 +59,17 @@ export function OnChainPanel() {
     };
   }, [open, tick, activeToken]);
 
+  // Drawer-Konvention: Escape schließt (der Toolbar-Toggle liegt unter dem
+  // Overlay und ist deshalb bei offenem Panel nicht klickbar).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+
   if (!open) return null;
 
   return (
