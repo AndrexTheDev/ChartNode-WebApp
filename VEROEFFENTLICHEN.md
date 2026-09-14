@@ -17,6 +17,7 @@ kostenlos ($0) auf deinem Cloudflare-Account unter `nodechart.cc`.
 | Cloudflare-Konto | dash.cloudflare.com (kostenlos) | ☐ |
 | Git installiert | Terminal: `git --version` → sonst git-scm.com | ☐ |
 | Lokaler Grün-Lauf | Terminal im Projekt: `npm ci && npm run build && npm start` (2. Terminal) → `npm run verify` → alles ✔ | ☐ |
+| Release-Audit grün | Im Projektordner: `npm run qa:full` → **398 PASS / 0 FAIL** (7 Module, Report: `RELEASE-AUDIT.md`) | ☐ |
 | Dieser Ordner (`nodechart/`) auf deinem Rechner | z. B. als Download/Workspace-Kopie | ☐ |
 
 Ein Terminal öffnen und **in den Projektordner wechseln** (alle Befehle unten
@@ -91,12 +92,13 @@ git push -u origin main
 6. Fertig! Deine App liegt jetzt auf einer kostenlosen Worker-URL:
    `nodechart.DEIN-SUB.workers.dev` → anklicken und testen (siehe Teil 5).
 
-> 💡 Optional Werbeeinnahmen aktivieren (Adsterra-Placements von deinem
-> Adsterra-Dashboard eintragen, sonst bleiben die Slots lautlos leer):
-> `NEXT_PUBLIC_ADSTERRA_NATIVE_DESKTOP`, `NEXT_PUBLIC_ADSTERRA_NATIVE_MOBILE`,
-> `NEXT_PUBLIC_ADSTERRA_SOCIALBAR_DESKTOP`, `NEXT_PUBLIC_ADSTERRA_SOCIALBAR_MOBILE`,
-> `NEXT_PUBLIC_ADSTERRA_POPUNDER_DESKTOP`, `NEXT_PUBLIC_ADSTERRA_POPUNDER_MOBILE`.
-> Nach dem Eintragen: **Deployments → Retry deployment** (Build-Env wirkt erst beim nächsten Build).
+> 💡 **Werbung läuft ohne jedes Env-Var:** Alle Adsterra-Placements (Popunder,
+> Social Bar, Native Banner 4:1, Sidebar 160×600, Smartlinks) tragen ihren
+> echten nodechart.cc-Code bereits als Default in `src/lib/ads/config.ts`.
+> Env-Vars sind nur **Overrides**, falls du ein Placement austauschen willst
+> (z. B. `NEXT_PUBLIC_ADSTERRA_SIDEBAR_SRC`, `NEXT_PUBLIC_ADSTERRA_NATIVE_BANNER_SRC`,
+> `NEXT_PUBLIC_ADSTERRA_SMARTLINK_URL`, `NEXT_PUBLIC_SMARTLINKS_ENABLED`).
+> Nach Änderung: **Deployments → Retry deployment** (Build-Env wirkt erst beim nächsten Build).
 
 ## 3b. Variante B (empfohlen): Auto-Deploy per GitHub Actions
 
@@ -153,7 +155,8 @@ sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
 | `https://nodechart.cc/de/terminal` | Chart mit Live-Candles, Wasserzeichen `www.NodeChart.cc` |
 | Sprache oben rechts wechseln (5×) | de/en/es/ru/zh vollständig übersetzt |
 | `…/de/terminal?adwall=1` | Spenden-Wall erscheint (Beweis: Monetization lebt) |
-| `https://nodechart.cc/sitemap.xml` | 25 URLs (5 Routen × 5 Sprachen), `Cache-Control` mit `s-maxage=3600` |
+| `https://nodechart.cc/sitemap.xml` | 30 URLs (6 Routen × 5 Sprachen), `Cache-Control` mit `s-maxage=3600` |
+| Desktop-Browser (≥1280 px) auf `/de/terminal` | linke Sidebar-Rail mit `GESPONSERT`-Label (füllt sich im echten Netz mit dem 160×600-Banner) |
 | `https://nodechart.cc/de/terminal?ticker=SOL` | Social-Card-Vorschau (Telegram/Web) zeigt `$SOL`-Karte in Link-Sprache |
 | `https://nodechart.cc/xx` und `/de/legal/nope` | 404 (keine Soft-404s) |
 | Browser-Konsole (F12) | 0 Fehler, 0 Warnungen |
@@ -168,6 +171,7 @@ sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
 | Ad-Slots leer | **Normal** ohne Adsterra-Env-Vars (Fail-open-Design) |
 | `git push` fragt ständig Passwort | Teil 2, Token-Hinweis; oder einmalig `git config --global credential.helper manager` |
 | Lokales Ausprobieren vor dem Push | `npm ci && npm run build && npm start` → http://localhost:3000 |
+| `npm run qa:full` meldet FAILs | **Nicht pushen.** `RELEASE-AUDIT.md` öffnet die Fail-Liste pro Modul; Modul einzeln erneut: `node scripts/release-audit/run.mjs M3` |
 
 ## 7. Kosten & Recht
 
@@ -182,5 +186,6 @@ sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
 ---
 
 **Reihenfolge merken:** ① Repo leer anlegen → ② `git push` → ③ Cloudflare
-connect + Build-Settings → ④ Domain → ⑤ Checkliste. Mehr ist es nicht. Viel
-Erfolg, Andrex. 🖤💚
+connect + Build-Settings (oder Secrets für §3b) → ④ Domain → ⑤ Checkliste.
+Mehr ist es nicht. Release-Stand: Tag `v1.0.0` = auditierter Zustand
+(398/0 Release-Audit, verify grün). Viel Erfolg, Andrex. 🖤💚
