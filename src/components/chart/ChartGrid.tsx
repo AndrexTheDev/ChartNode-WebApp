@@ -273,6 +273,7 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
     <>
       <NeonPanel
         glow="sm"
+        titleTag="h2"
         scan={status === 'open'}
         title={
           <span className="flex min-w-0 items-center gap-1.5">

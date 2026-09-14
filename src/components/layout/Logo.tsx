@@ -1,12 +1,15 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
+import { useId } from 'react';
 import { cn } from '@/lib/cn';
 
 /** Hexagonal node mark with three candlesticks inside. Pure inline SVG. */
 export function LogoGlyph({ className }: { className?: string }) {
+  // Id muss pro Instanz eindeutig sein (Logo sitzt in Header UND Footer)
+  const gid = 'nc-logo-' + useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
     <svg viewBox="0 0 32 32" className={cn('size-8', className)} aria-hidden focusable="false">
       <defs>
-        <linearGradient id="nc-logo-stroke" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="hsl(var(--nc-primary))" />
           <stop offset="100%" stopColor="hsl(var(--nc-secondary))" />
         </linearGradient>
@@ -14,7 +17,7 @@ export function LogoGlyph({ className }: { className?: string }) {
       <path
         d="M16 1.8 29 9.1v13.8L16 30.2 3 22.9V9.1z"
         fill="hsl(var(--nc-surface) / 0.6)"
-        stroke="url(#nc-logo-stroke)"
+        stroke={`url(#${gid})`}
         strokeWidth="1.6"
         strokeLinejoin="round"
       />
