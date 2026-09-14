@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // Systematischer Feature-Sweep: JEDER Menü-Eintrag, jeder Toolbar-Toggle,
 // alle Chart-Typen, Indikatoren (inkl. VWAP/AVWAP), Whale-Flow, Themes und
 // die Palette werden live ausgeführt und per Store-State (?qa=1) sowie

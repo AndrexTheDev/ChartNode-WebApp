@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 /**
  * Systematischer Monetization-Audit: Werbe- & Spenden-Flächen auf Funktion,
  * Darstellung, Überlappung und Verdeckung – über die System-Matrix

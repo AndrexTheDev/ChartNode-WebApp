@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // CWV-Check (SEO-Modul 6): LCP/CLS/TBT-Proxy + Ressourcen-Budget der Landing
 // in Desktop- UND Mobile-Emulation. Headless-Swiftshader-Werte sind eine
 // Regressionsschranke, keine Feld-CWV – Trends zählen, nicht Absolutwerte.

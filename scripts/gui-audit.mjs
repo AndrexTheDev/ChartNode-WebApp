@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // Systematischer GUI-Screenshot-Audit: jede Seite, jedes Menü, jedes
 // Tool-Modal, Palette, Themes, Toolbar-Toggles — jeweils mit automatischer
 // Prüfung auf Horizontal-Overflow und geclippten Text. Legt alle Shots unter

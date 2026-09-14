@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // SEO-Check M1: Head/Metadaten über ALLE Routen × 5 Locales.
 // Prüft Title/Description (Länge + Einzigartigkeit), Canonical exakt,
 // Hreflang-Set (5 Locales + x-default), OG-Set, Twitter-Card, Robots-Meta

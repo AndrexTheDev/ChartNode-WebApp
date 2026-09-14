@@ -39,18 +39,21 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       image: `${SITE_URL}${ogUrl}`,
     }),
     twitter: buildTwitter(title, description, `${SITE_URL}${ogUrl}`),
-    // Deliberately not indexed until the chart engine (Part 2) ships – we do
-    // not want a thin workspace page competing with the landing page.
-    robots: { index: false, follow: true },
+    // Chart-Engine ist live ⇒ Terminal ist eine vollwertige Produktseite;
+    // Canonical bündelt ?ticker/-price-Varianten auf den Basispfad.
+    robots: { index: true, follow: true },
   };
 }
 
 export default async function TerminalPage({ params }: PageProps) {
   const locale = assertLocale((await params).locale);
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: 'nav' });
 
   return (
     <>
+      {/* Semantik/A11y: genau eine H1 pro Seite (visuell Teil der Shell) */}
+      <h1 className="sr-only">{t('terminal')}</h1>
       <MarketDataProvider />
       <TerminalShell />
       <WhaleTicker />

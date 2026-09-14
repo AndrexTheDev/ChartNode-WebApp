@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // Verifizierung der GUI-Fixes F1–F6 + deterministische Theme-Shots (T1).
 // Nutzung: node scripts/gui-verify.mjs
 import { mkdirSync } from 'node:fs';

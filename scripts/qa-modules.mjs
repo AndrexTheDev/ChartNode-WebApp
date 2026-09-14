@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // Live-Tests für Module, die bisher nur indirekt oder gar nicht geprüft
 // wurden: Alerts/Notifications, CSV-Export, locale-param-404s, Journal,
 // Backtest, Script Lab, Chart-Sync, Keyboard-Map, Kommandopalette und der

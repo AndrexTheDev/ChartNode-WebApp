@@ -1,3 +1,4 @@
+// © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // Viewport-Fit-Check: jedes Dropdown/Menu muss vollständig in die Ansicht
 // passen (notfalls mit internem Scroll) – über breite UND niedrige Viewports.
 // Nutzung: node scripts/fit-check.mjs
