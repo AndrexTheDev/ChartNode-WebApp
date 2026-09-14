@@ -29,7 +29,7 @@
     "audit:css": "node scripts/tw-missing.mjs",
     "qa:interaction": "node scripts/qa-interaction.mjs",
     "qa:i18n": "node scripts/qa-i18n-layout.mjs",
-    "qa:monetization": "node scripts/qa-monetization.mjs",
+    "qa:monetization": "node scripts/monetization-audit.mjs",
     "qa:release": "node scripts/qa-release.mjs",
     "qa:modules": "node scripts/qa-modules.mjs",
     "qa:features": "node scripts/qa-features.mjs",

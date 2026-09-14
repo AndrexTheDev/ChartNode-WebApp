@@ -109,7 +109,9 @@
 .nc-sl-toast {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  /* in der NodeChart-App über Whale-Ticker/Social-Bar (--nc-dock-offset),
+     standalone (ohne Variable) klassisch 12 px vom Rand */
+  bottom: calc(12px + var(--nc-dock-offset, 0px));
   z-index: 9998;
   display: flex;
   align-items: center;
@@ -237,7 +239,7 @@
   .nc-sl-toast {
     right: 10px;
     left: 10px;
-    bottom: 10px;
+    bottom: calc(10px + var(--nc-dock-offset, 0px));
     max-width: none;
   }
   .nc-sl-strip {

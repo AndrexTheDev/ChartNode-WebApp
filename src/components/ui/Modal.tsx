@@ -56,12 +56,16 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
     };
 
     document.addEventListener('keydown', onKey, true);
+    // Ad-Overlays (Adsterra Social Bar mit Eigen-Z-Index) pausieren, solange
+    // ein Dialog offen ist – sonst liegt fremdes UI über Modal-Controls.
+    document.body.classList.add('nc-modal-open');
     const focusTimer = window.setTimeout(() => {
       panelRef.current?.querySelector<HTMLElement>('input, button')?.focus();
     }, 0);
 
     return () => {
       document.removeEventListener('keydown', onKey, true);
+      document.body.classList.remove('nc-modal-open');
       window.clearTimeout(focusTimer);
       restoreRef.current?.focus();
     };

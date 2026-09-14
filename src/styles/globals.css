@@ -495,3 +495,30 @@ select[aria-invalid='true'] {
     max-height: 12rem;
   }
 }
+
+/* ── Ad-Pause unter offenen Dialogen ───────────────────────────────────────
+   Adsterras Social Bar bringt ihren eigenen (sehr hohen) z-index mit. Damit
+   kein fremdes UI über Modal-Controls liegt, wird die getaggte Bar solange
+   ein Dialog offen ist ausgeblendet (Modal setzt body.nc-modal-open). */
+body.nc-modal-open [data-nc-socialbar="1"] {
+  visibility: hidden;
+}
+
+/* ── Sponsored-Strip: auf Mobile einzeiliger Scroller ──────────────────────
+   Das Kit setzt .nc-sl-strip (flex-wrap). In der Header-Zone darf der Strip
+   auf Phones nicht dreizeilig ins First-View ragen (Toast-/Dock-Bereich),
+   daher horizontaler Scroll-Snap-Scroller; ab lg normales Wrapping. */
+#sponsor-strip.nc-sl-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#sponsor-strip.nc-sl-strip::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 1024px) {
+  #sponsor-strip.nc-sl-strip {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}

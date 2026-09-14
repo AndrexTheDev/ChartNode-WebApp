@@ -181,6 +181,9 @@ export default async function LocaleLayout({
           {/* Native Banner (4:1) in der Header-Zone – Terminal skippt (Strip) */}
           <HeaderNativeBanner />
 
+          {/* Sprach-Hinweis in-flow in der Header-Zone: verdeckt nie Content */}
+          <LocaleDetectBanner />
+
           <main id="nc-content" className="flex-1">
             {children}
           </main>
@@ -189,7 +192,6 @@ export default async function LocaleLayout({
 
           <CommandPalette />
           <RateLimitOverlay />
-          <LocaleDetectBanner />
           {/* Adsterra slots, ad-block soft-wall, share-to-unlock modals */}
           <AdManager />
         </NextIntlClientProvider>

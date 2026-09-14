@@ -29,11 +29,12 @@ const SOCIAL_MAX_TRIES = 3;
  * Best-Effort mit Retries: Adsterra rendert die Bar teils verzögert nach dem
  * Script-Load; findet sich nichts Fixiertes, bleibt die Variable bei 0.
  */
-function findSocialBarHeight(): number {
+function findSocialBar(): { height: number; el: HTMLElement | null } {
   const isOurs = (el: Element) =>
     (el.id !== '' && el.id.startsWith('nc-')) ||
     (typeof el.className === 'string' && el.className.includes('nc-'));
   let height = 0;
+  let found: HTMLElement | null = null;
   const consider = (el: Element, depth: number) => {
     if (height > 0 || depth > 2 || isOurs(el)) return;
     const cs = window.getComputedStyle(el as HTMLElement);
@@ -42,26 +43,32 @@ function findSocialBarHeight(): number {
       const bottomAnchored = Math.abs(window.innerHeight - rect.bottom) < 48;
       if (bottomAnchored && rect.height >= 20 && rect.height <= 220) {
         height = Math.max(height, rect.height);
+        found = el as HTMLElement;
         return;
       }
     }
     for (const child of Array.from(el.children)) consider(child, depth + 1);
   };
   for (const child of Array.from(document.body.children)) consider(child, 0);
-  return height;
+  return { height, el: found };
 }
 
 function measureSocialBar(): void {
   const attempt = (left: number) => {
     window.setTimeout(() => {
       let h = 0;
+      let el: HTMLElement | null = null;
       try {
-        h = findSocialBarHeight();
+        const found = findSocialBar();
+        h = found.height;
+        el = found.el;
       } catch {
         /* Messung ist Best-Effort */
       }
       if (h > 0) {
         document.documentElement.style.setProperty('--nc-socialbar-h', `${Math.ceil(h)}px`);
+        // Marker für CSS-Regeln (z. B. Pause unter offenen Modals)
+        if (el) el.dataset.ncSocialbar = '1';
         return;
       }
       if (left > 0) attempt(left - 1);

@@ -58,13 +58,24 @@ export function WhaleTicker() {
     if (!bar) return;
     const apply = () => {
       const h = bar.getBoundingClientRect().height;
-      root.style.setProperty('--nc-dock-offset', `${Math.ceil(h)}px`);
+      // Social Bar (fixed, Boden) schiebt den Ticker nach oben – die Seite
+      // reserviert beides zusammen, damit nichts hinter etwas verschwindet.
+      const sb = parseFloat(window.getComputedStyle(root).getPropertyValue('--nc-socialbar-h')) || 0;
+      const next = `${Math.ceil(h + sb)}px`;
+      if (next === lastOffset) return; // keine Mutation → keine Observer-Schleife
+      lastOffset = next;
+      root.style.setProperty('--nc-dock-offset', next);
     };
+    let lastOffset = '';
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(bar);
+    // --nc-socialbar-h ändert sich asynchron (Ad-Load) → mitbeobachten
+    const mo = new MutationObserver(apply);
+    mo.observe(root, { attributes: true, attributeFilter: ['style'] });
     return () => {
       ro.disconnect();
+      mo.disconnect();
       root.style.removeProperty('--nc-dock-offset');
     };
   }, []);
@@ -73,7 +84,8 @@ export function WhaleTicker() {
     <div
       ref={barRef}
       aria-label={t('aria')}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      className="pointer-events-none fixed inset-x-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      style={{ bottom: 'var(--nc-socialbar-h, 0px)' }}
     >
       <div className="pointer-events-auto border-t border-line/80 bg-bg/92 backdrop-blur-xl">
         <div aria-hidden className="h-px w-full bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
