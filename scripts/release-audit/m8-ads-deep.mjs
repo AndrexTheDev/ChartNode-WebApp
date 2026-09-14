@@ -104,7 +104,6 @@ export async function run() {
       return Math.round(x * y);
     }, NB_CONTAINER);
     check('NB Fill: kein Overlap mit Main-Inhalt', overlap >= 0 && overlap <= 4, 'px²=' + overlap);
-    await p.screenshot({ path: 'shots-matrix/nativebanner-fill-beweis.png' });
     await p.close();
   }
 
@@ -209,7 +208,6 @@ export async function run() {
       return new Promise((res) => setTimeout(() => res(document.querySelectorAll('.nc-sl-toast').length), 1500));
     });
     check('SL Terminal: Toast-Singleton/Cooldown (kein Spam)', second <= 1, 'n=' + second);
-    await p.screenshot({ path: 'shots-matrix/smartlink-toast-beweis.png' });
     await p.close();
   }
 

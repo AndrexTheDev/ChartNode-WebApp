@@ -35,3 +35,7 @@ yarn-error.log*
 # QA-Artefakte & Dev-Fixtures (dürfen nie ins Repo)
 /artifacts/
 /public/ads-dev/
+
+# On-Demand-Visual-Proofs (manuelle Tools, nicht ins Repo)
+/shots-matrix/
+/shot-*.png

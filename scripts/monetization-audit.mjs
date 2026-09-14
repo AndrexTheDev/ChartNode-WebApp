@@ -5,7 +5,6 @@
  * (Mobile 390, Tablet 768, Desktop 1440, Wide 1920).
  *
  * Lauf:  npm run qa:monetization   (Server auf :3000 erforderlich)
- * Shots: shots-matrix/<state>-<viewport>.png
  *
  * Doktrin (was „verdeckt" heißt):
  *  · PERMANENTE Flächen (Sponsored-Strip, Native-Banner-Box, Smartlink-CTAs,
@@ -24,13 +23,9 @@
  * Ad-Domain hängen), Whale-Ticker, SupportModal (?adwall=1), Milestone-Card
  * (Spenden-Pop-up via Visit-Seed), Toast-Stack-Position.
  */
-import fs from 'node:fs';
-import path from 'node:path';
 import puppeteer from 'puppeteer';
 
 const BASE = 'http://127.0.0.1:3000';
-const OUT = path.resolve('shots-matrix');
-fs.mkdirSync(OUT, { recursive: true });
 
 const VIEWPORTS = [
   { id: 'mobile', width: 390, height: 844, mobile: true },
@@ -193,7 +188,6 @@ for (const vp of VIEWPORTS) {
   t(`${vp.id} landing: CTAs/Banner im Viewport`, a.offscreen.length === 0, a.offscreen.join(','));
   await p.evaluate(() => window.scrollTo(0, 0));
   await new Promise((r) => setTimeout(r, 300));
-  await p.screenshot({ path: path.join(OUT, `landing-${vp.id}.png`) });
   await p.close();
 
   /* 2 — Terminal: Strip + Ticker + Offer-Toast */
@@ -227,7 +221,6 @@ for (const vp of VIEWPORTS) {
   t(`${vp.id} terminal: kein Horizontal-Overflow`, !a.hOverflow);
   t(`${vp.id} terminal: Toast liegt auf keinem Control`, a.controlOverlaps.length === 0, a.controlOverlaps.join(','));
   t(`${vp.id} terminal: alles klickbar (nichts verdeckt)`, a.blocked.length === 0, a.blocked.join(','));
-  await p.screenshot({ path: path.join(OUT, `terminal-toast-${vp.id}.png`) });
   await toBottom(p);
   ab = await audit(p, 'bottom');
   t(`${vp.id} terminal: Ticker-Dock verdeckt nichts am Scroll-Ende`, ab.dockOverlaps.length === 0, ab.dockOverlaps.join(','));
@@ -249,7 +242,6 @@ for (const vp of VIEWPORTS) {
   await new Promise((r) => setTimeout(r, 400));
   ab = await audit(p, 'bottom');
   t(`${vp.id} terminal+socialbar: Docks verdecken nichts am Scroll-Ende`, ab.dockOverlaps.length === 0, ab.dockOverlaps.join(','));
-  await p.screenshot({ path: path.join(OUT, `terminal-socialbar-${vp.id}.png`) });
   await p.close();
 
   /* 4 — SupportModal (?adwall=1): Spenden-Pop-up Darstellung */
@@ -273,7 +265,6 @@ for (const vp of VIEWPORTS) {
     });
   });
   t(`${vp.id} adwall: alle Modal-Controls klickbar`, modalClickable);
-  await p.screenshot({ path: path.join(OUT, `adwall-${vp.id}.png`) });
   await p.close();
 
   /* 5 — Milestone-Spenden-Card (Visit-Seed → 3. Besuch, 6 s Delay) */
@@ -290,7 +281,6 @@ for (const vp of VIEWPORTS) {
         return r.right <= innerWidth + 2 && r.left >= -2;
       });
       t(`${vp.id} milestone: Card im Viewport`, fit);
-      await p.screenshot({ path: path.join(OUT, `milestone-${vp.id}.png`) });
     }
     await p.close();
   }
@@ -302,11 +292,10 @@ for (const vp of VIEWPORTS) {
     a = await audit(p, 'top');
     t(`${vp.id} help: kein Horizontal-Overflow`, !a.hOverflow);
     t(`${vp.id} help: keine Control-Überlappung/Verdeckung`, a.controlOverlaps.length === 0 && a.blocked.length === 0, [...a.controlOverlaps, ...a.blocked].join(','));
-    await p.screenshot({ path: path.join(OUT, `help-${vp.id}.png`) });
     await p.close();
   }
 }
 
 await browser.close();
-console.log(`\n${pass} PASS / ${fail} FAIL · Shots: shots-matrix/`);
+console.log(`\n${pass} PASS / ${fail} FAIL`);
 process.exit(fail ? 1 : 0);
