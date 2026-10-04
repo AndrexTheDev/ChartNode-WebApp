@@ -21,7 +21,7 @@ interface ChanInfo {
 const chanIndex = new Map<number, ChanInfo>();
 
 /**
- * Bitfinex WebSocket v2 (public, no key). Verified live:
+ * Bitfinex WebSocket v2 (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * candles : {"event":"subscribe","channel":"candles","key":"trade:1m:tBTCUSD"}
  *           ack  {"event":"subscribed","channel":"candles","chanId":74,"key":"trade:1m:tBTCUSD"}

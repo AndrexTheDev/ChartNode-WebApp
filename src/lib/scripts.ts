@@ -14,6 +14,7 @@
  * Helper series are memoised per run, so a script stays O(n · series).
  */
 import type { Candle } from '@/websockets/types';
+import { createAbortContext } from '@/lib/abort';
 import { EMA, SMA, RSI, ATR, Stochastic } from 'technicalindicators';
 
 export interface StoredScript {
@@ -306,12 +307,63 @@ export function toRawUrl(url: string): string {
   }
 }
 
-export async function importScriptSource(url: string): Promise<string> {
+const SCRIPT_IMPORT_TIMEOUT_MS = 10_000;
+const SCRIPT_IMPORT_MAX_BYTES = 20_000;
+
+export async function importScriptSource(url: string, signal?: AbortSignal): Promise<string> {
   const target = toRawUrl(url.trim());
-  if (!/^https:\/\//i.test(target)) throw new Error('https-only');
-  const response = await fetch(target);
-  if (!response.ok) throw new Error(`http-${response.status}`);
-  const text = await response.text();
-  if (text.length > 20_000) throw new Error('too-large');
-  return text.trim();
+  let parsed: URL;
+  try {
+    parsed = new URL(target);
+  } catch {
+    throw new Error('https-only');
+  }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('https-only');
+
+  const abort = createAbortContext(SCRIPT_IMPORT_TIMEOUT_MS, signal);
+  try {
+    const response = await fetch(target, { cache: 'no-store', signal: abort.signal });
+    if (!response.ok) throw new Error(`http-${response.status}`);
+
+    const contentLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(contentLength) && contentLength > SCRIPT_IMPORT_MAX_BYTES) {
+      await response.body?.cancel().catch(() => undefined);
+      throw new Error('too-large');
+    }
+
+    if (!response.body) {
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > SCRIPT_IMPORT_MAX_BYTES) throw new Error('too-large');
+      return text.trim();
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const chunks: string[] = [];
+    let receivedBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        receivedBytes += value.byteLength;
+        if (receivedBytes > SCRIPT_IMPORT_MAX_BYTES) {
+          await reader.cancel().catch(() => undefined);
+          throw new Error('too-large');
+        }
+        chunks.push(decoder.decode(value, { stream: true }));
+      }
+      chunks.push(decoder.decode());
+      return chunks.join('').trim();
+    } catch (error) {
+      await reader.cancel().catch(() => undefined);
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
+  } catch (error) {
+    if (abort.timedOut()) throw new Error('timeout');
+    throw error;
+  } finally {
+    abort.dispose();
+  }
 }

@@ -63,33 +63,122 @@ const panelFit = (page) =>
     };
   });
 
+async function openControls(page, compact) {
+  if (!compact) return;
+  const isOpen = await page.evaluate(() => Boolean(document.querySelector('[data-mobile-controls-sheet]')));
+  if (isOpen) return;
+  await page.evaluate(() => document.querySelector('[data-mobile-controls-trigger]')?.click());
+  await wait(400);
+}
+
+async function expandMobileSection(page, key) {
+  await page.evaluate((sectionKey) => {
+    const section = document.querySelector(`[data-mobile-section="${sectionKey}"]`);
+    const trigger = section?.querySelector('button[aria-controls]');
+    if (trigger?.getAttribute('aria-expanded') !== 'true') trigger?.click();
+  }, key);
+  await wait(150);
+}
+
+const controlsFit = (page) =>
+  page.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+    const body = dialog?.querySelector('.overscroll-contain');
+    if (!dialog || !body) return { found: false };
+    const r = dialog.getBoundingClientRect();
+    return {
+      found: true,
+      inView: r.top >= -1 && r.bottom <= window.innerHeight + 1 && r.left >= -1 && r.right <= window.innerWidth + 1,
+      scrollable: body.scrollHeight > body.clientHeight + 2,
+      rect: { t: Math.round(r.top), b: Math.round(r.bottom), l: Math.round(r.left), r: Math.round(r.right) },
+      vh: window.innerHeight,
+      vw: window.innerWidth,
+    };
+  });
+
 for (const [name, width, height] of VPS) {
   const page = await browser.newPage();
   await page.setViewport({ width, height, isMobile: width < 500, hasTouch: width < 500 });
   await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('canvas', { timeout: 30000 });
   await wait(4000);
+  const compact = width < 1280;
+  const customTimeframe = await page.evaluate(() => {
+    const trigger = [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
+      .find((button) => !button.hasAttribute('data-mobile-controls-trigger')
+        && button.getBoundingClientRect().width > 0);
+    if (!trigger) return { found: false, linked: false, id: '' };
+    trigger.click();
+    const id = trigger.getAttribute('aria-controls') ?? '';
+    const popover = id ? document.getElementById(id) : null;
+    return { found: true, linked: Boolean(id && popover?.getAttribute('role') === 'dialog'), id };
+  });
+  check(`${name}: custom timeframe popover has an associated dialog id`, customTimeframe.found && customTimeframe.linked);
+  await wait(120);
+  await page.keyboard.press('Escape');
+  await wait(120);
+  check(`${name}: Escape dismisses custom timeframe popover and restores focus`, await page.evaluate((popoverId) => {
+    const trigger = [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
+      .find((button) => !button.hasAttribute('data-mobile-controls-trigger')
+        && button.getBoundingClientRect().width > 0);
+    return trigger?.getAttribute('aria-expanded') === 'false'
+      && document.activeElement === trigger
+      && !document.getElementById(popoverId);
+  }, customTimeframe.id));
 
-  // 1) ToolMenu (längstes Menü: 8 Items)
-  await page.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
-  await wait(600);
-  let fit = await panelFit(page);
-  check(`${name}: TOOLS-Menü vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
-  await page.screenshot({ path: join(OUT, `${name}-tools.png`) });
-  check(`${name}: Escape/Outside schließt das Menü`, await closePanels(page));
+  // 1) Desktop: eight-item ToolMenu. Compact layouts: the organized controls sheet.
+  let fit;
+  if (compact) {
+    await openControls(page, compact);
+    fit = await controlsFit(page);
+    check(`${name}: controls sheet stays in view and scrolls internally`, fit.found && fit.inView && fit.scrollable, JSON.stringify(fit));
+    await page.screenshot({ path: join(OUT, `${name}-controls.png`) });
+    await expandMobileSection(page, 'tools');
+    const hasAlerts = await page.evaluate(() => {
+      const button = document.querySelector('[data-mobile-controls-sheet] [data-mobile-action="alerts-manager"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    });
+    check(`${name}: mobile tools expose Alerts`, hasAlerts);
+    await wait(450);
+    check(`${name}: selecting Alerts opens its panel`, await page.evaluate(() => document.querySelectorAll('[role="dialog"]').length > 0));
+    await page.keyboard.press('Escape');
+    await wait(400);
+    await openControls(page, compact);
+    await page.keyboard.press('Escape');
+    await wait(300);
+    check(`${name}: Escape closes the controls sheet with expanded sections`, await page.evaluate(() => !document.querySelector('[data-mobile-controls-sheet]')));
+  } else {
+    await page.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+    await wait(600);
+    fit = await panelFit(page);
+    check(`${name}: TOOLS-Menü vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
+    await page.screenshot({ path: join(OUT, `${name}-tools.png`) });
+    check(`${name}: Escape/Outside schließt das Menü`, await closePanels(page));
+  }
 
   // 2) Datenquelle/ExchangePicker (6 Items + Hints)
-  await page.evaluate(() => [...document.querySelectorAll('button[aria-label]')].find((b) => b.getAttribute('aria-label') === 'Datenquelle')?.click());
+  await openControls(page, compact);
+  await page.evaluate((useSheet) => {
+    const selector = useSheet
+      ? '[data-mobile-controls-sheet] [data-testid="market-data-source"] button[aria-haspopup="listbox"]'
+      : '.sticky button[aria-label="Datenquelle"]';
+    document.querySelector(selector)?.click();
+  }, compact);
   await wait(600);
   fit = await panelFit(page);
   check(`${name}: Datenquelle-Menü vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
   check(`${name}: Escape/Outside schließt Datenquelle`, await closePanels(page));
 
   // 3) Chart-Typ-Dropdown (10 Items)
-  await page.evaluate(() => {
-    [...document.querySelectorAll('button[aria-haspopup="listbox"]')]
-      .find((b) => /candles|renko|linie|point/i.test(b.getAttribute('aria-label') ?? ''))?.click();
-  });
+  await openControls(page, compact);
+  await page.evaluate((useSheet) => {
+    const selector = useSheet
+      ? '[data-mobile-controls-sheet] [data-testid="chart-type-control"] button[aria-haspopup="listbox"]'
+      : '.sticky [data-testid="chart-type-control"] button[aria-haspopup="listbox"]';
+    document.querySelector(selector)?.click();
+  }, compact);
   await wait(600);
   fit = await panelFit(page);
   check(`${name}: Chart-Typ-Menü vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
@@ -119,11 +208,14 @@ for (const [name, width, height] of VPS) {
   const nativeSelects = await page.evaluate(() => document.querySelectorAll('.sticky select').length);
   check(`${name}: kein natives Select in der Toolbar`, nativeSelects === 0, `gefunden: ${nativeSelects}`);
 
-  // 7) Compare-Dropdown öffnet sich im Design-System und passt in die Ansicht
-  await page.evaluate(() =>
-    [...document.querySelectorAll('.sticky button[aria-haspopup="listbox"]')]
-      .find((b) => /vergleich|compare/i.test(b.getAttribute('aria-label') ?? ''))?.click(),
-  );
+  // 7) Compare-Dropdown lives in the compact controls sheet below xl.
+  await openControls(page, compact);
+  await page.evaluate((useSheet) => {
+    const selector = useSheet
+      ? '[data-mobile-controls-sheet] [data-testid="compare-control"] button[aria-haspopup="listbox"]'
+      : '.sticky [data-testid="compare-control"] button[aria-haspopup="listbox"]';
+    document.querySelector(selector)?.click();
+  }, compact);
   await wait(600);
   fit = await panelFit(page);
   check(`${name}: Compare-Dropdown vollständig in Ansicht`, fit.found && fit.inView, JSON.stringify(fit));
@@ -138,11 +230,15 @@ for (const [name, width, height] of VPS) {
   check(`${name}: Venue-Klartext-Chip im Pane-Header`, headerVenue != null, headerVenue ?? 'kein Chip');
 
   // 9) ExchangePicker-Trigger zeigt vollen Börsennamen (nicht nur Kürzel)
-  const pickerName = await page.evaluate((names) => {
-    const b = [...document.querySelectorAll('button[aria-label]')].find((x) => x.getAttribute('aria-label') === 'Datenquelle');
+  await openControls(page, compact);
+  const pickerName = await page.evaluate((names, useSheet) => {
+    const selector = useSheet
+      ? '[data-mobile-controls-sheet] [data-testid="market-data-source"] button[aria-haspopup="listbox"]'
+      : '.sticky button[aria-label="Datenquelle"]';
+    const b = document.querySelector(selector);
     const txt = b?.textContent ?? '';
     return names.find((n) => txt.includes(n)) ?? null;
-  }, VENUES);
+  }, VENUES, compact);
   check(`${name}: Datenquelle-Trigger zeigt Börsen-Klartext`, pickerName != null, pickerName ?? 'kein Name');
 
   // 10) Smart-Search: Börsen-Filter greift (nur desktop, braucht Such-Panel)

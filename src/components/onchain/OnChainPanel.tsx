@@ -25,7 +25,7 @@ import { TRACKED_EVM_CHAINS, type EvmChainSignals } from '@/api/onchain';
 /**
  * Right-docked panel with live, keyless on-chain signals:
  *
- *   BTC mempool/fees/difficulty (mempool.space) · EVM gas+activity (Blockscout)
+ *   BTC mempool/fees/difficulty (mempool.space + Esplora fallback) · EVM stats (Blockscout + PublicNode gas fallback)
  *   Solana TPS (public RPC) · DeFi TVL (DeFiLlama) · DEX heat (GeckoTerminal +
  *   DexScreener boosts) · token forensics for the active DEX token (GoPlus).
  *
@@ -119,6 +119,14 @@ export function OnChainPanel() {
           <ForensicsCard />
         </div>
         <p className="mt-3 font-mono text-2xs uppercase tracking-cyber text-faint">{t('sources')}</p>
+        <p className="mt-1 flex flex-wrap gap-x-2 font-mono text-2xs text-muted">
+          <a href="https://www.geckoterminal.com/" target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-fg">
+            On-chain data provided by GeckoTerminal
+          </a>
+          <a href="https://www.coingecko.com/en/api" target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-2 hover:text-fg">
+            Powered by CoinGecko
+          </a>
+        </p>
       </div>
     </aside>
   );
@@ -194,21 +202,21 @@ function BtcCard() {
           <div className="grid grid-cols-3 gap-1.5">
             <Stat
               label={t('btc.fast')}
-              value={`${btc.fastestFee}`}
-              tone={btc.fastestFee > 50 ? 'bear' : btc.fastestFee > 15 ? 'warn' : 'bull'}
+              value={btc.fastestFee != null ? `${btc.fastestFee}` : '—'}
+              tone={btc.fastestFee == null ? undefined : btc.fastestFee > 50 ? 'bear' : btc.fastestFee > 15 ? 'warn' : 'bull'}
             />
-            <Stat label={t('btc.half')} value={`${btc.halfHourFee}`} />
-            <Stat label={t('btc.eco')} value={`${btc.economyFee}`} tone="bull" />
+            <Stat label={t('btc.half')} value={btc.halfHourFee != null ? `${btc.halfHourFee}` : '—'} />
+            <Stat label={t('btc.eco')} value={btc.economyFee != null ? `${btc.economyFee}` : '—'} tone={btc.economyFee != null ? 'bull' : undefined} />
           </div>
           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
             <Stat label={t('btc.unconfirmed')} value={compact(btc.unconfirmed)} />
-            <Stat label={t('btc.mempool')} value={`${Math.round(btc.vsize / 1e6)} MB`} />
+            <Stat label={t('btc.mempool')} value={btc.vsize != null ? `${Math.round(btc.vsize / 1e6)} MB` : '—'} />
             <Stat
               label={t('btc.difficulty')}
-              value={`${btc.difficultyChangePct >= 0 ? '+' : ''}${btc.difficultyChangePct.toFixed(2)}%`}
-              tone={btc.difficultyChangePct >= 0 ? 'bull' : 'bear'}
+              value={btc.difficultyChangePct != null ? `${btc.difficultyChangePct >= 0 ? '+' : ''}${btc.difficultyChangePct.toFixed(2)}%` : '—'}
+              tone={btc.difficultyChangePct == null ? undefined : btc.difficultyChangePct >= 0 ? 'bull' : 'bear'}
             />
-            <Stat label={t('btc.blocks')} value={`${Math.round(btc.timeAvgSec / 1000)}s`} />
+            <Stat label={t('btc.blocks')} value={btc.timeAvgMs != null ? `${Math.round(btc.timeAvgMs / 1000)}s` : '—'} />
           </div>
           <p className="mt-1.5 font-mono text-2xs text-faint">{t('btc.feeUnit')}</p>
         </>
@@ -279,6 +287,15 @@ function EvmCard() {
               {entry.tvlUsd != null && (
                 <span className="font-mono text-2xs text-faint">{t('evm.tvl', { value: compactUsd(entry.tvlUsd) })}</span>
               )}
+              <span className="w-full text-right font-mono text-micro-9 text-faint">
+                {t('evm.source', {
+                  provider: entry.source === 'mixed'
+                    ? 'Blockscout + PublicNode'
+                    : entry.source === 'publicnode'
+                      ? 'PublicNode'
+                      : 'Blockscout',
+                })}
+              </span>
             </li>
           ))}
         </ul>
@@ -419,6 +436,18 @@ function ForensicsCard() {
   const forensicsKey = useOnChainStore((s) => s.forensicsKey);
   const activeToken = useAppStore(selectActiveToken);
   const isDex = activeToken.venue === 'DEX' && Boolean(activeToken.chain) && Boolean(activeToken.contract);
+  const incomplete = Boolean(
+    forensics && (
+      forensics.provider === 'honeypot' ||
+      forensics.holderCount == null ||
+      forensics.buyTaxPct == null ||
+      forensics.sellTaxPct == null ||
+      forensics.top10Pct == null ||
+      forensics.lpLockedPct == null ||
+      forensics.isMintable == null ||
+      forensics.isHoneypot == null
+    ),
+  );
 
   return (
     <CardShell group="forensics" icon={Microscope} label={t('groups.forensics')}>
@@ -446,9 +475,17 @@ function ForensicsCard() {
             <Stat
               label={t('forensics.lp')}
               value={forensics.lpLockedPct != null ? `${forensics.lpLockedPct.toFixed(0)}%` : '—'}
-              tone={forensics.lpLockedPct != null && forensics.lpLockedPct < 50 ? 'warn' : 'bull'}
+              tone={forensics.lpLockedPct == null ? undefined : forensics.lpLockedPct < 50 ? 'warn' : 'bull'}
             />
           </div>
+          <p className="mt-1.5 font-mono text-2xs text-faint">
+            {t('forensics.source', { provider: forensics.provider === 'goplus' ? 'GoPlus' : 'Honeypot.is' })}
+          </p>
+          {incomplete && (
+            <p className="font-mono text-2xs text-warning">
+              {forensics.provider === 'honeypot' ? t('forensics.partial') : t('forensics.incomplete')}
+            </p>
+          )}
           {(forensics.isMintable || forensics.isHoneypot) && (
             <p className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-2xs uppercase tracking-cyber text-bear">
               <ShieldAlert className="size-3.5" aria-hidden />

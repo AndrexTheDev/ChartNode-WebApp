@@ -1,7 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Code2, Download, Play, Plus, Save, Trash2 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
@@ -32,8 +32,20 @@ export function ScriptLabModal({ candles, open, onClose }: ScriptLabModalProps) 
   const [source, setSource] = useState('ema(21) - ema(55)');
   const [overlay, setOverlay] = useState(false);
   const [url, setUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const importController = useRef<AbortController | null>(null);
   const [result, setResult] = useState<{ last?: number; min?: number; max?: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleClose = () => {
+    importController.current?.abort();
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!open) importController.current?.abort();
+    return () => importController.current?.abort();
+  }, [open]);
 
   const commit = (next: StoredScript[]) => {
     setScripts(next);
@@ -59,7 +71,7 @@ export function ScriptLabModal({ candles, open, onClose }: ScriptLabModalProps) 
   const apply = () => {
     useChartStore.getState().addIndicator('pane-1', 'CUSTOM', { overlay: overlay ? 1 : 0 }, source);
     useViralStore.getState().bumpTool();
-    onClose();
+    handleClose();
   };
 
   const save = () => {
@@ -75,19 +87,39 @@ export function ScriptLabModal({ candles, open, onClose }: ScriptLabModalProps) 
   };
 
   const doImport = async () => {
+    if (importController.current) return;
+    const controller = new AbortController();
+    importController.current = controller;
+    setImporting(true);
     setError(null);
     try {
-      const text = await importScriptSource(url);
-      setSource(text.slice(0, 4000));
+      const text = await importScriptSource(url, controller.signal);
+      if (!controller.signal.aborted) setSource(text.slice(0, 4000));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'http';
-      setError(message.startsWith('http-') ? t('scripts.errHttp', { code: message.slice(5) }) : t(`scripts.err.${message === 'https-only' ? 'https-only' : 'too-large'}`));
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : 'network';
+      if (message.startsWith('http-')) {
+        setError(t('scripts.errHttp', { code: message.slice(5) }));
+      } else {
+        const key = message === 'https-only' || message === 'too-large' || message === 'timeout'
+          ? message
+          : 'network';
+        setError(t(`scripts.err.${key}`));
+      }
+    } finally {
+      if (importController.current === controller) {
+        importController.current = null;
+        setImporting(false);
+      }
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t('scripts.title')} subtitle={t('scripts.sub')} widthClass="max-w-3xl">
+    <Modal open={open} onClose={handleClose} title={t('scripts.title')} subtitle={t('scripts.sub')} widthClass="max-w-3xl">
       <div className="flex flex-col gap-3">
+        <p role="note" className="border border-danger/60 bg-danger/5 px-3 py-2 font-mono text-2xs leading-relaxed text-danger">
+          {t('scripts.securityWarning')}
+        </p>
         <p className="border border-line/60 bg-surface/30 px-3 py-2 font-mono text-2xs leading-relaxed text-muted">
           {t('scripts.guide')}
         </p>
@@ -158,7 +190,9 @@ export function ScriptLabModal({ candles, open, onClose }: ScriptLabModalProps) 
           <button
             type="button"
             onClick={() => void doImport()}
-            className="flex items-center gap-1 border border-secondary/50 bg-secondary/10 px-3 py-1.5 font-mono text-2xs uppercase tracking-cyber text-secondary hover:bg-secondary/20"
+            disabled={importing}
+            aria-busy={importing}
+            className="flex items-center gap-1 border border-secondary/50 bg-secondary/10 px-3 py-1.5 font-mono text-2xs uppercase tracking-cyber text-secondary hover:bg-secondary/20 disabled:cursor-wait disabled:opacity-50"
           >
             <Download size={12} /> {t('scripts.importGo')}
           </button>

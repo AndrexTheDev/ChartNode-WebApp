@@ -3,12 +3,13 @@ import { defineCloudflareConfig } from '@opennextjs/cloudflare';
 
 /**
  * OpenNext → Cloudflare adapter config.
- * Part 1 needs no bindings, no incremental cache and no revalidation queue:
- * every page is prerendered at build time for all 5 locales and served as a
- * static asset from Cloudflare's edge. That keeps the runtime cost at $0.
+ * Locale landing/help/legal pages are prerendered, while the terminal and
+ * narrow API handlers are bundled into a Worker. The current setup needs no
+ * KV/D1 binding, but Worker requests and upstream APIs still have plan limits
+ * and may incur costs; check current Cloudflare terms and quotas.
  *
- * When Part 2+ adds API routes / on-demand ISR, enable `incrementalCache`
- * (Workers KV) and `tagCache` here – nothing else in the app has to change.
+ * If on-demand ISR is added later, configure an appropriate incremental cache
+ * and tag cache here (for example, Workers KV) after reviewing current limits.
  */
 export default defineCloudflareConfig({
   // incrementalCache: { type: 'memory-limit' },

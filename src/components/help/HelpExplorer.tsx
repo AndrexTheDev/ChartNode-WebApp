@@ -7,6 +7,7 @@ import { useTranslations, useMessages } from 'next-intl';
 import { Kbd } from '@/components/ui/Kbd';
 import { NeonPanel } from '@/components/ui/NeonPanel';
 import { CONTACT } from '@/lib/constants';
+import { flattenMetricDocs } from '@/lib/help';
 import { cn } from '@/lib/cn';
 
 interface HelpTopic {
@@ -33,11 +34,6 @@ interface IndicatorDoc {
   name: string;
   short: string;
   hint: string;
-}
-
-interface MetricDoc {
-  name: string;
-  body: string;
 }
 
 interface Shortcut {
@@ -83,8 +79,7 @@ export function HelpExplorer() {
       question: `${doc.name} — ${doc.short}`,
       answer: doc.hint,
     }));
-    const metricDocs = t.raw('metrics') as Record<string, MetricDoc>;
-    const metricTopics: HelpTopic[] = Object.entries(metricDocs).map(([key, doc]) => ({
+    const metricTopics: HelpTopic[] = flattenMetricDocs(t.raw('metrics')).map(([key, doc]) => ({
       id: `met-${key}`,
       category: 'metrics',
       question: doc.name,

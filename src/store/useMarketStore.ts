@@ -105,9 +105,9 @@ export const useMarketStore = create<MarketStore>()((set) => ({
             note:
               extra?.note !== undefined
                 ? extra.note
-                : // A reconnect clears stale error notes, but never the
-                  // informational "history came from a neighbour venue" marker.
-                  status === 'open' && !current.note?.startsWith('seed-via:')
+                : // A reconnect clears stale error notes, but preserves history provenance
+                  // (neighbour venue) and explicit stale-cache warnings.
+                  status === 'open' && !current.note?.startsWith('seed-via:') && !current.note?.startsWith('seed-stale:')
                   ? null
                   : current.note,
           },

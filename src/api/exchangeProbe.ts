@@ -1,7 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 'use client';
 
-import { timeoutSignal } from '@/lib/abort';
+import { createAbortContext } from '@/lib/abort';
 import type { Timeframe } from '@/store/types';
 import { REACH_TTL_MS, SLOW_MS, useExchangeStore } from '@/store/useExchangeStore';
 import { ADAPTERS, EXCHANGE_PREFERENCE } from '@/websockets/registry';
@@ -21,12 +21,15 @@ const PROBE_TIMEOUT_MS = 8_000;
 const CONCURRENCY = 4;
 
 /**
- * Measures which venues this visitor can actually reach, and how fast.
+ * Best-effort browser-side probe used only as one venue-selection signal.
  *
- * The probe reuses the exact REST request the chart seed will make (`seedUrl`),
- * so a 451/403 here means the real feed would fail too. Exchanges without a
- * REST history (Crypto.com) are probed by their socket handshake instead.
- * Everything is key-less, free and cached for 6 h in `useExchangeStore`.
+ * The probe attempts the chart's REST seed URL where browser access is
+ * configured; for CORS-blind/no-seed endpoints it opens a WebSocket and closes
+ * it on the opening handshake. It does not validate the response payload,
+ * subscribe to market data, or prove ongoing availability. Results can be
+ * affected by CORS, extensions, provider policy, region and transient network
+ * state. Every attempt has its own deadline, and HTTP bodies are cancelled as
+ * soon as headers arrive because this is not a data-seeding request.
  */
 export async function probeExchange(
   exchange: ExchangeId,
@@ -34,90 +37,96 @@ export async function probeExchange(
   timeframe: Timeframe = '1m',
   signal?: AbortSignal,
 ): Promise<ProbeOutcome> {
+  if (signal?.aborted) return { exchange, status: 'error', ms: null, note: 'aborted' };
   const url = seedUrl({ exchange, symbol, timeframe });
-  if (!url) return probeSocketOf(exchange);
+  if (!url) return probeSocketOf(exchange, signal);
 
-  // CORS-blinde Venue (REST ohne ACAO, live per curl verifiziert): Ein
-  // Browser-Fetch dagegen scheitert garantiert und erzeugt einen nicht
-  // unterdrückbaren Konsolen-Error. Der Socket-Handshake ist nicht
-  // CORS-gebunden – er ist hier der primäre Check, Note bleibt 'rest-cors'.
   if (!restReachableFromBrowser(exchange)) {
-    const socket = await probeSocketOf(exchange);
-    if (socket.status === 'ok' || socket.status === 'slow') {
-      return { ...socket, note: 'rest-cors' };
-    }
+    const socket = await probeSocketOf(exchange, signal);
+    if (socket.status === 'ok' || socket.status === 'slow') return { ...socket, note: 'rest-cors' };
     return socket;
   }
 
   const http = await probeHttp(exchange, url, signal);
-  // A browser throws a bare TypeError for CORS rejections – indistinguishable
-  // from "offline". WebSockets are not CORS-bound, so such a venue may still
-  // stream perfectly: verify with the socket handshake before condemning it.
-  if (http.status === 'error' && http.note === 'TypeError') {
-    const socket = await probeSocketOf(exchange);
-    if (socket.status === 'ok' || socket.status === 'slow') {
-      return { ...socket, note: 'rest-cors' };
-    }
+  // Browser CORS failures surface as TypeError. WebSockets do not use CORS, so
+  // an HTTP CORS rejection is inconclusive rather than proof the exchange is down.
+  if (http.status === 'error' && http.note === 'TypeError' && !signal?.aborted) {
+    const socket = await probeSocketOf(exchange, signal);
+    if (socket.status === 'ok' || socket.status === 'slow') return { ...socket, note: 'rest-cors' };
   }
   return http;
 }
 
-async function probeSocketOf(exchange: ExchangeId): Promise<ProbeOutcome> {
+async function probeSocketOf(exchange: ExchangeId, signal?: AbortSignal): Promise<ProbeOutcome> {
   const adapter = ADAPTERS[exchange];
-  // resolveUrl (z. B. KuCoin bullet-public) ist selbst ein REST-Fetch – für
-  // CORS-blinde Venues im Browser überspringen und die statische URL nutzen.
-  const socketUrl =
-    adapter.resolveUrl && restReachableFromBrowser(exchange)
-      ? await adapter.resolveUrl().catch(() => adapter.url)
-      : adapter.url;
-  return probeSocket(exchange, socketUrl);
+  const context = createAbortContext(PROBE_TIMEOUT_MS, signal);
+  let socketUrl = adapter.url;
+  try {
+    // Dynamic endpoints (KuCoin) are now resolved through the same-origin,
+    // fixed-provider token route, not by attempting a browser-blocked CORS call.
+    if (adapter.resolveUrl) socketUrl = await adapter.resolveUrl(context.signal);
+    if (context.signal.aborted) return timeoutOrAbort(exchange, context.timedOut());
+    return await probeSocket(exchange, socketUrl, context.signal);
+  } catch (error) {
+    if (context.signal.aborted) return timeoutOrAbort(exchange, context.timedOut());
+    return { exchange, status: 'error', ms: null, note: error instanceof Error ? error.name : 'endpoint' };
+  } finally {
+    context.dispose();
+  }
+}
+
+function timeoutOrAbort(exchange: ExchangeId, timedOut: boolean): ProbeOutcome {
+  return { exchange, status: 'error', ms: null, note: timedOut ? 'timeout' : 'aborted' };
 }
 
 async function probeHttp(exchange: ExchangeId, url: string, signal?: AbortSignal): Promise<ProbeOutcome> {
   const startedAt = performance.now();
+  const context = createAbortContext(PROBE_TIMEOUT_MS, signal);
   try {
-    const response = await fetch(url, {
-      cache: 'no-store',
-      signal: signal ?? timeoutSignal(PROBE_TIMEOUT_MS),
-    });
+    const response = await fetch(url, { cache: 'no-store', signal: context.signal });
     const ms = Math.round(performance.now() - startedAt);
+    await response.body?.cancel().catch(() => {});
 
-    if (response.ok) {
-      return { exchange, status: ms > SLOW_MS ? 'slow' : 'ok', ms, note: null };
-    }
+    if (response.ok) return { exchange, status: ms > SLOW_MS ? 'slow' : 'ok', ms, note: null };
     if (response.status === 401 || response.status === 403 || response.status === 451) {
       return { exchange, status: 'blocked', ms, note: `HTTP ${response.status}` };
     }
-    if (response.status === 429) {
-      // Reachable, just busy – still usable.
-      return { exchange, status: 'slow', ms, note: 'HTTP 429' };
-    }
+    // A fast 429 is a response, but it is not a usable data response; do not
+    // rank it as a healthy/slow venue. The note and observed response time stay
+    // available for diagnostics.
+    if (response.status === 429) return { exchange, status: 'error', ms, note: 'HTTP 429' };
     return { exchange, status: 'error', ms, note: `HTTP ${response.status}` };
   } catch (error) {
-    const timedOut = error instanceof DOMException && error.name === 'TimeoutError';
-    return {
-      exchange,
-      status: 'error',
-      ms: null,
-      note: timedOut ? 'timeout' : error instanceof Error ? error.name : 'unreachable',
-    };
+    const note = context.timedOut()
+      ? 'timeout'
+      : signal?.aborted
+        ? 'aborted'
+        : error instanceof Error
+          ? error.name
+          : 'unreachable';
+    return { exchange, status: 'error', ms: null, note };
+  } finally {
+    context.dispose();
   }
 }
 
-function probeSocket(exchange: ExchangeId, url: string): Promise<ProbeOutcome> {
+function probeSocket(exchange: ExchangeId, url: string, signal?: AbortSignal): Promise<ProbeOutcome> {
   return new Promise((resolve) => {
     if (typeof WebSocket === 'undefined') {
       resolve({ exchange, status: 'error', ms: null, note: 'no-websocket' });
       return;
     }
+
     const startedAt = performance.now();
+    const context = createAbortContext(PROBE_TIMEOUT_MS, signal);
     let settled = false;
     let socket: WebSocket | null = null;
 
     const finish = (status: ProbeStatus, note: string | null): void => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      context.dispose();
+      context.signal.removeEventListener('abort', onAbort);
       try {
         socket?.close();
       } catch {
@@ -131,7 +140,13 @@ function probeSocket(exchange: ExchangeId, url: string): Promise<ProbeOutcome> {
       });
     };
 
-    const timer = setTimeout(() => finish('error', 'timeout'), PROBE_TIMEOUT_MS);
+    const onAbort = (): void => finish('error', context.timedOut() ? 'timeout' : 'aborted');
+    context.signal.addEventListener('abort', onAbort, { once: true });
+    if (context.signal.aborted) {
+      onAbort();
+      return;
+    }
+
     try {
       socket = new WebSocket(url);
     } catch (error) {
@@ -140,6 +155,9 @@ function probeSocket(exchange: ExchangeId, url: string): Promise<ProbeOutcome> {
     }
     socket.onopen = () => finish(performance.now() - startedAt > SLOW_MS ? 'slow' : 'ok', null);
     socket.onerror = () => finish('error', 'handshake');
+    socket.onclose = () => {
+      if (!settled) finish('error', 'closed-before-open');
+    };
   });
 }
 
@@ -150,19 +168,21 @@ export interface ProbeRunOptions {
   signal?: AbortSignal;
 }
 
-/** Probes every venue (4 at a time) and writes the results into the store. */
+/** Attempts probes for the configured venues (4 at a time) and stores the snapshot. */
 export async function probeAllExchanges(options: ProbeRunOptions = {}): Promise<ProbeOutcome[]> {
   const { symbol = 'BTC/USDT', timeframe = '1m', exchanges = EXCHANGE_PREFERENCE, signal } = options;
   const store = useExchangeStore.getState();
+  if (store.probing) return [];
   store.setProbing(true);
 
   const outcomes: ProbeOutcome[] = [];
-  const queue = [...exchanges];
+  const queue = [...new Set(exchanges)];
 
   const worker = async (): Promise<void> => {
     for (;;) {
+      if (signal?.aborted) return;
       const exchange = queue.shift();
-      if (!exchange || signal?.aborted) return;
+      if (!exchange) return;
       useExchangeStore.getState().setReach(exchange, { status: 'probing', ms: null, note: null });
       const outcome = await probeExchange(exchange, symbol, timeframe, signal);
       if (signal?.aborted) return;

@@ -17,7 +17,7 @@ export const COINEX_KLINE_TYPE: Record<Timeframe, string> = {
 };
 
 /**
- * CoinEx spot WebSocket v1 (public, no key). Verified live:
+ * CoinEx spot WebSocket v1 (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"method":"deals.subscribe","params":["BTCUSDT"],"id":1}
  * ack       : {"error":null,"result":{"status":"success"},"id":1}

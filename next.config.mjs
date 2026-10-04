@@ -10,8 +10,9 @@ const nextConfig = {
   // Cloudflare Workers/Pages has no Next.js image-optimization server by default.
   // NodeChart renders charts on <canvas>/<svg> anyway, so we keep this off and stay $0.
   images: { unoptimized: true },
-  // Every route is either statically prerendered (all 5 locales via generateStaticParams)
-  // or edge-cached. No Node.js server process is required at runtime.
+  // Landing/help/legal locale pages are statically prerendered. The terminal and
+  // narrow API handlers run in the Cloudflare Worker; no separate Node server is
+  // provisioned, but Worker quotas and runtime compatibility still apply.
   // NOTE: Next.js 16 dropped the `eslint` config key (`next lint` is gone) –
   // run `npm run lint` directly instead.
   typescript: { ignoreBuildErrors: false },

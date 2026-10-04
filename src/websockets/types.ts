@@ -2,11 +2,12 @@
 import type { Timeframe } from '@/store/types';
 
 /**
- * Every exchange NodeChart can stream from – all public, all key-less, all free.
+ * Exchange venue IDs currently wired into the stream manager.
  *
- * Verified live against production (see `npm run ws:smoke`): payloads, channel
- * names and endpoints in `src/websockets/adapters/` are captured from real
- * server responses, not from documentation alone.
+ * Adapters use public market-data endpoints where configured, but authentication,
+ * terms, quotas, CORS, regional access and live availability vary by provider.
+ * Offline smoke fixtures test local parsing; live checks are best-effort observations,
+ * not a support, uptime or data-quality guarantee.
  */
 export type ExchangeId =
   | 'binance'
@@ -103,7 +104,7 @@ export interface ExchangeAdapter {
    * Async endpoint resolution – KuCoin hands out a short-lived public token via
    * REST before the socket can connect. Re-evaluated on every (re)connect.
    */
-  resolveUrl?(): Promise<string>;
+  resolveUrl?(signal?: AbortSignal): Promise<string>;
   /** Server pushes binary frames (HTX gzips every message). */
   binary?: boolean;
   /** Turn a binary frame into a parsed payload. May be async (DecompressionStream). */

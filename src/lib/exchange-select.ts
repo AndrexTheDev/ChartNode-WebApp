@@ -37,13 +37,13 @@ const LATENCY_WEIGHT = 0.4;
 const PREFERENCE_STEP = 0.05;
 
 /**
- * Reachability class: 0 = measured reachable, 0.5 = slow, 1 = unknown/stale,
- * 2 = measured unreachable. Restricted venues get +1 (they usually still serve
- * public data, so this only re-orders – it never hides an exchange).
+ * Probe class: 0 = successful best-effort response/handshake, 0.5 = slow
+ * success, 1 = unknown/stale, 2 = denied or no usable response. Region rules
+ * add a separate heuristic penalty; they do not prove that a venue is blocked.
  *
- * Measured latency adds up to `LATENCY_WEIGHT`, which is smaller than the gap
- * between any two classes: a venue that answers in 40 ms beats one that needs
- * 900 ms, but a blocked venue never wins on speed alone.
+ * Client-observed response/handshake time adds up to `LATENCY_WEIGHT`, which is
+ * smaller than the gap between classes. It is only a tie-breaker—not a network
+ * RTT, market-data validation, or availability guarantee.
  */
 function scoreOf(reach: ExchangeReach | undefined, restricted: boolean): number {
   let score: number;
@@ -93,7 +93,10 @@ export function pickExchange(input: SelectionInput): ExchangeId {
   const manual = input.preferred[input.symbol];
   if (manual) {
     const entry = ranked.find((r) => r.id === manual);
-    if (entry?.supportedTimeframe && entry.listsPair && (entry.reach?.status ?? 'unknown') !== 'blocked') {
+    const status = isFresh(entry?.reach ?? undefined) ? entry?.reach?.status ?? 'unknown' : 'unknown';
+    // A manual pick remains preferred while it is usable, but a fresh runtime
+    // failure must not pin the chart to a venue whose socket cannot connect.
+    if (entry?.supportedTimeframe && entry.listsPair && status !== 'blocked' && status !== 'error') {
       return manual;
     }
   }

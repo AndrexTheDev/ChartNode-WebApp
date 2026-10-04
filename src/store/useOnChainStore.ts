@@ -82,7 +82,13 @@ const zeroTimestamps = (): Record<SignalGroup, number> =>
 const idleStatuses = (): Record<SignalGroup, GroupStatus> =>
   Object.fromEntries(GROUPS.map((group) => [group, 'idle'])) as Record<SignalGroup, GroupStatus>;
 
-const inFlight = new Set<SignalGroup>();
+const inFlight = new Map<string, AbortController>();
+let latestForensicsKey: string | null = null;
+
+function abortOnChainRequests(): void {
+  for (const controller of inFlight.values()) controller.abort();
+  inFlight.clear();
+}
 
 export const useOnChainStore = create<OnChainStore>()((set, get) => ({
   open: false,
@@ -96,26 +102,47 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
   status: idleStatuses(),
   updatedAt: zeroTimestamps(),
 
-  setOpen: (open) => set({ open }),
-  toggle: () => set((state) => ({ open: !state.open })),
+  setOpen: (open) => {
+    if (!open) abortOnChainRequests();
+    set({ open });
+  },
+  toggle: () => {
+    const open = !get().open;
+    if (!open) abortOnChainRequests();
+    set({ open });
+  },
 
   refresh: async (group, opts) => {
     const state = get();
-    if (inFlight.has(group)) return;
+    if (!state.open && !opts?.force) return;
     const elapsed = Date.now() - state.updatedAt[group];
     const interval = state.status[group] === 'error' ? Math.min(REFRESH_MS[group], ERROR_RETRY_MS) : REFRESH_MS[group];
     const due = (opts?.force ?? false) || elapsed >= interval;
-    // forensics also refresh when the inspected token changed
+    // Forensics are token-scoped; other groups are global snapshots.
     const tokenKey = opts?.token?.chain && opts?.token?.contract ? `${opts.token.chain}:${opts.token.contract}` : null;
-    const tokenChanged = group === 'forensics' && tokenKey != null && tokenKey !== state.forensicsKey;
+    const tokenChanged = group === 'forensics' && tokenKey !== state.forensicsKey;
     if (!due && !tokenChanged) return;
 
-    inFlight.add(group);
+    const flightKey = group === 'forensics' ? `forensics:${tokenKey ?? 'none'}` : group;
+    if (group === 'forensics') {
+      latestForensicsKey = tokenKey;
+      // Changing the inspected token cancels the obsolete request immediately.
+      for (const [key, active] of inFlight) {
+        if (key.startsWith('forensics:') && key !== flightKey) {
+          active.abort();
+          inFlight.delete(key);
+        }
+      }
+    }
+    if (inFlight.has(flightKey)) return;
+    const controller = new AbortController();
+    inFlight.set(flightKey, controller);
     set((prev) => ({ status: { ...prev.status, [group]: prev.updatedAt[group] === 0 ? 'loading' : prev.status[group] } }));
     try {
       switch (group) {
         case 'btc': {
-          const btc = await fetchBtcSignals();
+          const btc = await fetchBtcSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             btc: btc ?? prev.btc,
             status: { ...prev.status, btc: btc ? 'ok' : 'error' },
@@ -124,7 +151,8 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
           break;
         }
         case 'evm': {
-          const evm = await fetchEvmSignals();
+          const evm = await fetchEvmSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             evm: Object.keys(evm).length > 0 ? evm : prev.evm,
             status: { ...prev.status, evm: Object.keys(evm).length > 0 ? 'ok' : 'error' },
@@ -133,7 +161,8 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
           break;
         }
         case 'solana': {
-          const solana = await fetchSolanaSignals();
+          const solana = await fetchSolanaSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             solana: solana ?? prev.solana,
             status: { ...prev.status, solana: solana ? 'ok' : 'error' },
@@ -142,7 +171,8 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
           break;
         }
         case 'defi': {
-          const defi = await fetchDefiSignals();
+          const defi = await fetchDefiSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             defi: defi ?? prev.defi,
             status: { ...prev.status, defi: defi ? 'ok' : 'error' },
@@ -151,7 +181,8 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
           break;
         }
         case 'dex': {
-          const dex = await fetchDexHeat();
+          const dex = await fetchDexHeat(controller.signal);
+          if (controller.signal.aborted) break;
           const usable = dex.pools.length > 0 || dex.boosts.length > 0;
           set((prev) => ({
             dex: usable ? dex : prev.dex,
@@ -166,7 +197,8 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
             break;
           }
           const key = `${opts.token.chain}:${opts.token.contract}`;
-          const forensics = await fetchTokenForensics(opts.token.chain, opts.token.contract);
+          const forensics = await fetchTokenForensics(opts.token.chain, opts.token.contract, controller.signal);
+          if (controller.signal.aborted || latestForensicsKey !== key) break;
           set((prev) => ({
             forensics: forensics ?? (prev.forensicsKey === key ? prev.forensics : null),
             forensicsKey: key,
@@ -177,9 +209,14 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
         }
       }
     } catch {
-      set((prev) => ({ status: { ...prev.status, [group]: 'error' } }));
+      if (!controller.signal.aborted && (group !== 'forensics' || latestForensicsKey === tokenKey)) {
+        set((prev) => ({
+          status: { ...prev.status, [group]: 'error' },
+          updatedAt: { ...prev.updatedAt, [group]: Date.now() },
+        }));
+      }
     } finally {
-      inFlight.delete(group);
+      if (inFlight.get(flightKey) === controller) inFlight.delete(flightKey);
     }
   },
 

@@ -14,10 +14,10 @@ import { selectActiveToken, useAppStore } from '@/store/useAppStore';
 import type { Token } from '@/store/types';
 
 /**
- * Market screener over every quoted Gate USDT pair (~2 000 rows) – sortable,
- * filterable, searchable, CSV-exportable, and every row opens a real chart
- * (ad-hoc symbols included). TradingView meter-gates refresh and export;
- * NodeChart does neither.
+ * Market screener over the configured Gate USDT snapshot with an OKX fallback
+ * (provider listings vary) – sortable, filterable, searchable, CSV-exportable,
+ * and every row opens an ad-hoc chart. These public ticker sources can be partial
+ * and do not establish complete exchange coverage.
  */
 
 type SortKey = 'quoteVolumeUsd' | 'changePct' | 'rangePos' | 'last';
@@ -25,8 +25,8 @@ type FilterId = 'all' | 'gainers' | 'losers' | 'whales' | 'nearHigh';
 
 const FILTERS: { id: FilterId; test: (row: ScreenerRow) => boolean }[] = [
   { id: 'all', test: () => true },
-  { id: 'gainers', test: (row) => row.changePct > 3 },
-  { id: 'losers', test: (row) => row.changePct < -3 },
+  { id: 'gainers', test: (row) => row.changePct != null && row.changePct > 3 },
+  { id: 'losers', test: (row) => row.changePct != null && row.changePct < -3 },
   { id: 'whales', test: (row) => row.quoteVolumeUsd > 25_000_000 },
   { id: 'nearHigh', test: (row) => (row.rangePos ?? 0) > 0.9 },
 ];
@@ -64,8 +64,10 @@ export function ScreenerModal({ open, onClose }: { open: boolean; onClose: () =>
       .filter(test)
       .filter((row) => (q ? row.pair.includes(q) : true))
       .sort((a, b) => {
-        const av = sortKey === 'rangePos' ? (a.rangePos ?? -1) : a[sortKey];
-        const bv = sortKey === 'rangePos' ? (b.rangePos ?? -1) : b[sortKey];
+        const av = a[sortKey];
+        const bv = b[sortKey];
+        if (av == null) return bv == null ? 0 : 1;
+        if (bv == null) return -1;
         return desc ? bv - av : av - bv;
       })
       .slice(0, 150);
@@ -135,7 +137,7 @@ export function ScreenerModal({ open, onClose }: { open: boolean; onClose: () =>
             downloadCsv(
               'nodechart-screener.csv',
               ['pair', 'last', 'change_pct', 'volume_usd', 'high_24h', 'low_24h'],
-              view.map((row) => [row.pair, row.last, row.changePct.toFixed(2), row.quoteVolumeUsd.toFixed(0), row.high24h ?? '', row.low24h ?? '']),
+              view.map((row) => [row.pair, row.last, row.changePct?.toFixed(2) ?? '', row.quoteVolumeUsd.toFixed(0), row.high24h ?? '', row.low24h ?? '']),
             )
           }
           className="nc-clip-sm inline-flex h-7 items-center gap-1 border border-line px-2 font-mono text-2xs uppercase tracking-cyber text-muted transition-colors hover:border-secondary/60 hover:text-secondary"
@@ -143,6 +145,11 @@ export function ScreenerModal({ open, onClose }: { open: boolean; onClose: () =>
           <Download className="size-3" aria-hidden />
           CSV
         </button>
+        {rows.length > 0 && (
+          <span className="font-mono text-2xs text-faint">
+            {t('screener.source', { venue: rows[0]?.source.toUpperCase() ?? '—' })}
+          </span>
+        )}
       </div>
 
       <div className="max-h-[52vh] overflow-y-auto border border-line/70">
@@ -168,7 +175,7 @@ export function ScreenerModal({ open, onClose }: { open: boolean; onClose: () =>
               >
                 <td className="px-2 py-1 font-bold text-fg">{row.pair}</td>
                 <td className="px-2 py-1 text-right tabular-nums text-muted">{usd(row.last)}</td>
-                <td className={cn('px-2 py-1 text-right tabular-nums', row.changePct >= 0 ? 'text-bull' : 'text-bear')}>{pct(row.changePct, 2)}</td>
+                <td className={cn('px-2 py-1 text-right tabular-nums', row.changePct == null ? 'text-faint' : row.changePct >= 0 ? 'text-bull' : 'text-bear')}>{pct(row.changePct, 2)}</td>
                 <td className="px-2 py-1 text-right tabular-nums text-muted">{compactUsd(row.quoteVolumeUsd)}</td>
                 <td className="px-2 py-1">
                   <span className="relative ml-auto block h-1.5 w-16 bg-line/50">

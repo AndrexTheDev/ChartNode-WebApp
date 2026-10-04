@@ -21,9 +21,8 @@ const input =
   'mt-1 w-full border border-line bg-surface/60 px-2 py-1.5 font-mono text-xs tabular-nums text-fg outline-none transition-[border-color,box-shadow] duration-200 focus:border-secondary/70 focus:shadow-neon-sm';
 
 /**
- * Alert manager: unlimited, persisted, never expiring, multi-condition
- * (TradingView: 1 free / 400 Premium / non-expiring Premium / multi Plus),
- * with optional browser notifications + beep.
+ * Browser-side alert manager with configurable conditions and optional
+ * browser notifications or sound. Delivery depends on this page remaining open.
  */
 export function AlertsPanelModal({ symbol, lastPrice, open, onClose }: AlertsPanelModalProps) {
   const t = useTranslations('tools');

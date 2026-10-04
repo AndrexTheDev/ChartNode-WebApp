@@ -6,8 +6,8 @@
  *
  * What lives in here:
  *   • main series (candles / bars / line / area / Heikin-Ashi) + volume overlay
- *   • unlimited indicator series – overlays in pane 0, oscillators each in their
- *     own pane (`addSeries(def, opts, paneIndex)`), computed by `lib/indicators`
+ *   • indicator series – overlays in pane 0, oscillators in their own panes
+ *     (`addSeries(def, opts, paneIndex)`), computed by `lib/indicators`
  *   • the NodeChart watermark (`www.NodeChart.cc`) painted into the canvas below
  *     the series, so it is part of `takeScreenshot()` and cannot be cropped
  *   • drawing tools + the mirrored crosshair, both as canvas primitives
@@ -101,6 +101,7 @@ import type { Candle } from '@/websockets/types';
 import {
   CrosshairPrimitive,
   DrawingPrimitive,
+  NodeClusterPrimitive,
   VolumeProfilePrimitive,
   LiqMagnetPrimitive,
   WatermarkPrimitive,
@@ -260,10 +261,10 @@ export function PriceChart({
   const watermarkPrimRef = useRef<WatermarkPrimitive | null>(null);
   const vpPrimRef = useRef<VolumeProfilePrimitive | null>(null);
   const liqPrimRef = useRef<LiqMagnetPrimitive | null>(null);
+  const nodeClusterPrimRef = useRef<NodeClusterPrimitive | null>(null);
   const avwapRef = useRef<AnySeries | null>(null);
   const compareRef = useRef<AnySeries | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const srLinesRef = useRef<IPriceLine[]>([]);
   const alertLinesRef = useRef<IPriceLine[]>([]);
   const applyingRemoteRange = useRef(false);
   const rangedFor = useRef<string | null>(null);
@@ -275,7 +276,7 @@ export function PriceChart({
   const compareAppliedRef = useRef<AppliedBars | null>(null);
   // Signatur-Guards: identische Analyse-Ergebnisse dürfen keine Series-API
   // aufrufen (createPriceLine/setMarkers invalidieren den Chart jedes Mal).
-  const srSigRef = useRef<string | null>(null);
+  const nodeClusterSigRef = useRef<string | null>(null);
   const markerSigRef = useRef<string | null>(null);
   const baselineBaseRef = useRef<number | null>(null);
   // Timestamps der aktuell in der Main-Serie liegenden Bars (Sekunden). Marker
@@ -488,6 +489,11 @@ export function PriceChart({
     main.attachPrimitive(liqPrim);
     liqPrimRef.current = liqPrim;
 
+    // NodeCluster – local pivot bands, in-canvas so they remain crisp on resize.
+    const nodeClusterPrim = new NodeClusterPrimitive();
+    main.attachPrimitive(nodeClusterPrim);
+    nodeClusterPrimRef.current = nodeClusterPrim;
+
     /* --------------------------------- syncing ------------------------------- */
     const timeScale = chart.timeScale();
 
@@ -560,10 +566,10 @@ export function PriceChart({
       watermarkPrimRef.current = null;
       vpPrimRef.current = null;
       liqPrimRef.current = null;
+      nodeClusterPrimRef.current = null;
       avwapRef.current = null;
       compareRef.current = null;
       markersRef.current = null;
-      srLinesRef.current = [];
       alertLinesRef.current = [];
       // Fresh series ⇒ forget what was painted, so the next effect re-seeds
       // with a full setData instead of tail-updating a dead series.
@@ -572,7 +578,7 @@ export function PriceChart({
       appliedMap.clear();
       avwapAppliedRef.current = null;
       compareAppliedRef.current = null;
-      srSigRef.current = null;
+      nodeClusterSigRef.current = null;
       markerSigRef.current = null;
       baselineBaseRef.current = null;
     };
@@ -868,34 +874,38 @@ export function PriceChart({
     }
   }, [chartType, analysisCandles]);
 
-  /* -------------- auto support/resistance · divergences · alerts -------------- */
+  /* -------------- NodeCluster · divergences · alerts ------------------------ */
 
   useEffect(() => {
-    const main = mainRef.current;
-    if (!main) return;
+    const primitive = nodeClusterPrimRef.current;
+    if (!primitive) return;
     const levels = srOn ? supportResistance(analysisCandles) : [];
-    // createPriceLine/removePriceLine invalidieren den Chart – bei jedem Tick
-    // den ganzen Satz neu zu bauen kostet Frames, obwohl sich S/R-Level nur
-    // alle paar Kerzen ändern. Signatur-Vergleich first, API call second.
-    const signature = levels.map((l) => `${l.kind}:${l.price.toFixed(6)}:${l.touches}`).join('|');
-    if (signature === srSigRef.current) return;
-    srSigRef.current = signature;
-
-    for (const line of srLinesRef.current) main.removePriceLine(line);
-    srLinesRef.current = [];
-    for (const level of levels) {
-      srLinesRef.current.push(
-        main.createPriceLine({
-          price: level.price,
-          color: level.kind === 'support' ? chartTheme.bull : chartTheme.bear,
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: `${level.kind === 'support' ? 'S' : 'R'}×${level.touches}`,
-        }),
-      );
-    }
-  }, [srOn, analysisCandles, chartTheme]);
+    // A signature guard keeps high-frequency candle updates from repainting an
+    // unchanged overlay. Theme and precision are part of the signature too.
+    const signature = [
+      chartTheme.bull,
+      chartTheme.bear,
+      chartTheme.bg,
+      chartTheme.text,
+      digits,
+      levels
+        .map((level) =>
+          [
+            level.kind,
+            level.price.toPrecision(12),
+            level.lower.toPrecision(12),
+            level.upper.toPrecision(12),
+            level.touches,
+            level.strength,
+            level.nodes.map((node) => `${node.time}:${node.price.toPrecision(12)}`).join(','),
+          ].join(':'),
+        )
+        .join('|'),
+    ].join('|');
+    if (signature === nodeClusterSigRef.current) return;
+    nodeClusterSigRef.current = signature;
+    primitive.setSource(levels.length > 0 ? { levels, digits, theme: chartTheme } : null);
+  }, [srOn, analysisCandles, chartTheme, chartType, chartId, digits]);
 
   useEffect(() => {
     const main = mainRef.current;
@@ -1261,6 +1271,7 @@ export function PriceChart({
       className="relative h-full w-full"
       data-watermark="www.NodeChart.cc"
       data-liq-radar={liqOn ? 'on' : 'off'}
+      data-node-cluster={srOn ? 'on' : 'off'}
     >
       <div
         ref={containerRef}

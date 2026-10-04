@@ -2,8 +2,7 @@
 import type { Candle } from '@/websockets/types';
 
 /**
- * Premium chart analytics computed locally from the candle buffer –
- * the features paid charting suites put behind a subscription:
+ * Additional chart analytics computed locally from the candle buffer:
  *
  *   • **Volume Profile (visible range)** – volume distributed over price bins,
  *     plus Point of Control and the 70 % Value Area (VAH/VAL).
@@ -110,23 +109,36 @@ export function anchoredVwap(candles: Candle[], anchorTime: number): VwapPoint[]
   return out;
 }
 
-/* ------------------------- auto support / resistance ------------------------ */
+/* ------------------------------ NodeCluster --------------------------------- */
+
+export interface SrNode {
+  /** Candle open time in milliseconds (the chart primitive converts to seconds). */
+  time: number;
+  price: number;
+}
 
 export interface SrLevel {
   price: number;
+  /** Visible band around the cluster, including a small breathing margin. */
+  lower: number;
+  upper: number;
   /** How many pivots clustered into this level. */
   touches: number;
+  /** Local pivot-density estimate; never an exchange order-book depth value. */
+  strength: number;
+  /** Pivot coordinates used for the in-canvas node markers. */
+  nodes: SrNode[];
   kind: 'support' | 'resistance';
 }
 
 /**
  * Fractal pivots (window w) clustered by proximity (0.35 % of price) into
- * levels; the strongest `maxLevels` come back sorted by price. The kind is
- * decided against the last close and the pivot balance of the cluster.
+ * locally derived bands. The strongest `maxLevels` return sorted by price;
+ * band strength expresses pivot density, not live order-book depth.
  */
 export function supportResistance(candles: Candle[], window = 3, maxLevels = 4): SrLevel[] {
   if (candles.length < window * 2 + 1) return [];
-  const pivots: { price: number; kind: 'support' | 'resistance' }[] = [];
+  const pivots: { price: number; kind: 'support' | 'resistance'; time: number }[] = [];
   for (let i = window; i < candles.length - window; i += 1) {
     let isHigh = true;
     let isLow = true;
@@ -135,13 +147,13 @@ export function supportResistance(candles: Candle[], window = 3, maxLevels = 4):
       if (candles[j]!.h >= candles[i]!.h) isHigh = false;
       if (candles[j]!.l <= candles[i]!.l) isLow = false;
     }
-    if (isHigh) pivots.push({ price: candles[i]!.h, kind: 'resistance' });
-    if (isLow) pivots.push({ price: candles[i]!.l, kind: 'support' });
+    if (isHigh) pivots.push({ price: candles[i]!.h, kind: 'resistance', time: candles[i]!.t });
+    if (isLow) pivots.push({ price: candles[i]!.l, kind: 'support', time: candles[i]!.t });
   }
   if (pivots.length === 0) return [];
 
   const sorted = [...pivots].sort((a, b) => a.price - b.price);
-  const clusters: { prices: number[]; supports: number; resistances: number }[] = [];
+  const clusters: { prices: number[]; nodes: SrNode[]; supports: number; resistances: number }[] = [];
   for (const pivot of sorted) {
     const last = clusters.length > 0 ? clusters[clusters.length - 1]! : null;
     // Anchor on the cluster MEAN (not the last pivot) so dense ranges cannot
@@ -149,11 +161,13 @@ export function supportResistance(candles: Candle[], window = 3, maxLevels = 4):
     const anchor = last ? last.prices.reduce((sum, value) => sum + value, 0) / last.prices.length : null;
     if (last && anchor != null && pivot.price - anchor <= pivot.price * 0.0035) {
       last.prices.push(pivot.price);
+      last.nodes.push({ time: pivot.time, price: pivot.price });
       if (pivot.kind === 'support') last.supports += 1;
       else last.resistances += 1;
     } else {
       clusters.push({
         prices: [pivot.price],
+        nodes: [{ time: pivot.time, price: pivot.price }],
         supports: pivot.kind === 'support' ? 1 : 0,
         resistances: pivot.kind === 'resistance' ? 1 : 0,
       });
@@ -167,7 +181,19 @@ export function supportResistance(candles: Candle[], window = 3, maxLevels = 4):
       let kind: 'support' | 'resistance';
       if (lastClose < price) kind = cluster.resistances >= cluster.supports ? 'resistance' : 'support';
       else kind = cluster.supports >= cluster.resistances ? 'support' : 'resistance';
-      return { price, touches: cluster.prices.length, kind };
+      const touches = cluster.prices.length;
+      const low = Math.min(...cluster.prices);
+      const high = Math.max(...cluster.prices);
+      const padding = Math.max(price * 0.0006, (high - low) * 0.12);
+      return {
+        price,
+        lower: Math.max(Number.MIN_VALUE, low - padding),
+        upper: high + padding,
+        touches,
+        strength: Math.min(1, 0.32 + (touches - 1) * 0.14),
+        nodes: [...cluster.nodes].sort((a, b) => a.time - b.time).slice(-12),
+        kind,
+      };
     })
     .sort((a, b) => b.touches - a.touches)
     .slice(0, maxLevels)

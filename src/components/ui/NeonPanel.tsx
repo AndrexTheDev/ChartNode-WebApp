@@ -64,16 +64,16 @@ export function NeonPanel({
       )}
 
       {(title || actions) && (
-        <header className="relative flex items-center justify-between gap-3 border-b border-line/80 bg-elevated/50 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-2">
+        <header className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line/80 bg-elevated/50 px-3 py-2 sm:flex-nowrap">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <span aria-hidden className="flex gap-1">
               <span className="size-1.5 rounded-full bg-bear/70" />
               <span className="size-1.5 rounded-full bg-warning/70" />
               <span className="size-1.5 rounded-full bg-primary/70" />
             </span>
-            <TitleTag className="truncate font-mono text-2xs uppercase tracking-cyber text-muted">{title}</TitleTag>
+            <TitleTag className="min-w-0 flex-1 truncate font-mono text-2xs uppercase tracking-cyber text-muted">{title}</TitleTag>
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
+          {actions && <div className="flex min-w-0 w-full max-w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap">{actions}</div>}
         </header>
       )}
 

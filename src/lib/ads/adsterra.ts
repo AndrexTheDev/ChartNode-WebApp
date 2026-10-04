@@ -7,6 +7,7 @@ import {
   popunderPlacement,
   type AdVariant,
 } from './config';
+import { canLoadAdScripts } from './consent';
 import { donationGraceActive } from '@/store/useViralStore';
 
 /**
@@ -44,6 +45,10 @@ export function whenIdle(task: () => void, timeoutMs = 1_500): void {
 
 function injectAdScript(src: string, container: HTMLElement): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (!canLoadAdScripts()) {
+      resolve();
+      return;
+    }
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
@@ -62,7 +67,7 @@ function injectAdScript(src: string, container: HTMLElement): Promise<void> {
  */
 export function mountNativeBanner(container: HTMLElement, variant: AdVariant): Promise<void> {
   const src = nativePlacement(variant);
-  if (!ADS_ENABLED || !src) return Promise.resolve();
+  if (!canLoadAdScripts() || !ADS_ENABLED || !src) return Promise.resolve();
   if (container.dataset.adSrc === src) return Promise.resolve();
   return injectAdScript(src, container)
     .then(() => {
@@ -72,9 +77,9 @@ export function mountNativeBanner(container: HTMLElement, variant: AdVariant): P
 }
 
 /**
- * Social Bar: self-anchoring, body-level – loaded via `next/script` with
- * `strategy="lazyOnload"` from <AdManager/> (canonical Next.js idle loader).
- * Kept out of this module so the loader owns its own dedupe/keying.
+ * Social Bar: self-anchoring, body-level – injected by <AdManager/> after an
+ * explicit ad-consent grant. Kept out of this module so AdManager owns its
+ * routing, retries and placement keying.
  */
 
 /**
@@ -85,7 +90,7 @@ export function mountNativeBanner(container: HTMLElement, variant: AdVariant): P
  * the trigger. Capped to one popunder per session, placement per device.
  */
 export function requestPopunder(): void {
-  if (!ADS_ENABLED || typeof window === 'undefined') return;
+  if (!canLoadAdScripts() || !ADS_ENABLED || typeof window === 'undefined') return;
   // Donation-Grace schlägt alles: Wer gespendet hat, sieht keinen Popunder.
   if (donationGraceActive()) return;
   // QA/CI (Puppeteer, navigator.webdriver) bleibt werbefrei – sonst laden

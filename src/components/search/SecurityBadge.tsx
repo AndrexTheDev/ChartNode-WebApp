@@ -15,9 +15,9 @@ interface SecurityBadgeProps {
 
 /**
  * The visual verdict chip of the Smart Search.
- *   safe    → neon-green glow  + shield
+ *   safe    → neon-green glow  + shield (no configured flags, not a guarantee)
  *   warn    → amber            + triangle
- *   danger  → neon-red glow    + skull  ("Scam / Honeypot")
+ *   danger  → neon-red glow    + skull  (high-risk finding)
  *   unknown → muted            + question shield
  */
 export function SecurityBadge({ audit, pending = false, className }: SecurityBadgeProps) {
@@ -81,7 +81,7 @@ export function SecurityBadge({ audit, pending = false, className }: SecurityBad
 
   return (
     <span
-      title={audit.flags.length > 0 ? audit.flags.join(', ') : audit.provider}
+      title={[audit.provider, ...audit.flags].join(' · ')}
       className={cn(
         'inline-flex shrink-0 items-center gap-1 border px-1.5 py-0.5',
         'font-mono text-micro-9 uppercase tracking-cyber',

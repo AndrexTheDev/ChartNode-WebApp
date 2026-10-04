@@ -1,12 +1,17 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
+import localFont from 'next/font/local';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
-import { Exo_2, JetBrains_Mono, Manrope, Orbitron } from 'next/font/google';
+import '@fontsource-variable/orbitron/wght.css';
+import '@fontsource-variable/exo-2/wght.css';
+import '@fontsource-variable/manrope/wght.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
 
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { GlobalShortcuts } from '@/components/layout/GlobalShortcuts';
 import { AdManager } from '@/components/ads/AdManager';
+import { AdConsentBanner } from '@/components/ads/AdConsentBanner';
 import { LocaleDetectBanner } from '@/components/layout/LocaleDetectBanner';
 import { RateLimitOverlay } from '@/components/overlays/RateLimitOverlay';
 import { SiteFooter } from '@/components/layout/SiteFooter';
@@ -26,39 +31,19 @@ import { THEME_COLOR } from '@/lib/theme';
 import { cn } from '@/lib/cn';
 import '@/styles/globals.css';
 
+// The hero display face is the LCP text font. Preload its Latin subset with
+// next/font while retaining Fontsource's other scripts as glyph fallbacks.
+const exo2LatinPreload = localFont({
+  src: '../../../node_modules/@fontsource-variable/exo-2/files/exo-2-latin-wght-normal.woff2',
+  weight: '100 900',
+  style: 'normal',
+  display: 'swap',
+  variable: '--font-display-preload',
+});
+
 /* -------------------------------------------------------------------------- */
-/*  Fonts – self-hosted by next/font, zero layout shift, zero external calls   */
+/* Self-hosted variable fonts from Fontsource: no build-time Google Fonts fetch. */
 /* -------------------------------------------------------------------------- */
-
-const brand = Orbitron({
-  subsets: ['latin'],
-  weight: ['900'],
-  display: 'swap',
-  variable: '--font-brand',
-});
-
-const display = Exo_2({
-  // latin-ext: keine unserer fünf Locales braucht es – jedes Subset ist eine
-  // eigene woff2 + ein Preload-Hint mehr (CWV-Budget)
-  subsets: ['latin', 'cyrillic'],
-  weight: ['700', '800', '900'],
-  display: 'swap',
-  variable: '--font-display',
-});
-
-const sans = Manrope({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '600', '700'],
-  display: 'swap',
-  variable: '--font-sans',
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '700'],
-  display: 'swap',
-  variable: '--font-mono',
-});
 
 /* -------------------------------------------------------------------------- */
 /*  Static generation                                                         */
@@ -142,8 +127,8 @@ export default async function LocaleLayout({
       lang={meta.htmlLang}
       dir="ltr"
       data-theme="acid"
+      className={exo2LatinPreload.variable}
       suppressHydrationWarning
-      className={cn(brand.variable, display.variable, sans.variable, mono.variable)}
     >
       <head>
         {/* Applies the persisted theme before first paint – no flash of wrong skin. */}
@@ -177,6 +162,9 @@ export default async function LocaleLayout({
           </a>
 
           <SiteHeader />
+
+          {/* Optional Adsterra delivery is opt-in; the notice is in-flow, not a blocking modal. */}
+          <AdConsentBanner />
 
           {/* Native Banner (4:1) in der Header-Zone – Terminal skippt (Strip) */}
           <HeaderNativeBanner />

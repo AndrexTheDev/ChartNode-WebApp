@@ -51,8 +51,8 @@ const KUCOIN_REST_TYPE: Record<Timeframe, string> = {
 };
 
 /**
- * Seed URL per exchange. Exported so the region probe can measure reachability
- * with the exact request the chart will make.
+ * Seed URL per exchange. Exported so the browser-side best-effort probe can
+ * attempt the same endpoint shape the chart would use (without validating data).
  *
  * `null` ⇒ no REST history (Crypto.com seeds from its subscribe snapshot).
  */
@@ -60,7 +60,7 @@ export function seedUrl(key: FeedKey): string | null {
   const limit = SEED_LIMIT;
   switch (key.exchange) {
     case 'binance':
-      // Public market-data mirror – works in regions where api.binance.com is 451.
+      // Public market-data mirror; browser reachability still varies by region/network.
       return `https://data-api.binance.vision/api/v3/klines?symbol=${joinSymbol(key.symbol)}&interval=${BINANCE_INTERVAL[key.timeframe]}&limit=${limit}`;
     case 'bybit':
       return `https://api.bybit.com/v5/market/kline?category=spot&symbol=${joinSymbol(key.symbol)}&interval=${BYBIT_INTERVAL[key.timeframe]}&limit=${limit}`;
@@ -104,7 +104,12 @@ export function seedUrl(key: FeedKey): string | null {
  * KuCoin/CoinEx `[t,open,close,high,low,v]`, …) – everything is normalised to
  * ascending open-time here, so `finalise()` sorts instead of trusting docs.
  */
-export async function fetchSeed(key: FeedKey): Promise<Candle[]> {
+export async function fetchSeed(
+  key: FeedKey,
+  signal?: AbortSignal,
+  timeoutMs = 12_000,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
   const url = seedUrl(key);
   if (!url) return [];
 
@@ -114,40 +119,37 @@ export async function fetchSeed(key: FeedKey): Promise<Candle[]> {
     case 'okx':
     case 'gate':
     case 'bitget':
-      return finalise(key, await rowsOf(key, url, rowPicker(key.exchange)));
+      return finalise(key, await rowsOf(key, url, rowPicker(key.exchange), signal, timeoutMs, onStale));
     case 'kraken':
-      return finalise(key, await krakenRows(key, url));
+      return finalise(key, await krakenRows(key, url, signal, timeoutMs, onStale));
     case 'coinbase':
-      return finalise(key, await coinbaseRows(key, url));
+      return finalise(key, await coinbaseRows(key, url, signal, timeoutMs, onStale));
     case 'bitfinex':
-      return finalise(key, await bitfinexRows(key, url));
+      return finalise(key, await bitfinexRows(key, url, signal, timeoutMs, onStale));
     case 'htx':
-      return finalise(key, await htxRows(key, url));
+      return finalise(key, await htxRows(key, url, signal, timeoutMs, onStale));
     case 'kucoin':
     case 'coinex':
-      return finalise(key, await wrappedRows(key, url, 'data'));
+      return finalise(key, await wrappedRows(key, url, 'data', signal, timeoutMs, onStale));
     case 'cryptocom':
       return [];
   }
 }
 
 /**
- * Venues whose history endpoints send CORS headers. In Node this list is
- * irrelevant (no CORS), but in a **browser** `fetch` to bybit / kucoin /
- * coinex / bitfinex is rejected outright – such a venue can still stream over
- * WebSocket while its REST API stays invisible to the page. The manager uses
- * this list to seed history from a browser-reachable neighbour venue.
+ * Configured venues currently treated as browser-readable candle-seed candidates,
+ * based on observed CORS behavior. Provider headers and regional access can change;
+ * this is a routing hint, not a live-reachability guarantee. Node has no CORS gate.
  */
 export const CORS_FRIENDLY_SEEDS: ExchangeId[] = ['binance', 'okx', 'kraken', 'gate', 'bitget', 'htx'];
 
 /**
- * Venues whose REST endpoints answer **without** `Access-Control-Allow-Origin`
- * (live-verified per curl am 2026-09-12: bybit, kucoin, bitfinex, coinex).
- * Ein Browser-Fetch dagegen scheitert immer und erzeugt einen nicht
- * unterdrückbaren Konsolen-Eintrag – deshalb überspringt der Browser hier den
- * REST-Versuch komplett (Probe → Socket-Handshake, Seed → Nachbar-Venue,
- * Ratings → Gate-Fallback). In Node (Smoke-Tests) gilt die Liste nicht:
- * ohne CORS existiert das Problem dort nicht.
+ * Configured classification based on REST-host responses that did not expose
+ * `Access-Control-Allow-Origin` to a browser page (observation dated 2026-09-12:
+ * bybit, kucoin, bitfinex, coinex). The classification may become stale. Browser
+ * fetch is skipped for these hosts to avoid predictable CORS failures; the app
+ * may instead probe a WebSocket opening handshake or use a configured history
+ * fallback. Node smoke tests bypass this browser-only CORS check.
  */
 const CORS_BLIND: ReadonlySet<ExchangeId> = new Set(['bybit', 'kucoin', 'bitfinex', 'coinex']);
 
@@ -246,32 +248,46 @@ function toCandles(rows: unknown[], pick: RowPicker): Candle[] {
   return out;
 }
 
-async function rowsOf(key: FeedKey, url: string, pick: RowPicker): Promise<Candle[]> {
+async function rowsOf(
+  key: FeedKey,
+  url: string,
+  pick: RowPicker,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
   if (key.exchange === 'binance') {
-    const rows = await guarded<unknown[]>(key.exchange, url);
+    const rows = await guarded<unknown[]>(key.exchange, url, signal, timeoutMs, onStale);
     return toCandles(rows, pick);
   }
   if (key.exchange === 'bybit') {
-    const payload = await guarded<{ result?: { list?: unknown[] }; retMsg?: string }>(key.exchange, url);
+    const payload = await guarded<{ result?: { list?: unknown[] }; retMsg?: string }>(key.exchange, url, signal, timeoutMs, onStale);
     return toCandles(payload.result?.list ?? [], pick);
   }
   if (key.exchange === 'okx') {
-    const payload = await guarded<{ data?: unknown[]; code?: string; msg?: string }>(key.exchange, url);
+    const payload = await guarded<{ data?: unknown[]; code?: string; msg?: string }>(key.exchange, url, signal, timeoutMs, onStale);
     if (payload.code && payload.code !== '0') throw new UnsupportedPairError(key.exchange, key.symbol);
     return toCandles(payload.data ?? [], pick);
   }
   if (key.exchange === 'gate') {
-    const rows = await guarded<unknown[]>(key.exchange, url);
+    const rows = await guarded<unknown[]>(key.exchange, url, signal, timeoutMs, onStale);
     return toCandles(rows, pick);
   }
   // bitget
-  const payload = await guarded<{ code?: string; data?: unknown[] }>(key.exchange, url);
+  const payload = await guarded<{ code?: string; data?: unknown[] }>(key.exchange, url, signal, timeoutMs, onStale);
   if (payload.code && payload.code !== '00000') throw new UnsupportedPairError(key.exchange, key.symbol);
   return toCandles(payload.data ?? [], pick);
 }
 
-async function wrappedRows(key: FeedKey, url: string, field: 'data'): Promise<Candle[]> {
-  const payload = await guarded<Record<string, unknown>>(key.exchange, url);
+async function wrappedRows(
+  key: FeedKey,
+  url: string,
+  field: 'data',
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
+  const payload = await guarded<Record<string, unknown>>(key.exchange, url, signal, timeoutMs, onStale);
   const code = payload.code;
   if (code !== undefined && String(code) !== '0' && String(code) !== '200000') {
     throw new UnsupportedPairError(key.exchange, key.symbol);
@@ -280,8 +296,14 @@ async function wrappedRows(key: FeedKey, url: string, field: 'data'): Promise<Ca
   return toCandles(Array.isArray(rows) ? rows : [], rowPicker(key.exchange));
 }
 
-async function krakenRows(key: FeedKey, url: string): Promise<Candle[]> {
-  const payload = await guarded<{ error?: string[]; result?: Record<string, unknown> }>(key.exchange, url);
+async function krakenRows(
+  key: FeedKey,
+  url: string,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
+  const payload = await guarded<{ error?: string[]; result?: Record<string, unknown> }>(key.exchange, url, signal, timeoutMs, onStale);
   const errors = payload.error ?? [];
   if (errors.length > 0) {
     // "EQuery:Unknown asset pair" ⇒ the venue does not list it.
@@ -307,23 +329,44 @@ async function krakenRows(key: FeedKey, url: string): Promise<Candle[]> {
   );
 }
 
-async function coinbaseRows(key: FeedKey, url: string): Promise<Candle[]> {
-  const rows = await guarded<unknown[]>(key.exchange, url);
+async function coinbaseRows(
+  key: FeedKey,
+  url: string,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
+  const rows = await guarded<unknown[]>(key.exchange, url, signal, timeoutMs, onStale);
   return toCandles(rows, coinbasePicker);
 }
 
-async function bitfinexRows(key: FeedKey, url: string): Promise<Candle[]> {
-  const payload = await guarded<unknown>(key.exchange, url);
+async function bitfinexRows(
+  key: FeedKey,
+  url: string,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
+  const payload = await guarded<unknown>(key.exchange, url, signal, timeoutMs, onStale);
   if (Array.isArray(payload) && typeof payload[0] === 'string' && payload[0] === 'error') {
     throw new UnsupportedPairError(key.exchange, key.symbol);
   }
   return toCandles(Array.isArray(payload) ? payload : [], bitfinexPicker);
 }
 
-async function htxRows(key: FeedKey, url: string): Promise<Candle[]> {
+async function htxRows(
+  key: FeedKey,
+  url: string,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<Candle[]> {
   const payload = await guarded<{ status?: string; 'err-code'?: string; data?: Record<string, unknown>[] }>(
     key.exchange,
     url,
+    signal,
+    timeoutMs,
+    onStale,
   );
   if (payload.status && payload.status !== 'ok') throw new UnsupportedPairError(key.exchange, key.symbol);
   const rows = payload.data ?? [];
@@ -356,14 +399,23 @@ function finalise(key: FeedKey, candles: Candle[]): Candle[] {
  *  ein leeres Chart, wenn der Upstream drosselt (429) oder ausfällt. */
 const SEED_STALE_MS = 24 * 60 * 60 * 1000;
 
-async function guarded<T>(exchange: ExchangeId, url: string): Promise<T> {
+async function guarded<T>(
+  exchange: ExchangeId,
+  url: string,
+  signal?: AbortSignal,
+  timeoutMs?: number,
+  onStale?: (ageMs: number) => void,
+): Promise<T> {
   try {
     return await fetchJson<T>(url, {
       source: exchange,
       retries: 1,
+      timeoutMs,
+      signal,
       cacheTtlMs: 15_000,
       persistKey: `seed:${url}`,
       staleTtlMs: SEED_STALE_MS,
+      onStale,
     });
   } catch (error) {
     if (error instanceof HttpError) {

@@ -8,19 +8,20 @@ import { COOLDOWN_MS, endCooldown } from '@/api/rateLimit';
 import { useRateLimitStore } from '@/store/useRateLimitStore';
 
 /**
- * Global 429 response.
+ * Shared presentation for an upstream HTTP 429.
  *
- * When any upstream answers HTTP 429 the fetch layer starts a cooldown; this
- * overlay renders the cyberpunk glitch ("RATE LIMIT EXCEEDED – BYPASSING…")
- * with a live 5 s countdown and a depleting progress bar. At zero it calls
- * `endCooldown()`, which releases the awaited promise in `api/http.ts` and the
- * original request retries automatically.
+ * The fetch layer tracks cooldowns per provider/source; this overlay displays
+ * the active source and its effective deadline. At zero, `endCooldown()`
+ * releases requests that are waiting and still have a retry available. Long
+ * Retry-After values may fail fast instead, and unrelated providers are not
+ * paused by this UI signal.
  */
 export function RateLimitOverlay() {
   const t = useTranslations('ratelimit');
   const active = useRateLimitStore((s) => s.active);
   const source = useRateLimitStore((s) => s.source);
   const deadline = useRateLimitStore((s) => s.deadline);
+  const durationMs = useRateLimitStore((s) => s.durationMs);
   const hits = useRateLimitStore((s) => s.hits);
 
   const [remainingMs, setRemainingMs] = useState(COOLDOWN_MS);
@@ -41,7 +42,7 @@ export function RateLimitOverlay() {
 
   if (!active) return null;
 
-  const progress = Math.min(1, Math.max(0, remainingMs / COOLDOWN_MS));
+  const progress = Math.min(1, Math.max(0, remainingMs / Math.max(1, durationMs || COOLDOWN_MS)));
   const seconds = Math.ceil(remainingMs / 1000);
 
   return (

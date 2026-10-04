@@ -10,10 +10,18 @@ export const META = { id: 'M8', name: 'Native Banner + Smartlinks (Tiefe)' };
 const NB_CONTAINER = '#container-2cedab945cb896ea179b566a413d953b';
 const SL_KEY_FRAG = 'ufhc3mt24s'; // fester Smartlink-Pfad aus config/Kit-Default
 
+/** This module proves ad behavior, so opt in explicitly before navigation. */
+async function newAdPage(browser, options) {
+  const page = await newPage(browser, options);
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+  });
+  return page;
+}
+
 const nbState = (page) =>
   page.evaluate((sel) => {
     const c = document.querySelector(sel);
-    const box = c?.closest('div[style], section, aside') || c;
     const r = c ? c.getBoundingClientRect() : null;
     const header = document.querySelector('header')?.getBoundingClientRect();
     const main = document.querySelector('main')?.getBoundingClientRect();
@@ -31,9 +39,68 @@ export async function run() {
   const { check } = rep;
   const browser = await launchBrowser();
 
+  /* ---------------- Consent: pending → reject/grant/withdraw -------------- */
+  {
+    const p = await newPage(browser);
+    const adRequests = [];
+    await p.setRequestInterception(true);
+    p.on('request', async (req) => {
+      if (/(globalimmaturelunatic\.com|adsterra\.com)/i.test(req.url())) {
+        adRequests.push(req.url());
+        await req.respond({ status: 200, contentType: 'application/javascript', body: '/* intercepted ad fixture */' });
+      } else {
+        await req.continue();
+      }
+    });
+    await gotoSafe(p, BASE + '/de');
+    await wait(1800);
+    const firstLayer = await p.evaluate(() => ({
+      title: document.querySelector('#nc-ad-consent-title')?.textContent ?? '',
+      actions: [...document.querySelectorAll('#nc-ad-consent-title ~ * button, [role="group"] button')].map((b) => (b.textContent ?? '').trim()),
+      stored: localStorage.getItem('nc-ad-consent-v1'),
+    }));
+    check('Consent pending: gleich sichtbare Erlauben/Ablehnen-Auswahl, ohne gespeicherte Wahl', /Werbung|Werbe/i.test(firstLayer.title) && firstLayer.actions.some((x) => /ablehnen/i.test(x)) && firstLayer.actions.some((x) => /erlauben/i.test(x)) && firstLayer.stored === null);
+    check('Consent pending: vor Zustimmung keine Adsterra-Requests', adRequests.length === 0, `n=${adRequests.length}`);
+
+    await p.evaluate(() => {
+      [...document.querySelectorAll('[role="group"] button')].find((b) => /ablehnen/i.test(b.textContent ?? ''))?.click();
+    });
+    await wait(350);
+    const denied = await p.evaluate(() => ({
+      value: JSON.parse(localStorage.getItem('nc-ad-consent-v1') ?? 'null')?.choice,
+      wall: [...document.querySelectorAll('[role="dialog"]')].some((d) => /bc1q/.test(d.textContent ?? '')),
+    }));
+    check('Ablehnen: First-Party-Wahl gespeichert; keine Soft-Wall', denied.value === 'denied' && !denied.wall);
+    await gotoSafe(p, BASE + '/de/terminal');
+    await wait(1800);
+    check('Ablehnen bleibt über Route/Reload wirksam (null Adsterra-Requests)', adRequests.length === 0, `n=${adRequests.length}`);
+
+    await p.evaluate(() => document.querySelectorAll('button').length && [...document.querySelectorAll('button')].find((b) => /Werbeeinstellungen|Anzeigeneinstellungen/i.test(b.textContent ?? ''))?.click());
+    await wait(300);
+    await p.evaluate(() => {
+      [...document.querySelectorAll('[role="group"] button')].find((b) => /erlauben/i.test(b.textContent ?? ''))?.click();
+    });
+    await wait(1800);
+    const accepted = await p.evaluate(() => JSON.parse(localStorage.getItem('nc-ad-consent-v1') ?? 'null')?.choice === 'granted');
+    check('Einstellungen: explizites Erlauben startet erwartete Adsterra-Lader', accepted && adRequests.length > 0, `requests=${adRequests.length}`);
+
+    const countBeforeRevoke = adRequests.length;
+    await p.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Werbeeinstellungen|Anzeigeneinstellungen/i.test(b.textContent ?? ''))?.click());
+    await wait(300);
+    const revokeNavigation = p.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null);
+    await p.evaluate(() => {
+      [...document.querySelectorAll('[role="group"] button')].find((b) => /ablehnen/i.test(b.textContent ?? ''))?.click();
+    });
+    await revokeNavigation;
+    await wait(1800);
+    const revoked = await p.evaluate(() => JSON.parse(localStorage.getItem('nc-ad-consent-v1') ?? 'null')?.choice === 'denied');
+    check('Widerruf: Ablehnung gespeichert; nach Reload keine neuen Adsterra-Requests', revoked && adRequests.length === countBeforeRevoke, `before=${countBeforeRevoke} after=${adRequests.length}`);
+    await p.close();
+  }
+
   /* ---------------- NB: Präsenz, Routing-Doktrin, Locales ---------------- */
   for (const route of ['/', '/help', '/legal/terms']) {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     const errs = [];
     attachConsole(p, errs);
     await gotoSafe(p, BASE + '/de' + (route === '/' ? '' : route));
@@ -45,14 +112,14 @@ export async function run() {
     check(`NB de${route}: Console sauber`, errs.length === 0, errs.slice(0, 1).join('|'));
     await p.close();
   }
-  const pt = await newPage(browser);
+  const pt = await newAdPage(browser);
   await gotoSafe(pt, BASE + '/de/terminal');
   await pt.waitForSelector('canvas', { timeout: 40000 });
   await wait(1500);
   check('NB Terminal: KEIN Native Banner (Strip-Doktrin)', !(await pt.evaluate((sel) => !!document.querySelector(sel), NB_CONTAINER)));
   await pt.close();
   for (const loc of LOCALES) {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     await gotoSafe(p, BASE + '/' + loc);
     await wait(1200);
     check(`NB ${loc}/: Container präsent`, (await nbState(p)).present);
@@ -61,7 +128,7 @@ export async function run() {
 
   /* ---------------- NB: No-Fill-Kollaps (Sandbox) ---------------- */
   {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     await gotoSafe(p, BASE + '/de');
     await wait(1500);
     const early = await nbState(p);
@@ -73,7 +140,7 @@ export async function run() {
 
   /* ---------------- NB: Fill-Pfad (Interception) + CLS + Overlaps -------- */
   {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     await p.setRequestInterception(true);
     p.on('request', (req) => {
       const u = req.url();
@@ -109,7 +176,7 @@ export async function run() {
 
   /* ---------------- NB: Mobile ohne Overflow ---------------- */
   {
-    const p = await newPage(browser, { width: 390, height: 844, mobile: true });
+    const p = await newAdPage(browser, { width: 390, height: 844, mobile: true });
     await gotoSafe(p, BASE + '/de');
     await wait(1500);
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -122,7 +189,7 @@ export async function run() {
 
   /* ---------------- SL: Kit-Globals, Badges, Anker ---------------- */
   for (const [url, glob] of [['/de', 'SmartlinksLanding'], ['/de/terminal', 'SmartlinksApp']]) {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     const errs = [];
     attachConsole(p, errs);
     await gotoSafe(p, BASE + url);
@@ -174,7 +241,7 @@ export async function run() {
 
   /* ---------------- SL: Post-Action-Toast nach ECHTER Aktion -------------- */
   {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     await gotoSafe(p, BASE + '/de/terminal');
     await p.waitForSelector('canvas', { timeout: 40000 });
     await wait(3000);
@@ -213,7 +280,7 @@ export async function run() {
 
   /* ---------------- SL: Strip-Klick zählt Fire + navigiert echt ----------- */
   {
-    const p = await newPage(browser);
+    const p = await newAdPage(browser);
     const targets = [];
     p.browser().on('targetcreated', (t) => targets.push(t.url()));
     await gotoSafe(p, BASE + '/de/terminal');

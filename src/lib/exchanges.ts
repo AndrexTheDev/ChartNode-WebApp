@@ -21,8 +21,9 @@ export interface ExchangeMeta {
 }
 
 /**
- * Every venue NodeChart can stream from. All twelve are public and key-less:
- * no account, no API key, no paid tier, no backend.
+ * Exchange adapters configured in NodeChart. They use public, keyless market
+ * endpoints where available; terms, geographic access, rate limits and uptime
+ * vary by provider. A configured adapter is not a live-coverage guarantee.
  */
 export const EXCHANGE_META: Record<ExchangeId, ExchangeMeta> = {
   binance: {
@@ -31,7 +32,7 @@ export const EXCHANGE_META: Record<ExchangeId, ExchangeMeta> = {
     short: 'BNB',
     dataHost: 'data-stream.binance.vision',
     restricted: ['US', 'UM', 'GU', 'PR', 'VI'],
-    note: 'Public market-data mirror – reachable even where binance.com is geo-blocked.',
+    note: 'Public market-data mirror; some regions may reach it when binance.com is blocked.',
   },
   okx: {
     id: 'okx',

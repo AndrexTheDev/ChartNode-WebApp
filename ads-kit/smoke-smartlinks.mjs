@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((r) => server.listen(4173, r));
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'], protocolTimeout: 30000 });
+const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'], protocolTimeout: 30000 });
 const page = await browser.newPage();
 await page.evaluateOnNewDocument(() => {
   Object.defineProperty(navigator, 'webdriver', { get: () => false });

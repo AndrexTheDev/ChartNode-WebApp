@@ -32,8 +32,8 @@ const UNLOCK_TARGETS: { id: ThemeId; label: string; swatch: string }[] = [
  * Viral loop: one modal, two intents, one reward.
  *
  * Clicking X or Telegram opens the pre-filled post *and* flips
- * `useViralStore.shareUnlocked`, which permanently unlocks the two premium
- * themes (the modal immediately offers to apply them – instant dopamine).
+ * `useViralStore.shareUnlocked`, which stores the two theme unlocks in this
+ * browser's local workspace state (subject to the browser's storage).
  */
 export function ShareModal() {
   const t = useTranslations('share');
@@ -61,7 +61,9 @@ export function ShareModal() {
     typeof window === 'undefined'
       ? buildShareUrl(SITE_URL, locale, activeToken.symbol, price)
       : buildShareUrl(window.location.origin, locale, activeToken.symbol, price);
-  const text = buildShareText(t('tweet'), activeToken.symbol);
+  // Keep the placeholder raw: next-intl would otherwise parse {ticker} before
+  // the pure share-text helper replaces it with the instrument's cashtag.
+  const text = buildShareText(t.raw('tweet') as string, activeToken.symbol);
   const links = buildShareLinks(text, url);
 
   const fire = (href: string) => {

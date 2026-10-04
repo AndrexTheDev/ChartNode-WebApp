@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "NodeChart – Decode the Market. Kostenlos, schnell, dezentral.",
-    "description": "Kostenloses Chart-Terminal für Krypto (CEX & DEX): Echtzeit-Charts, 34 Indikatoren, 42 Metriken und ein eigenes Script Lab – ohne Account, ohne Paywall, im Browser.",
-    "keywords": "Krypto Charts, Trading Terminal, TradingView Alternative, CEX, DEX, Candlestick Chart, kostenlose Chartsoftware, Bitcoin Chart, Ethereum Chart, On-Chain-Märkte",
-    "shortDescription": "Kostenloses, schnelles, dezentrales Charting für CEX & DEX."
+    "title": "NodeChart – Decode the Market. Kostenlos, browserbasiert.",
+    "description": "CEX- und DEX-Charts im Browser mit Anbieterdaten, sofern verfügbar, Indikatoren, Zeichentools, Alerts und Marktmetriken. Zugriff und Limits variieren je Anbieter.",
+    "keywords": "Krypto Charts, Trading Terminal, CEX, DEX, Candlestick Chart, kostenlose Chartsoftware, Bitcoin Chart, Ethereum Chart, On-Chain-Märkte",
+    "shortDescription": "Kostenloses, browserbasiertes Charting für CEX- und DEX-Märkte."
   },
   "nav": {
     "brandTagline": "Decode the Market",
@@ -20,9 +20,9 @@
     "theme": "Design",
     "cycleTheme": "Design wechseln",
     "openPalette": "Befehlspalette öffnen",
-    "freeForever": "Für immer kostenlos",
+    "freeForever": "Kostenlos nutzbar",
     "github": "Quellcode",
-    "terminalDescription": "Live-Charts für CEX & DEX in einem Terminal: unbegrenzte Indikatoren, Zeichnungen, Alerts, On-Chain-Daten und Profi-Metriken – kostenlos im Browser."
+    "terminalDescription": "Browserbasierte CEX- und DEX-Charts mit Daten öffentlicher Anbieter, sofern verfügbar, dazu Indikatoren, Zeichnungen, Alerts und Marktmetriken."
   },
   "theme": {
     "label": "Design",
@@ -37,21 +37,21 @@
     "miami": "Miami Vice Pink",
     "miamiDesc": "Sunset-Noir – per Share freischalten",
     "premium": "Premium",
-    "premiumHint": "Einmal teilen, für immer freigeschaltet"
+    "premiumHint": "Der Teilen-Button öffnet einen vorausgefüllten Beitrag und schaltet die Themes in diesem Browser frei"
   },
   "hero": {
-    "badge": "Keine Paywalls · Kein Konto · Werbung & Spenden halten es am Leben",
+    "badge": "Keine Paywall · Kein Konto · Optionale Werbung & Spenden unterstützen die App",
     "titleLine1": "Decode the Market.",
-    "titleLine2": "Kostenlose TradingView-Alternative für CEX & DEX",
-    "subtitle": "NodeChart ist eine TradingView-Alternative, die vollständig in deinem Browser läuft. Uniti­sierte Candles für CEX und DEX, Multi-Pane-Layouts, Echtzeit-Feeds – und ein einzelner Dev, der es am Laufen hält: finanziert durch unaufdringliche Werbung und Tipps, nie durch Paywalls.",
+    "titleLine2": "Kostenlose CEX-/DEX-Charts im Browser",
+    "subtitle": "NodeChart ist ein browserbasiertes Chart-Terminal für CEX- und DEX-Märkte. Öffentliche Anbieterdaten werden angezeigt, wenn sie erreichbar sind; CORS, Region, Ratenlimits und Ausfälle können Feeds beeinträchtigen. Die meisten Anfragen kommen direkt aus dem Browser; eine eng begrenzte Route holt KuCoins öffentlichen WebSocket-Token. Optionale Werbung und freiwillige Tipps unterstützen die App; im aktuellen Release ist kein kostenpflichtiges Abo erforderlich.",
     "ctaPrimary": "Terminal starten",
     "ctaSecondary": "Funktionen ansehen",
-    "hint": "Keine Registrierung. Kein API-Key. Deine Watchlist verlässt dieses Gerät nie.",
+    "hint": "Kein Konto und kein API-Key. Die Watchlist wird in diesem Browser gespeichert; Marktdatenanfragen gehen an öffentliche Anbieter.",
     "liveDemo": "Simulierter Feed",
     "stats": {
       "cost": {
         "value": "0",
-        "label": "Paywalls · Werbung & Tipps zahlen die Rechnung"
+        "label": "Keine Paywall · Optionale Werbung & Tipps unterstützen die App"
       },
       "locales": {
         "value": "5",
@@ -63,7 +63,7 @@
       },
       "trackers": {
         "value": "0",
-        "label": "Tracker"
+        "label": "First-Party-Analytics"
       }
     }
   },
@@ -73,13 +73,13 @@
   },
   "features": {
     "eyebrow": "Fähigkeiten",
-    "heading": "Alles, was ein Terminal braucht. Nichts, was du bezahlst.",
-    "subheading": "Gebaut als Static-First-App am Cloudflare-Edge: Die Arbeit macht dein Browser, das Netzwerk liefert nur Daten.",
+    "heading": "Charting und Analyse in einem browserbasierten Workspace.",
+    "subheading": "Chartberechnungen laufen im Browser; öffentliche Marktdaten und Seitenressourcen hängen weiterhin von Netzwerk und Anbietern ab.",
     "items": [
       {
         "icon": "Zap",
         "title": "Konsequent clientseitig",
-        "body": "Charts, Indikatoren und State werden in deinem Browser berechnet. Keine Warteschlange, kein Rate-Limit und kein Abo-Modell dazwischen."
+        "body": "Chart- und Indikatorberechnungen laufen in deinem Browser. Öffentliche Marktdaten unterliegen weiterhin den Ratenlimits, CORS-Regeln und Regionszugriffen der Anbieter. Im aktuellen Release ist kein kostenpflichtiges Abo nötig."
       },
       {
         "icon": "Globe",
@@ -93,8 +93,8 @@
       },
       {
         "icon": "ShieldCheck",
-        "title": "Privat by default",
-        "body": "Kein Konto, kein API-Key, kein Analytics-Cookie. Watchlist und Layout liegen im localStorage und werden niemals übertragen."
+        "title": "Lokale Workspace-Einstellungen",
+        "body": "Ein Konto ist nicht erforderlich. Watchlist und Layout werden im localStorage gespeichert; optionale Adsterra-Werbeskripte laden erst, wenn du sie erlaubst. Bei Nutzung der Marktdatenfunktionen gehen Anfragen weiterhin an externe Anbieter."
       },
       {
         "icon": "Languages",
@@ -104,72 +104,72 @@
       {
         "icon": "Cpu",
         "title": "Edge-first-Infrastruktur",
-        "body": "Vorgerenderte Seiten kommen aus dem nächstgelegenen Cloudflare-Rechenzentrum. Die Spracherkennung läuft in Millisekunden am Edge."
+        "body": "Statische Seiten werden über Cloudflares Edge-Netzwerk ausgeliefert; die Sprachweiterleitung wird am Edge aufgelöst."
       },
       {
         "icon": "History",
         "title": "Bar-Replay auf jedem Timeframe",
-        "body": "Spule 1m-Kerzen wie ein Trainingsgerät zurück: Play, Pause, Schritt, 10× Speed – während alle 33 Indikatoren, Volume Profile und S/R live mitrechnen. TradingView verkauft Intraday-Replay als Abo."
+        "body": "Spule 1m-Kerzen mit Play, Pause, Einzelschritt und 10× zurück. Indikatoren, Volumenprofil sowie Support/Resistance werden auf dem sichtbaren Kerzenausschnitt neu berechnet; die Quelldaten ändern sich nicht."
       },
       {
         "icon": "FlaskConical",
-        "title": "Strategy Lab statt Pine-Paywall",
-        "body": "Sechs Strategien, ehrliche Gebühren, Mark-to-Market-Equity, Win-Rate, Profit-Faktor, Max-Drawdown – und ein Klick malt jede Position auf den Chart. Deep Backtesting ist anderswo Ultimate-Territorium."
+        "title": "Strategie-Labor",
+        "body": "Führe sechs lokale Backtests mit Gebühren und Mark-to-Market-Ergebnissen aus. Resultate hängen von Kerzenhistorie und Annahmen ab und sagen keine künftige Performance voraus."
       },
       {
         "icon": "Table2",
-        "title": "Screener über ~2.000 Paare",
-        "body": "Sortiere den kompletten Gate-USDT-Markt nach Volumen, Momentum oder 24h-Range, filtere Gainer/Loser/Whale-Volumen und öffne jedes Paar per Klick als echten Chart. Export inklusive."
+        "title": "Screener für provider-gelistete USDT-Paare",
+        "body": "Aktueller Snapshot gelisteter USDT-Spot-Ticker (Gate primär, OKX-Fallback), sortierbar nach Volumen, gemeldeter 24-h-Änderung oder Range. Filter, Suche, Ad-hoc-Charts und CSV; Umfang und Felder variieren."
       },
       {
         "icon": "List",
-        "title": "Watchlist ohne 30-Symbol-Deckel",
-        "body": "Live-Kurse für beliebig viele Symbole aus demselben Ticker-Sweep wie Breadth und Screener – keine extra Requests, keine Listen-Limits, keine Premium-Stufe."
+        "title": "Watchlist im Browser gespeichert",
+        "body": "Gespeicherte Symbole haben kein appinternes Mengenlimit; der verfügbare Speicher hängt jedoch vom Browser ab. CEX-Kurse erscheinen nur, wenn die Basis im gemeinsamen Gate/OKX-Spot-Ticker-Snapshot vorkommt (normalerweise bis zu zwei Minuten gecacht); bei fehlgeschlagenem Abruf können letzte Werte stehen bleiben. DEX-Einträge erhalten hier keinen Kurs; es gibt keinen Live-Feed pro Symbol."
       },
       {
         "icon": "Calculator",
         "title": "Risiko- & Positions-Calculator",
-        "body": "Konto, Risiko-%, Entry, Stop, Ziel: Größe, Notional, Margin und Chance-Risiko-Verhältnis in Echtzeit – die Formel, die Konten überleben lässt, endlich als First-Class-Tool."
+        "body": "Gib Kontogröße, Risiko-%, Einstieg, Stopp und Ziel ein, um Positionsgröße, Notional, Margin und Chance-Risiko-Verhältnis zu berechnen. Das ist eine Rechenhilfe, keine Empfehlung oder Garantie."
       },
       {
         "icon": "Download",
         "title": "CSV-Export & Achs-Modi",
-        "body": "OHLCV als CSV, Screener als CSV, Log- und Prozent-Achse, Countdown zum Kerzenschluss, Baseline-Charts: die QoL-Liste, die andernorts hinter Plänen steckt – hier einfach da."
+        "body": "Exportiere OHLCV- und Screener-Snapshots als CSV, nutze Log-/Prozent-Achsen, sieh den Kerzenschluss-Countdown und wechsle zu Baseline-Charts."
       },
       {
         "icon": "Radar",
-        "title": "Auto-Chartmuster statt Ultimate-Abo",
-        "body": "Double Tops, Head & Shoulders, Triangles und Flags: im sichtbaren Buffer erkannt, als Marker gesetzt, mit Konfidenz gelistet. Anderswo ein 239-$/Monat-Feature – hier Werbung und Tipps statt Paywall."
+        "title": "Chartmuster-Erkennung",
+        "body": "Double Tops, Head & Shoulders, Dreiecke und Flaggen werden im sichtbaren Kerzenpuffer erkannt und mit einem heuristischen Konfidenzwert angezeigt. Der Wert beschreibt die Musterpassung, nicht die Wahrscheinlichkeit einer künftigen Bewegung."
       },
       {
         "icon": "Gauge",
         "title": "MTF-Technicals-Matrix",
-        "body": "Sechs Timeframes, je 14 Signale, eine Gesamtnadel: Buy/Sell-Pressure aus Oszillatoren und Durchschnitten, live aus REST-Seeds berechnet. Keine Gauge mit Tunnelblick."
+        "body": "Fasst 14 Oszillator- und Durchschnittssignale über sechs Timeframes anhand geladener Daten zusammen. Die technische Übersicht ist keine Handelsempfehlung; die Aktualität hängt von der Datenquelle ab."
       },
       {
         "icon": "Flame",
         "title": "Markt-Heatmap + Bar-Lupe",
-        "body": "Top-USDT-Paare als Treemap (Fläche = Volumen, Farbe = 24h-Change) plus rohes Trade-Tape einer Kerze mit Taker-Delta und Whale-Prints. Klick auf eine Kachel lädt das Paar."
+        "body": "Provider-gelistete USDT-Paare als Treemap (Fläche = gemeldetes Volumen, Farbe = gemeldete 24-h-Änderung) plus Trade-Details und Taker-Delta für ausgewählte Kerzen, sofern der Feed sie bereitstellt. Klick auf eine Kachel öffnet den Chart."
       },
       {
         "icon": "BookOpen",
         "title": "Trade-Journal mit Stats",
-        "body": "Trades lokal notieren: Win-Rate, Profit-Faktor, Expectancy, Ø-R, Tag-Auswertung und CSV-Export. Das Werkzeug, das TradingView in keinem Plan hat – bei dir im Browser."
+        "body": "Erfasse Trades lokal mit Win-Rate, Profit-Faktor, Expectancy, Ø-R, Tags und CSV-Export. Kennzahlen beruhen auf den Einträgen, die du erfasst."
       },
       {
         "icon": "Code2",
-        "title": "Eigene Skripte statt Pine-Paywall",
-        "body": "Formeln pro Kerze schreiben und testen (ema, rsi, vwap, highest …), per https-URL von GitHub importieren und als Linie oder Preis-Overlay auf den Chart legen. Läuft ausschließlich lokal in deinem Browser – finanziert von Werbung & Tipps, nicht von einem Skript-Abo."
+        "title": "Eigene Indikatorformeln",
+        "body": "Schreibe und teste Formeln pro Kerze, importiere Text per HTTPS von GitHub und zeichne eine Linie oder ein Preis-Overlay. Formeln laufen auf dieser Seite ohne sichere Sandbox; führe nur Code aus, dem du vertraust. In diesem Release ist kein Skript-Abo nötig."
       },
       {
         "icon": "LifeBuoy",
         "title": "Hilfe zu jedem Indikator & jeder Metrik",
-        "body": "34 Indikatoren, 42 Marktmetriken und das Script Lab: jedes mit einem eigenen, verständlichen Doku-Eintrag – durchsuchbar, filterbar, in allen fünf Sprachen. Damit jeder Händler weiß, was er da eigentlich ansieht."
+        "body": "Dokumentation zu 34 Indikatoren, 42 Marktmetriken und Script Lab ist in fünf Sprachen durchsuchbar und filterbar."
       },
       {
         "icon": "Sparkles",
         "title": "Die Edge Suite",
-        "body": "Liq Radar, Lag Oracle, Regime Compass und Clock Edge: vier Signal-Engines, die aus deinen Kerzen Liquidations-Maps, Lead-Lag-Statistik, Markt-Regime und Saisonalität machen. In klassischen Chart-Apps gibt es das nicht."
+        "body": "Die Edge Suite bündelt chartbasierte Liquidationsschätzungen, historische Lead-Lag-Statistiken, Marktregime-Zusammenfassungen und Stunden-/Wochentagsmuster. Eingaben und Abdeckung variieren; die Ausgaben sind beschreibende Analysehilfen, keine Prognosen."
       }
     ]
   },
@@ -200,7 +200,7 @@
     "waiting": "Wartet auf die Chart-Engine (Teil 2)",
     "vp": "VP",
     "avwap": "aVWAP",
-    "sr": "S/R Auto",
+    "sr": "NodeCluster",
     "div": "Divergenzen",
     "alert": "Alert",
     "alerts": "Alerts",
@@ -248,20 +248,25 @@
       "tools": "Tools",
       "more": "Mehr",
       "help": "Hilfe-Center",
-      "edge": "Edge"
+      "edge": "Edge",
+      "controls": "Steuerung",
+      "chartSettings": "Chart-Einstellungen",
+      "marketPanels": "Daten & Panels",
+      "chartType": "Charttyp",
+      "dataSource": "Marktdatenquelle"
     },
     "compareNone": "Kein Vergleich"
   },
   "cta": {
     "eyebrow": "Bereit",
     "heading": "Terminal öffnen. Daten behalten.",
-    "body": "Keine Email-Mauer, keine Premium-Stufe, keine Dark Patterns – nur ein Dev, unaufdringliche Werbung und ein Tip-Jar, der die Lights an hält.",
+    "body": "Keine E-Mail-Mauer und keine Abo-Stufe. Optionale Drittanbieterwerbung (nur wenn du sie erlaubst) und freiwillige Tipps helfen, die Betriebskosten zu decken.",
     "primary": "Terminal starten",
     "secondary": "Hilfe-Center lesen",
     "contactLine": "Fragen, Bugs oder Exchange-Wünsche?"
   },
   "footer": {
-    "blurb": "Ein clientseitiges Chart-Terminal für zentralisierte und dezentrale Krypto-Märkte ohne Paywalls. Gebaut und gewartet von einem einzelnen unabhängigen Dev – am Leben gehalten durch Werbung und Spenden.",
+    "blurb": "Ein browserbasiertes Chart-Terminal für zentralisierte und dezentrale Kryptomärkte – ohne Paywall. Entwickelt von einem unabhängigen Entwickler und durch optionale Werbung sowie Spenden unterstützt.",
     "productTitle": "Produkt",
     "legalTitle": "Rechtliches",
     "supportTitle": "Support",
@@ -354,13 +359,13 @@
         "id": "what-is-nodechart",
         "category": "gettingStarted",
         "question": "Was genau ist NodeChart?",
-        "answer": "NodeChart ist ein kostenloses Chart-Terminal für Krypto-Märkte, das komplett in deinem Browser läuft. Es verbindet Feeds zentralisierter Börsen (CEX) mit Daten dezentraler Börsen (DEX) in einer Oberfläche und bietet Multi-Chart-Layouts, die mit TradingView vergleichbar sind – aber ohne Konto, ohne Abo und ohne eigenes Backend."
+        "answer": "NodeChart ist ein kostenlos nutzbarer, browserbasierter Chart-Arbeitsplatz für Kryptomärkte. Er kombiniert konfigurierte CEX-Adapter und DEX-Providerdaten in einer Oberfläche. Verarbeitung und Speicherung erfolgen überwiegend im Browser; eine eng begrenzte Same-Origin-Route holt KuCoins öffentlichen WebSocket-Token. Öffentliche Feeds können je nach Anbieter, Browser und Region unvollständig oder nicht verfügbar sein."
       },
       {
         "id": "no-account",
         "category": "gettingStarted",
         "question": "Brauche ich ein Konto oder einen API-Key?",
-        "answer": "Nein. NodeChart fragt niemals Zugangsdaten ab. Öffentliche Marktdaten werden direkt im Browser von den öffentlichen Endpunkten der Börsen gelesen. Weil nichts serverseitig gespeichert wird, gibt es auch nichts zu registrieren."
+        "answer": "Nein. NodeChart fragt weder Börsen-Zugangsdaten noch eigene API-Schlüssel ab. Die meisten öffentlichen Daten werden direkt im Browser von Börsen und Datenanbietern abgerufen; eine eng begrenzte Same-Origin-Route holt nur KuCoins öffentlichen WebSocket-Token. Es gelten Anbieterlimits, CORS-Regeln und regionale Beschränkungen."
       },
       {
         "id": "switch-layout",
@@ -384,19 +389,19 @@
         "id": "data-sources",
         "category": "data",
         "question": "Woher kommen die Kursdaten?",
-        "answer": "Die Kurse werden direkt aus den öffentlichen APIs und WebSockets der Börsen in deinen Browser gestreamt. NodeChart proxyt sie nicht über eigene Server – deshalb gibt es weder ein zwischen Nutzern geteiltes Rate-Limit noch Infrastrukturkosten, die weitergereicht werden müssten."
+        "answer": "Marktdaten kommen überwiegend über öffentliche CEX- und DEX-Provider-Endpunkte direkt in deinen Browser. Eine eng begrenzte Same-Origin-Route holt KuCoins öffentlichen WebSocket-Token; sie ist kein allgemeiner Proxy. CORS, IP-basierte Ratenlimits, regionale Regeln und Ausfälle können Ergebnisse beeinflussen. Lokale Browserbudgets koordinieren Nutzer hinter einer gemeinsamen Upstream-IP nicht; Candle-History kann sichtbar von einer Alternativ-Venue oder einem gekennzeichneten Stale-Cache stammen."
       },
       {
         "id": "stored-data",
         "category": "data",
         "question": "Speichert NodeChart meine Daten?",
-        "answer": "Ausschließlich in deinem eigenen Browser. Design, Sprache, Layout, Watchlist und aktives Symbol landen im localStorage. Kein Analytics, keine Werbe-Cookies, keine Konten – es gibt also nichts, das verkauft werden oder abfließen könnte."
+        "answer": "Design, Sprache, Layout, Watchlist und aktives Symbol werden in diesem Browser gespeichert. Auch deine Werbeauswahl bleibt bis zu sechs Monate lokal. Optionale Adsterra-Skripte laden nur nach deiner Zustimmung; Hosting- und Datendienstleister können technische Anfragedaten wie IP-Adressen verarbeiten. Es gibt keine Nutzerdatenbank."
       },
       {
         "id": "empty-chart",
         "category": "troubleshooting",
         "question": "Ein Chart ist leer oder aktualisiert nicht.",
-        "answer": "Meist blockiert eine Browser-Erweiterung die WebSocket-Verbindung, oder die Börse hat eine regionale Sperre. Lade die Seite neu, deaktiviere Adblocker für diese Seite oder wechsle das Instrument. Ist eine Börse in deinem Land nicht erreichbar, stammt diese Sperre von der Börse, nicht von NodeChart."
+        "answer": "Eine Browser-Erweiterung, Netzwerkregel oder regionale Einschränkung des Anbieters blockiert möglicherweise die API oder den WebSocket der gewählten Börse. Prüfe die Erreichbarkeit des Marktdaten-Endpunkts oder versuche eine andere Venue bzw. Datenquelle. Die Werbeauswahl ist davon unabhängig: Du musst Werbung nicht erlauben, um Charts zu nutzen."
       },
       {
         "id": "theme-language",
@@ -412,173 +417,185 @@
     "contactCta": "E-Mail an {handle}",
     "feedbackNote": "NodeChart ist ein unabhängiges Projekt. Feedback verändert die Roadmap tatsächlich.",
     "metrics": {
-      "deriv.funding": {
-        "name": "Funding-Rate",
-        "body": "Periodische Zahlung zwischen Long- und Short-Seite im Perpetual-Futures-Markt. Positiv = Longs zahlen Shorts (bullisch überheitzt); negativ = umgekehrt. Extremwerte markieren oft lokale Gegenbewegungen."
+      "deriv": {
+        "funding": {
+          "name": "Funding-Satz bei Perpetuals",
+          "body": "Regelmäßige Zahlung zwischen Long- und Short-Positionen eines Perpetual-Kontrakts. Ein positiver Satz bedeutet in der Regel, dass Longs an Shorts zahlen; bei negativem Satz umgekehrt. Dieser Venue-Snapshot sagt keine Kursrichtung voraus."
+        },
+        "annual": {
+          "name": "Einfach annualisierter Funding-Satz",
+          "body": "Der aktuelle Funding-Satz wird mit dem vom Anbieter gemeldeten Intervall einfach auf ein Jahr hochgerechnet. Das dient dem Vergleich des aktuellen Satzes und ist weder Prognose noch Zinseszinsrendite."
+        },
+        "mark": {
+          "name": "Markpreis der Venue",
+          "body": "Von der Börse berechneter Referenzpreis für Margin- und Liquidationsregeln. Er kann vom letzten Trade abweichen; die Formel variiert je Venue und verhindert keine Verluste."
+        },
+        "premium": {
+          "name": "Mark-/Index-Differenz",
+          "body": "Prozentuale Differenz zwischen Mark- und Indexpreis. Sie beschreibt den aktuellen Snapshot; ihr Vorzeichen allein belegt weder Kauf- noch Verkaufsdruck."
+        },
+        "oi": {
+          "name": "Open-Interest-Nominalwert",
+          "body": "Gemeldeter Open-Interest-Nominalwert von OKX oder, sofern verfügbar, Gate. Veränderungen beschreiben offene Kontrakte dieser Quelle und bestätigen keinen Kurstrend."
+        },
+        "lsrAcc": {
+          "name": "Long/Short-Konten",
+          "body": "Verhältnis der gemeldeten Long- zu Short-orientierten Konten in diesem Feed. Extreme Werte nutzen manche als Kontraindikator-Kontext; allein zeigt das Verhältnis keine künftige Richtung."
+        },
+        "lsrTaker": {
+          "name": "Long/Short-Taker-Volumen",
+          "body": "Verhältnis aggressiver Käufe zu Verkäufen im gemeldeten Feed. Über 1 bedeutet, dass im Snapshot mehr kauf- als verkaufsinitiierte Menge gemeldet wurde; das sagt keine Kursrichtung voraus."
+        },
+        "lsrTop": {
+          "name": "Top-Trader-Positionierung",
+          "body": "Gemeldetes Long/Short-Verhältnis der größten Konten in diesem Feed. Unterschiede zu anderen Gruppen beschreiben Positionierungen, sind aber kein eigenständiges Kontraindikator-Signal."
+        },
+        "liq5m": {
+          "name": "Gemeldete Liquidationen (5 Min.)",
+          "body": "Vom Anbieter gemeldete Zwangsschließungen von Long- und Short-Positionen in den letzten fünf Minuten. Der Snapshot kann unvollständig sein und belegt weder eine Kaskade noch eine Umkehr."
+        },
+        "nextFunding": {
+          "name": "Nächste Funding-Abrechnung",
+          "body": "Verbleibende Zeit bis zur nächsten gemeldeten Funding-Abrechnung. Der Countdown allein sagt keine Kursbewegung voraus."
+        }
       },
-      "deriv.annual": {
-        "name": "Funding annualisiert",
-        "body": "Die aktuelle Funding-Rate aufs Jahr hochgerechnet. Zeigt, wie teuer das Halten einer Position derzeit ist – nützlich für Carry- und Arbitrage-Überlegungen."
+      "flow": {
+        "spread": {
+          "name": "Bid-Ask-Spread",
+          "body": "Abstand zwischen bestem Kauf- und Verkaufsangebot. Ein enger Spread kann bei kleinen Orders auf geringere angezeigte Kosten hindeuten, misst aber weder Orderbuchtiefe noch Ausführungsqualität."
+        },
+        "imbalance": {
+          "name": "Orderbuch-Ungleichgewicht",
+          "body": "Anteil des Kauf- und Verkaufsnominals im sichtbaren Orderbuch-Snapshot. Angezeigte Tiefe kann sich ändern oder gestrichen werden und garantiert keine ausführbare Liquidität."
+        },
+        "cvd": {
+          "name": "Cumulative Volume Delta",
+          "body": "Laufende Summe aggressiver Käufe minus Verkäufe im gewählten Feed. Eine Abweichung vom Preis beschreibt unterschiedliche beobachtete Flows; sie belegt weder Überzeugung noch eine bevorstehende Umkehr."
+        },
+        "delta60": {
+          "name": "Taker-Delta im Kurzzeitfenster",
+          "body": "Differenz aggressiver Kauf- und Verkaufsmengen in einem kurzen Zeitfenster des gewählten Feeds. Sie fasst jüngste Trades zusammen, zeigt aber weder Absicht noch künftiges Momentum."
+        },
+        "depth": {
+          "name": "Gemeldete Orderbuchtiefe",
+          "body": "Kumuliertes Nominal auf beiden Seiten des gemeldeten Orderbuchs um den Mittelkurs. Angezeigte Tiefe kann sich vor der Ausführung ändern oder gestrichen werden."
+        }
       },
-      "deriv.mark": {
-        "name": "Mark-Preis",
-        "body": "Der vom Exchange berechnete faire Preis zur Liquidationsberechnung. Weicht er stark vom letzten Handelspreis ab, schützt das vor manipulativen Wick-Liquidationen."
+      "global": {
+        "mcap": {
+          "name": "Gemeldete Marktkapitalisierung",
+          "body": "Vom Anbieter gemeldete Gesamtmarktkapitalisierung der erfassten Assets. Abdeckung und Berechnung hängen vom Anbieter ab."
+        },
+        "btcD": {
+          "name": "Bitcoin-Dominanz",
+          "body": "Gemeldeter BTC-Anteil an der Gesamtmarktkapitalisierung. Änderungen können mit Marktrotationen einhergehen; die Dominanz allein erklärt weder Ursache noch Richtung."
+        },
+        "ethD": {
+          "name": "Ethereum-Dominanz",
+          "body": "Gemeldeter ETH-Anteil an der Gesamtmarktkapitalisierung. Als beschreibenden Kontext neben BTC-Dominanz nutzen; Ursache oder Richtung einer Rotation zeigt er nicht."
+        },
+        "fng": {
+          "name": "Fear & Greed Index",
+          "body": "Stimmungswert von 0 bis 100 aus Volatilität, Momentum, Dominanz und Sozialdaten. Extreme Werte beschreiben das Sentiment, sind aber keine Kauf- oder Verkaufssignale."
+        }
       },
-      "deriv.premium": {
-        "name": "Premium (Mark vs. Index)",
-        "body": "Differenz zwischen Mark- und Indexpreis in Prozent. Positives Premium = Futures handeln über Spot (bullische Hebel-Nachfrage); tief negatives Premium = Short-Druck."
+      "vol": {
+        "dvol": {
+          "name": "Implizite Volatilität bei Deribit (DVOL)",
+          "body": "Deribits optionsbasierter Index der impliziten Volatilität für BTC und ETH; die 24-h-Änderung vergleicht Indexwerte. Implizite Volatilität spiegelt Optionspreise wider, nicht realisierte Volatilität oder eine Prognose."
+        },
+        "putCall": {
+          "name": "Call/Put-Open-Interest-Verhältnis",
+          "body": "Calls geteilt durch Puts im gemeldeten BTC-Options-Open-Interest von Deribit. Das Verhältnis beschreibt diesen Snapshot; es zeigt weder Händlerabsichten noch eine künftige Kursrichtung."
+        },
+        "maxPain": {
+          "name": "Max Pain",
+          "body": "Strike mit dem niedrigsten modellierten inneren Auszahlungswert über das gemeldete BTC-Options-Open-Interest. Diese Snapshot-Berechnung ist weder Kursziel noch Prognose."
+        },
+        "smile": {
+          "name": "IV-Smile",
+          "body": "Implizite Volatilität über die Strikes des ausgewählten Verfalls. Die Form beschreibt angezeigte Optionspreise; sie belegt weder Händlerabsichten noch künftige Kursbewegungen."
+        },
+        "term": {
+          "name": "IV-Terminstruktur",
+          "body": "Implizite Volatilität über verfügbare Verfälle. Die Form hängt von gelisteten Kontrakten und Anbieter-Snapshot ab; Contango oder Backwardation ist keine Prognose."
+        }
       },
-      "deriv.oi": {
-        "name": "Open Interest",
-        "body": "Summe aller offenen Kontrakte. Steigendes OI bei steigendem Preis bestätigt den Trend; fallendes OI zeigt Positionsschließungen (Trend verliert Kraft)."
+      "breadth": {
+        "advPct": {
+          "name": "Advancer-Quote",
+          "body": "Anteil der im aktuellen Anbieter-Snapshot enthaltenen USDT-Spot-Paare mit bekannter 24-h-Änderung, die steigen. 25/75-%-Schwellen sind Heuristiken, keine Gesamtmarkt-Aussage."
+        },
+        "median": {
+          "name": "Median-24h-Change",
+          "body": "Median der gemeldeten 24-h-Änderungen bekannter Paare im aktuellen Anbieter-Snapshot. Er reagiert weniger auf Ausreißer als der Mittelwert, bildet aber nicht den Gesamtmarkt ab."
+        }
       },
-      "deriv.lsrAcc": {
-        "name": "Long/Short-Konten",
-        "body": "Verhältnis long- zu short-orientierter Konten. Ein extremer Long-Überhang bei Kleinkonten ist oft ein Konträr-Indikator (Crowd liegt falsch)."
-      },
-      "deriv.lsrTaker": {
-        "name": "Long/Short-Taker-Volumen",
-        "body": "Verhältnis aggressiv gekaufter zu aggressiv verkaufter Kontrakte. >1 = Käufer initiieren flowmäßig Druck – direkterer Blick als Konten."
-      },
-      "deriv.lsrTop": {
-        "name": "Top-Trader-Positionierung",
-        "body": "Long/Short-Verhältnis der größten Konten. Divergenz zur Crowd (Konten long, Tops short) ist ein beliebtes Konträr-Signal."
-      },
-      "deriv.liq5m": {
-        "name": "Liquidationen 5 m",
-        "body": "In den letzten 5 Minuten zwangsgeschlossene Positionen. Liquidationskaskaden erzeugen schnelle Wick – danach häufig Mean-Reversion."
-      },
-      "deriv.nextFunding": {
-        "name": "Nächstes Funding",
-        "body": "Countdown bis zur nächsten Funding-Zahlung. Kurz vor dem Termin bewegen sich Preise oft Richtung funding-neutrale Zone."
-      },
-      "flow.spread": {
-        "name": "Bid-Ask-Spread",
-        "body": "Differenz zwischen bestem Kauf- und Verkaufsangebot. Ein enger Spread = hohe Liquidität und niedrige Handelskosten; ein weiter Spread warnt vor dünnem Buch."
-      },
-      "flow.imbalance": {
-        "name": "Orderbuch-Ungleichgewicht",
-        "body": "Anteil Buy- vs. Sell-Seite im sichtbaren Orderbuch. Starke einseitige Wände können als Magnet oder Widerstand wirken – bleiben aber stornierbar."
-      },
-      "flow.cvd": {
-        "name": "Cumulative Volume Delta",
-        "body": "Summierte Differenz aus aggressiven Käufen und Verkäufen. Steigt der Preis, während CVD fällt (Divergenz), trägt der Move nicht – Umkehrrisiko."
-      },
-      "flow.delta60": {
-        "name": "Delta letzte 60 s",
-        "body": "Kurzfristiges Taker-Delta als Momentum-Blitzblick: wer initiiert gerade – Käufer oder Verkäufer?"
-      },
-      "flow.depth": {
-        "name": "Orderbuch-Tiefe",
-        "body": "Kumulierte Volumen beider Seiten in Preisstufen um den Mid. Tiefe Bücher dämpfen Volatilität; dünne Seiten lassen den Preis springen."
-      },
-      "global.mcap": {
-        "name": "Marktkapitalisierung",
-        "body": "Gesamtwert aller gelisteten Coins. Der Rahmen, in dem Dominanz und Rotationen gelesen werden."
-      },
-      "global.btcD": {
-        "name": "Bitcoin-Dominanz",
-        "body": "Anteil von BTC an der Gesamtmarktkapitalisierung. Steigend = Kapital flieht in BTC (Risk-off); fallend = Altcoin-Saison-Rotation."
-      },
-      "global.ethD": {
-        "name": "Ethereum-Dominanz",
-        "body": "Anteil von ETH am Gesamtmarkt. Zweites Rotations-Barometer neben BTC.D, besonders für DeFi-/L2-Bewegungen."
-      },
-      "global.fng": {
-        "name": "Fear & Greed Index",
-        "body": "Stimmungs-Score 0–100 aus Volatilität, Momentum, Dominanz und Sozialdaten. Extreme Angst (<20) ist historisch kaufseitig, extreme Gier (>80) verkaufsseitig interessant."
-      },
-      "vol.dvol": {
-        "name": "Deribit-Volumen (Options)",
-        "body": "24h-Optionsvolumen nach BTC/ETH. Hohe Aktivität zeigt, wo große Accounts Absicherung oder Hebel suchen."
-      },
-      "vol.putCall": {
-        "name": "Put/Call-Verhältnis",
-        "body": "Optionsfluss: >1 = Absicherung/Angst dominiert, <1 = Call-Kauf (Gier). Als Konträr-Indikator an Extremen nützlich."
-      },
-      "vol.maxPain": {
-        "name": "Max Pain",
-        "body": "Preis, bei dem die meisten Optionspositionen wertlos verfallen – magnetisch wirkende Zone Richtung Verfallstermin."
-      },
-      "vol.smile": {
-        "name": "IV-Smile",
-        "body": "Implizite Volatilität über Strikes. Ein steiler Put-Skew zeigt Nachfrage nach Absturz-Absicherung; ein flacher Smile wirkt entspannt."
-      },
-      "vol.term": {
-        "name": "IV-Terminstruktur",
-        "body": "Implizite Volatilität über Verfallstermine. Contango (ferne IV höher) = normal; Backwardation = akute Stress-Prämie."
-      },
-      "breadth.advPct": {
-        "name": "Advancer-Quote",
-        "body": "Prozentsatz steigender USDT-Paare. <25 % bei stabilem BTC = versteckte Altcoin-Schwäche; >75 % = breite Risk-on-Phase."
-      },
-      "breadth.median": {
-        "name": "Median-24h-Change",
-        "body": "Median der 24h-Veränderung aller Paare – robuster als Mittelwerte, weil einzelne Ausreißer nicht durchschlagen."
-      },
-      "chart.vp": {
-        "name": "Volume Profile (VR)",
-        "body": "Gehandeltes Volumen pro Preisstufe im sichtbaren Bereich. Der Point of Control (lauteste Stufe) wirkt als Magnet, dünnere Zonen als schnelle Durchgänge."
-      },
-      "chart.avwap": {
-        "name": "Anchored VWAP",
-        "body": "Volumengewichteter Durchschnittspreis ab deinem Ankerpunkt (z. B. Swing-Low, News). Zeigt, wer seit diesem Ereignis im Geld liegt – institutioneller Referenzrahmen."
-      },
-      "chart.sr": {
-        "name": "Auto-Support/-Resistance",
-        "body": "Automatisch geclusterte Pivot-Zonen. Mehrfache Tests einer Zone erhöhen ihre Bedeutung; Bruch mit Volumen verwandelt Widerstand in Support (und umgekehrt)."
-      },
-      "chart.divergence": {
-        "name": "RSI-Divergenzen",
-        "body": "Preis macht neues Hoch, RSI nicht (oder umgekehrt). Warnt vor erschöpftem Momentum, bevor der Preis dreht – Frühwarn- statt Timing-Signal."
-      },
-      "chart.session": {
-        "name": "Session-Statistik",
-        "body": "Open/High/Low/Change der laufenden Sitzung plus Range und annualisierte Volatilität – der schnelle Kontext, ob der Tag trendet oder mäandert."
-      },
-      "chart.rv": {
-        "name": "Realisierte Volatilität",
-        "body": "Tatsächlich gehandelte Schwankungsbreite (annualisiert). RV unter IV = Optionen preisen Aufregung ein, die der Markt noch nicht liefert."
-      },
-      "chart.countdown": {
-        "name": "Kerzen-Countdown",
-        "body": "Verbleibende Zeit bis die aktuelle Kerze schließt. Signal-Indikatoren und Muster sind erst mit Kerzenschluss bestätigt – der Countdown sagt, wie lang noch."
-      },
-      "chart.patterns": {
-        "name": "Auto-Chartmuster",
-        "body": "Erkennt Double Top/Bottom, Head & Shoulders (±), auf-/absteigende Dreiecke und Flaggen im sichtbaren Verlauf und markiert sie mit Konfidenzwert."
-      },
-      "chart.ratings": {
-        "name": "MTF-Technicals",
-        "body": "Bewertet sechs Timeframes parallel über 14 Signale (Oszillatoren + Durchschnitte) und bündelt sie zu einer Gesamtnadel von „Stark verkaufen“ bis „Stark kaufen“."
-      },
-      "chart.heatmap": {
-        "name": "Markt-Heatmap",
-        "body": "Treemap der volumenstärksten USDT-Paare: Fläche = 24h-Volumen, Farbe = 24h-Änderung. Ein Blick zeigt, wo Geld fließt und wo es blutet."
-      },
-      "chart.journal": {
-        "name": "Trade-Journal",
-        "body": "Lokales Tagebuch deiner Trades mit Win-Rate, Profit-Faktor, Expectancy, Ø-R und Tag-Statistik – inklusive CSV-Export. Beweist, ob deine Edge real ist."
-      },
-      "chart.magnifier": {
-        "name": "Bar-Lupe",
-        "body": "Zeigt das rohe Trade-Tape innerhalb einer Kerze: Anzahl Trades, Taker-Delta, kumulative Delta-Kurve und Whale-Prints ab 100 k$."
-      },
-      "chart.replay": {
-        "name": "Bar-Replay",
-        "body": "Spult den Chart auf jedem Timeframe in die Vergangenheit und spielt ihn Bar für Bar ab – alle Indikatoren rechnen live auf dem Sichtfenster neu."
-      },
-      "chart.backtest": {
-        "name": "Strategy Lab",
-        "body": "Backtestet sechs Regelstrategien (u. a. EMA-Cross, RSI-Reversal, Breakout) über den sichtbaren Verlauf: Trades, Win-Rate, Profit-Faktor, Equity-Kurve, Marker im Chart."
-      },
-      "chart.screener": {
-        "name": "Screener",
-        "body": "Durchsucht ~2 000 USDT-Paare nach Change, Volumen und Momentum, mit Filtern, Ad-hoc-Chart und CSV-Export – ohne manuellen Refresh-Zwang."
-      },
-      "chart.customScripts": {
-        "name": "Script Lab",
-        "body": "Eigene Indikator-Formeln pro Kerze (ema, rsi, vwap …) schreiben, testen, aus GitHub-Raw-URLs importieren und als Linie oder Overlay auf den Chart legen."
+      "chart": {
+        "vp": {
+          "name": "Volume Profile (VR)",
+          "body": "Schätzt die Volumenverteilung nach Preis aus Kerzen im sichtbaren Bereich. Der Point of Control ist das Preis-Bin mit dem höchsten berechneten Volumen dieser Stichprobe; er sagt keine künftige Kursbewegung voraus."
+        },
+        "avwap": {
+          "name": "Anchored VWAP",
+          "body": "Volumengewichteter Durchschnittspreis ab deinem Anker, berechnet aus geladenen Kerzen. Er dient zum Vergleich und zeigt nicht, welche Trader im Gewinn sind."
+        },
+        "sr": {
+          "name": "NodeCluster",
+          "body": "NodeCluster gruppiert nahe Swing-Pivots aus den Chartkerzen zu transparenten Support-/Resistance-Zonen. Knoten markieren einzelne Pivotpunkte; Leuchten und Touch-Zahl zeigen die lokale Pivot-Dichte. Das ist aus Kerzen abgeleitete Struktur – keine echte Orderbuch-Tiefe und keine garantierte Liquidität."
+        },
+        "divergence": {
+          "name": "RSI-Divergenzen",
+          "body": "Markiert unterschiedliche Swing-Hochs oder -Tiefs von Preis und RSI. Das beschreibt eine Divergenz in den gewählten Daten, bestätigt aber weder Erschöpfung noch den Zeitpunkt einer Umkehr."
+        },
+        "session": {
+          "name": "Session-Statistik",
+          "body": "Open/High/Low/Change der laufenden Sitzung plus Range und annualisierte Volatilität – der schnelle Kontext, ob der Tag trendet oder mäandert."
+        },
+        "rv": {
+          "name": "Realisierte Volatilität",
+          "body": "Tatsächlich gehandelte Schwankungsbreite (annualisiert). RV unter IV = Optionen preisen Aufregung ein, die der Markt noch nicht liefert."
+        },
+        "countdown": {
+          "name": "Kerzen-Countdown",
+          "body": "Verbleibende Zeit bis zum Schluss der aktuellen Kerze. Die endgültigen OHLCV-Werte stehen erst beim Schluss fest; während der Bildung können sie sich ändern."
+        },
+        "patterns": {
+          "name": "Auto-Chartmuster",
+          "body": "Sucht in sichtbaren Kerzen nach Doppel-Tops/-Böden, Schulter-Kopf-Schulter, Dreiecken und Flaggen. Der Konfidenzwert ist ein heuristischer Fit-Score, keine Wahrscheinlichkeit für eine künftige Bewegung."
+        },
+        "ratings": {
+          "name": "MTF-Technicals",
+          "body": "Fasst 14 Oszillator- und Durchschnittswerte aus geladenen Daten über sechs Timeframes von „Stark verkaufen“ bis „Stark kaufen“ zusammen. Das ist keine Handelsempfehlung; die Aktualität hängt von der Datenquelle ab."
+        },
+        "heatmap": {
+          "name": "Markt-Heatmap",
+          "body": "Treemap des aktuellen provider-gelisteten USDT-Ticker-Snapshots (Gate primär, OKX-Fallback): Fläche = gemeldetes 24-h-Notional, Farbe = gemeldete 24-h-Änderung. Fehlende Änderungen bleiben neutral."
+        },
+        "journal": {
+          "name": "Trade-Journal",
+          "body": "Lokales Protokoll deiner Trades mit Win-Rate, Profit-Faktor, Erwartungswert, durchschnittlichem R, Tagesstatistik und CSV-Export. Die Werte fassen erfasste Trades zusammen und belegen keine dauerhafte Edge."
+        },
+        "magnifier": {
+          "name": "Bar-Lupe",
+          "body": "Zeigt verfügbare Trade-Prints innerhalb einer Kerze: Anzahl, Taker-Delta, kumulative Delta-Kurve und Trades über 100 k$, sofern der gewählte Feed sie liefert. Die Abdeckung kann unvollständig sein."
+        },
+        "replay": {
+          "name": "Bar-Replay",
+          "body": "Spielt geladene Kerzen Bar für Bar ab; Indikatoren werden bei jedem Replay-Schritt anhand des sichtbaren Fensters neu berechnet. Das ist historische Wiedergabe, kein Live-Feed."
+        },
+        "backtest": {
+          "name": "Strategy Lab",
+          "body": "Wendet sechs regelbasierte Strategien (EMA-Cross, RSI-Reversal, Ausbruch u. a.) auf die geladene Historie an und zeigt Trades, Win-Rate, Profit-Faktor und Equity-Kurve. Resultate hängen von Daten, Gebühren und Annahmen ab und sagen keine künftige Performance voraus."
+        },
+        "screener": {
+          "name": "Screener",
+          "body": "Aktueller Gate-USDT-Spot-Ticker-Snapshot mit OKX-Fallback, sortierbar nach gemeldeter Änderung, Volumen und Range. Umfang und Felder variieren je Anbieter; fehlende Änderungen bleiben leer. Mit Filtern, Ad-hoc-Charts und CSV-Export."
+        },
+        "customScripts": {
+          "name": "Script Lab",
+          "body": "Eigene Indikator-Formeln pro Kerze (ema, rsi, vwap …) schreiben, testen, aus GitHub-Raw-URLs importieren und als Linie oder Overlay auf den Chart legen."
+        }
       }
     },
     "scriptTopics": [
@@ -592,7 +609,7 @@
         "id": "scr-import",
         "category": "scripts",
         "question": "Wie importiere ich Skripte z. B. von GitHub?",
-        "answer": "Füge im Script Lab eine https-URL ein – github.com/…/blob/…- und gist-Links werden automatisch zu raw-URLs umgeschrieben, jede andere https-Raw-Datei funktioniert ebenso. Der Inhalt landet im Editor (max. 20 KB), danach testen, speichern oder direkt auf den Chart legen. Alles läuft nur in deinem Browser."
+        "answer": "Füge im Script Lab eine HTTPS-URL ein; GitHub-Blob- und Gist-Links werden zu Raw-URLs umgeschrieben. Der Text wird in den Editor geladen (max. 20 KB). Der Import allein führt ihn nicht aus; das passiert erst bei „Testen“ oder „Anwenden“. Formeln sind nicht sicher sandboxed und können auf Browser-APIs und Websitedaten zugreifen. Führe nur Code aus, dem du vertraust."
       },
       {
         "id": "scr-apply",
@@ -612,7 +629,7 @@
         "id": "edge-lag",
         "category": "edge",
         "question": "Was misst das Lag Oracle?",
-        "answer": "Das Lag Oracle vergleicht deinen Chart mit einem Leader-Feed (Standard: BTC auf einer großen CEX). Es berechnet die beste Zeitverschiebung in Kerzen, die Korrelation, das Beta und die Trefferquote historischer Leader-Sprünge. Wenn der Leader gerade um mindestens 1,5 Standardabweichungen gesprungen ist und dein Coin der statistischen Erwartung hinterherhinkt, erscheint eine Live-Meldung. Der Leader-Feed wird nur geladen, solange das Modal offen ist."
+        "answer": "Der Lag Oracle vergleicht deinen Chart mit einem Leit-Feed (Standard: BTC an einer konfigurierten CEX). Er schätzt historischen Kerzenversatz, Korrelation, Beta und Trefferquote vergangener Leader-Bewegungen. Ein Hinweis kann erscheinen, wenn der Leader sich um mindestens 1,5 Standardabweichungen bewegt und die aktuelle Bewegung von der historischen Beziehung abweicht. Der Feed lädt nur bei geöffnetem Modal; der Stichproben-Alarm ist informativ, keine Prognose."
       },
       {
         "id": "edge-regime",
@@ -624,7 +641,7 @@
         "id": "edge-clock",
         "category": "edge",
         "question": "Was zeigt Clock Edge?",
-        "answer": "Clock Edge zerlegt deine geladenen Kerzen nach UTC-Stunde und Wochentag und misst für jede Zeit die Win-Rate und die durchschnittliche Rendite der nächsten vier Kerzen. Der t-Wert sagt, ob ein Muster statistisch auffällig ist; nur signifikante Zellen (mindestens 30 Beobachtungen, t ≥ 2) werden als Edge gewertet. Alles rechnet lokal im Browser aus genau den Kerzen, die dein Feed liefert."
+        "answer": "Clock Edge gruppiert geladene Kerzen nach UTC-Stunde und Wochentag und meldet historische Trefferquoten sowie Durchschnittsrenditen über die nächsten vier Kerzen. Zellen mit mindestens 30 Beobachtungen und t ≥ 2 markiert eine Heuristik als statistisch auffällig; das belegt weder ein dauerhaftes Muster noch künftige Ergebnisse."
       }
     ],
     "toc": "Inhalt"
@@ -678,7 +695,7 @@
         },
         {
           "heading": "Keine Gewähr für Richtigkeit",
-          "body": "Marktdaten werden in Echtzeit von Drittanbietern bezogen und können verzögert, unvollständig, abweichend aggregiert oder schlicht falsch sein. NodeChart übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Aktualität eines angezeigten Werts."
+          "body": "Marktdaten werden von Drittquellen abgerufen und können zwischengespeichert, verzögert, unvollständig, anders aggregiert oder schlicht falsch sein. NodeChart übernimmt keine Gewähr für Richtigkeit, Vollständigkeit oder Aktualität angezeigter Werte."
         },
         {
           "heading": "Risiko des Totalverlusts",
@@ -696,23 +713,27 @@
     },
     "privacy": {
       "title": "Datenschutzerklärung",
-      "intro": "Die Kurzfassung: NodeChart erhebt nichts über dich. Die Langfassung erklärt, warum das technisch stimmt.",
+      "intro": "Du benötigst kein Konto. Die Website übermittelt dennoch technische Anfragedaten an Hosting- und Marktdatenanbieter und – nur wenn du optionale Werbung erlaubst – an Werbepartner. Die folgenden Abschnitte beschreiben diese wichtigsten Datenflüsse.",
       "sections": [
         {
-          "heading": "Keine Konten, keine Profile",
-          "body": "Es gibt keine Registrierung, keinen Login und keine Nutzerdatenbank. Wir können also keine personenbezogenen Daten über dich speichern, weil wir niemals welche erhalten."
+          "heading": "Kein Konto erforderlich",
+          "body": "Die aktuelle Version bietet keine Registrierung, keinen Login und keine Nutzerdatenbank. Das bedeutet nicht, dass keine personenbezogenen Daten verarbeitet werden: Hosting-, Marktdaten- und Werbeanbieter können wie unten beschrieben technische Anfragedaten, etwa IP-Adressen, verarbeiten."
         },
         {
-          "heading": "Nur lokaler Speicher",
-          "body": "Deine Einstellungen – Design, Sprache, Chart-Layout, Watchlist und zuletzt gewähltes Symbol – werden im localStorage deines Browsers gespeichert. Diese Daten bleiben auf deinem Gerät und werden nie an uns gesendet. Du kannst sie jederzeit in den Browser-Einstellungen löschen."
+          "heading": "Speicher im Browser",
+          "body": "Design, Sprache, Chart-Layout, Watchlist und zuletzt gewähltes Symbol werden im localStorage deines Browsers gespeichert. Watchlist und Layout werden nicht in ein Nutzerkonto hochgeladen. Auch deine Werbeauswahl wird bis zu sechs Monate lokal gespeichert, damit die Website sie beachten kann; beim Löschen des Browser-Speichers wird sie zurückgesetzt. Das funktionale Cookie NEXT_LOCALE kann deine Sprachwahl speichern."
         },
         {
-          "heading": "Kein Analytics, keine Werbung",
-          "body": "NodeChart nutzt keine Tracking-Cookies, keine Analytics-Skripte, keine Werbenetzwerke und kein Fingerprinting. Es gibt keine Einbettungen Dritter, die deine IP-Adresse an Werbetreibende weiterleiten würden. Ein funktionales Cookie (NEXT_LOCALE) speichert deine Sprachwahl. Marktdaten- und Ad-Partner (z. B. Adsterra) erhalten deine IP-Adresse als Teil jeder Anfrage und können eigene Cookies setzen; serverseitig einsetzen wir kein Tracking, keine Analytics und kein Fingerprinting."
+          "heading": "Optionale Werbung und Drittanbieter",
+          "body": "Wenn du optionale Werbung erlaubst, lädt die Website Adsterra-Werbeskripte. Sie können deine IP-Adresse sowie Browser- und Gerätedaten aus der Anfrage erhalten und eigene Cookies oder ähnliche Kennungen speichern oder auslesen. Bei Ablehnung oder noch offener Wahl lädt die App diese Werbe-Delivery-Skripte nicht. Marktdatenanfragen laufen davon getrennt weiter. Das Smartlink-Kit wird von dieser Website ausgeliefert; sein gekennzeichnetes Partnerziel öffnet sich erst, wenn du den Link anklickst. In der App ist kein First-Party-Analytics-Dienst konfiguriert; das beschreibt nicht die Verarbeitung durch Hosting-, Werbe- oder Datendienstleister. Für deren eigene Datenverarbeitung gelten ihre Datenschutzhinweise."
         },
         {
-          "heading": "Drittanbieter von Marktdaten",
-          "body": "Beim Laden eines Charts verbindet sich dein Browser direkt mit der öffentlichen API beziehungsweise dem WebSocket der jeweiligen Börse. Dieser Anbieter sieht deine IP-Adresse, wie bei jeder anderen Webanfrage auch. Für diese Verbindung gilt dessen Datenschutzerklärung; NodeChart sitzt nicht dazwischen und protokolliert sie nicht."
+          "heading": "Marktdatenanbieter",
+          "body": "Je nach Funktion und Anbieter verbindet sich dein Browser direkt mit einer öffentlichen API oder einem WebSocket; manche Anfragen nutzen stattdessen eine eng begrenzte API-Route dieser Website. Anbieter oder Hosting-Dienstleister können deine IP-Adresse und technische Anfragedaten verarbeiten. Für diese Anfragen gelten deren Datenschutzhinweise; nicht jeder Datenpfad ist direkt."
+        },
+        {
+          "heading": "Eigene Skripte und importierte Formeln",
+          "body": "Wenn du eine eigene oder importierte Formel testest oder anwendest, wird sie als JavaScript auf der App-Seite ausgeführt. Sie ist nicht sicher sandboxed und kann auf Browser-APIs und Seitendaten zugreifen oder Netzwerkanfragen senden. Führe nur Code aus, dem du vertraust. Beim Import einer URL wird Text von der angegebenen Adresse geladen; der Import allein führt ihn nicht aus. Gespeicherte Formeln liegen in diesem Browser."
         },
         {
           "heading": "Hosting und Logs",
@@ -720,7 +741,7 @@
         },
         {
           "heading": "Deine Rechte und Kontakt",
-          "body": "Da keine personenbezogenen Daten verarbeitet werden, sind Auskunfts-, Berichtigungs- oder Löschersuchen faktisch bereits erfüllt. Sollten trotzdem Fragen zum Datenschutz bestehen, schreib an die Kontaktadresse im Footer."
+          "body": "Bei Datenschutzfragen oder Anliegen zu deinen Informationen erreichst du uns über die Kontaktadresse im Footer. Hosting-, Markt- und Werbeanbieter können Anfragedaten in eigener Verantwortung und nach eigenen Hinweisen verarbeiten. Nenne möglichst den betroffenen Dienst, damit wir dein Anliegen nach den geltenden Anforderungen beantworten können."
         }
       ]
     }
@@ -751,16 +772,16 @@
     "scanning": "Netzwerke werden gescannt …",
     "empty": "Keine Treffer für „{query}“",
     "results": "{count, plural, =0 {Keine Treffer} one {# Treffer} other {# Treffer}}",
-    "providers": "Audit: GoPlus · RugCheck",
+    "providers": "Quellen: GoPlus · Honeypot.is · RugCheck · Solana-RPC",
     "cex": "CEX",
     "dex": "DEX",
-    "safe": "Sicher",
+    "safe": "Keine Warnflags",
     "warn": "Vorsicht",
-    "danger": "Scam / Honeypot",
+    "danger": "Hohes Risiko",
     "unknown": "Ungeprüft",
     "auditing": "Prüfe …",
     "liq": "Liq",
-    "venueAll": "Alle Börsen",
+    "venueAll": "Alle konfigurierten Börsen",
     "venueDex": "Nur DEX / On-Chain",
     "venueFilter": "Börse filtern"
   },
@@ -794,37 +815,38 @@
     "attempt": "Versuch {n}",
     "candles": "{n} Candles",
     "unsupported": "Paar nicht gelistet",
-    "seedVia": "Historie via {venue}"
+    "seedVia": "Historie via {venue}",
+    "seedStale": "Historie via {venue} · Cache-Kerzen, {age} alt"
   },
   "exchanges": {
     "label": "Datenquelle",
-    "auto": "Auto – schnellste erreichbare",
-    "autoHint": "Wird bei jedem Besuch gemessen und an deine Region angepasst",
-    "reprobe": "Börsen neu messen",
-    "reprobeHint": "Prüft alle {count} Börsen auf Erreichbarkeit und Latenz",
+    "auto": "Auto — Rangfolge konfigurierter Börsen",
+    "autoHint": "Nutzt gespeicherte browserseitige Probe-Snapshots (bis zu 6 h alt), Region, Paarunterstützung und Börsenpräferenz; nur eine Best-Effort-Einschätzung, keine Verfügbarkeitsgarantie.",
+    "reprobe": "Börsen erneut prüfen",
+    "reprobeHint": "Versucht für das aktuelle Paar/Timeframe einen direkten HTTP-Abruf oder WebSocket-Handshake. Best Effort für diesen Browser, diese Region und diesen Moment; prüft keine Live-Daten und garantiert keine Verfügbarkeit.",
     "region": "Region: {country}",
     "regionUnknown": "Region: nicht erkannt",
     "regionSource": {
       "edge": "am Edge erkannt",
       "timezone": "über Zeitzone erkannt"
     },
-    "rerouted": "Diese Börse ist für dich nicht verfügbar – eine Alternative wurde automatisch gewählt",
+    "rerouted": "Diese Börse wurde nach Regions-, Paar- oder Probe-Heuristik übersprungen; die tatsächliche Verfügbarkeit kann abweichen.",
     "reroutedShort": "Umgeleitet",
     "status": {
-      "unknown": "noch nicht gemessen",
-      "probing": "messe…",
-      "ok": "erreichbar",
-      "slow": "erreichbar (langsam)",
-      "blocked": "geo-blockiert",
-      "error": "nicht erreichbar"
+      "unknown": "noch nicht geprüft",
+      "probing": "prüfe…",
+      "ok": "Antwort erhalten",
+      "slow": "langsame Antwort",
+      "blocked": "Zugriff verweigert",
+      "error": "keine nutzbare Antwort (nicht eindeutig)"
     },
     "flags": {
       "unsupportedTimeframe": "keine {timeframe}-Kerzen",
       "unlisted": "Paar nicht gelistet",
-      "restricted": "in deiner Region eingeschränkt"
+      "restricted": "Regionseinschränkung hinterlegt"
     },
     "manualShort": "Manuell",
-    "manualHint": "Börse manuell gewählt – Auto übergibt die Wahl wieder der Messung"
+    "manualHint": "Börse manuell gewählt — Auto nutzt wieder die Rangfolge konfigurierter Börsen"
   },
   "chart": {
     "toolbar": {
@@ -860,7 +882,7 @@
     },
     "modal": {
       "title": "Indikatoren",
-      "subtitle": "Pane {pane} · unbegrenzte Instanzen, lokal berechnet",
+      "subtitle": "Pane {pane} · Indikatoren lokal berechnet",
       "overlays": "Preis-Overlays",
       "oscillators": "Oszillatoren (eigenes Pane)",
       "active": "Auf diesem Chart",
@@ -1044,7 +1066,7 @@
       "CUSTOM": {
         "name": "Eigenes Skript",
         "short": "Script-Lab-Formel",
-        "hint": "Führt deine eigene Formel pro Kerze aus – lokal im Browser, ohne Paywall."
+        "hint": "Führt deine Formel pro Kerze auf dieser Seite aus; lies vor eigenen oder importierten Formeln den Sicherheitshinweis im Script Lab."
       }
     },
     "params": {
@@ -1083,39 +1105,39 @@
     }
   },
   "support": {
-    "title": "NodeChart kostet dich nichts. Unterstütze die Rebellion.",
-    "body": "Dein Ad-Blocker pausiert – und genau deshalb gibt es dieses Terminal: Ein einzelner Dev hält es am Laufen, finanziert von unaufdringlicher Werbung und Menschen wie dir. Blocker aus, oder das Grid direkt betanken:",
+    "title": "Ein Werbeskript wurde blockiert",
+    "body": "Eine Browser-Erweiterung oder Netzwerkregel hat ein Werbeskript am Laden gehindert. Das Terminal bleibt verfügbar. Du kannst den Hinweis schließen oder das Projekt freiwillig unterstützen; deine Werbeauswahl kannst du im Footer ändern.",
     "wallets": "Spenden-Wallets",
     "copy": "Kopieren",
     "copied": "Kopiert!",
     "donated": "Ich habe gespendet",
     "dismiss": "Ausblenden",
-    "note": "Keine Konten, keine Tracker, keine Paywalls. Werbung und Spenden zahlen Server, Kaffee und die Nachtstunden des Devs – jede Spende wird direkt zu neuen Chart-Features.",
+    "note": "Kein Konto und keine Paywall. Optionale Werbung – nur wenn du sie erlaubst – und freiwillige Spenden helfen, die Betriebskosten zu decken.",
     "openTip": "Trinkgeld-Glas",
     "supporter": "Supporter",
     "story1": "NodeChart hat kein Team, keine Investoren, keinen Sales-Bereich. Es gibt genau einen Entwickler – und der muss Miete, Strom und Ramen zahlen, während er nachts Orderbuch-Parser schreibt.",
-    "story2": "Dieses Terminal lebt von zwei Dingen: unaufdringlicher Werbung und Menschen, die danach den Tip-Jar öffnen. Beides hält die Lights an und die Paywalls aus.",
+    "story2": "Dieses Terminal wird durch optionale Werbung unterstützt, wenn du sie erlaubst, und durch Menschen, die freiwillig den Tip-Jar öffnen. Beides hilft, Betriebskosten ohne Abo-Paywall zu decken.",
     "story3": "Jede Spende – egal welcher Größe – wird direkt in neue Features, schnellere Daten und weniger Schlaf investiert. Danke, dass du das hier möglich machst.",
     "monthly": "Was dein Slot bewirkt",
     "slot1": "1 Kaffee = 1 Stunde fokussierte Bug-Jagd",
     "slot2": "1 Pizza = ein neuer Indikator mit Smoke-Tests",
     "slot3": "1 Wochen-Einkauf = ein komplett neues PRO-Modul",
-    "nudge1": "Wenn NodeChart dir heute Geld oder Zeit gespart hat: Der Tip-Jar hat immer offen. ☕",
+    "nudge1": "Wenn NodeChart dir heute Zeit gespart hat, kannst du einen freiwilligen Tipp geben. ☕",
     "nudge2": "Ein einsamer Dev hält dieses Terminal am Laufen – Kaffee ist sein Kühlmedium. ❤",
     "nudge3": "Werbung allein zahlt keine Nachtschichten. Wenn du kannst: Trinkgeld-Glas. 🍜",
     "nudge4": "Du nutzt NodeChart wie ein Profi – profimäßig wäre auch ein kleines Trinkgeld. ⚡",
     "milestoneTitle": "Du bist jetzt offiziell Stammgast",
-    "milestoneBody": "{sessions} Sessions, in denen du mit NodeChart Charts zerlegt hast. Dieses Projekt wird von keiner Firma getragen – nur von Werbung und Leuten wie dir. Wenn es einen Platz in deinem Setup verdient hat: Der Tip-Jar ist der ehrlichste Weg, das zu sagen.",
+    "milestoneBody": "{sessions} Sessions, in denen du mit NodeChart Charts zerlegt hast. Keine Firma trägt dieses Projekt – optionale Werbung, wenn du sie erlaubst, und freiwillige Unterstützung helfen beim Betrieb. Wenn es einen Platz in deinem Setup verdient hat, ist der Tip-Jar eine Möglichkeit, das zu zeigen.",
     "milestoneCta": "Tip-Jar öffnen",
     "milestoneLater": "Später vielleicht",
-    "celebrate": "Auf TradingView steckt das hinter einem Abo. Hier bleibt es offen – weil Werbung und Trinkgeld-Glas es tragen. Mein Kühlschrank übrigens auch.",
+    "celebrate": "Diese Funktion ist im aktuellen Release ohne kostenpflichtiges Abo verfügbar. Optionale Werbung (nur wenn du sie erlaubst) und freiwillige Tipps unterstützen die App.",
     "celebrateCta": "Trinkglas",
     "cta": "Ich habe gespendet",
     "thanks": "Danke. Echtes Geld, echter Dev, echtes Feature-Budget. Dein Supporter-Badge leuchtet jetzt im Header.",
     "landingEyebrow": "Survival",
     "landingHeading": "Ein Dev. Keine Investoren. Dein Tip-Jar.",
-    "landingSub": "Jedes Feature hier ist offen – aber offen bleibt es nur, solange Werbung und Spenden Miete, Strom und Ramen bezahlen. Wenn NodeChart einen Platz in deinem Setup hat: Das ist der ehrlichste Weg, es zu behalten.",
-    "adsWhy": "Warum Werbung? Weil sie das Terminal offen hält, ohne Accounts oder Paywalls. Warum Spenden? Weil Werbung allein keine Nachtschichten zahlt.",
+    "landingSub": "Die Funktionen sind ohne Abo verfügbar. Optionale Werbung, wenn du sie erlaubst, und Spenden helfen, die Betriebskosten des Projekts zu decken.",
+    "adsWhy": "Warum Werbung? Optionale Werbung kann das Terminal ohne Abo unterstützen und wird nur geladen, wenn du sie erlaubst. Warum Spenden? Sie sind eine weitere freiwillige Möglichkeit, die Entwicklung zu unterstützen.",
     "toolNudge": {
       "body": "Sechs Tools in einer Session – dein Setup meint es ernst. Mein Tip-Jar auch: ein Kaffee hält die Feeds am Laufen.",
       "cta": "Kaffee ausgeben"
@@ -1131,12 +1153,12 @@
     "button": "Teilen",
     "title": "Dieses Setup teilen",
     "titleTheme": "Premium-Skins freischalten",
-    "hint": "Ein Post auf X oder Telegram schaltet Matrix Green + Miami Vice Pink frei – für immer.",
-    "already": "Die Premium-Themes sind bereits freigeschaltet. Teilen tankt trotzdem das Grid.",
+    "hint": "Klicke auf X oder Telegram, um Matrix Green + Miami Vice Pink in diesem Browser freizuschalten. Ein vorausgefüllter Beitrag öffnet sich, muss aber nicht veröffentlicht werden.",
+    "already": "Diese Themes sind bereits freigeschaltet. Teile das Setup, wenn du möchtest.",
     "x": "Auf X posten",
     "telegram": "Auf Telegram teilen",
     "unlocked": "Freigeschaltet: Matrix Green + Miami Vice Pink",
-    "tweet": "Found an insane setup for {ticker} on NodeChart. Zero fees, real-time on-chain data. #Crypto #Trading"
+    "tweet": "Chart-Setup für {ticker} auf NodeChart. Öffentliche Markt- und On-Chain-Signale hängen von Anbietern ab und werden nach bestem Bemühen bereitgestellt. #Krypto #Trading"
   },
   "ads": {
     "sponsored": "Gesponsert",
@@ -1148,7 +1170,20 @@
     "fallbackTitle": "Partner-Angebot",
     "fallbackText": "Dein Browser hat das neue Fenster blockiert. Öffne das Angebot direkt:",
     "fallbackCta": "Angebot öffnen",
-    "close": "Schließen"
+    "close": "Schließen",
+    "consentTitle": "Deine Wahl zu optionaler Werbung",
+    "consentBody": "Diese Website lädt Adsterra-Werbeskripte von Drittanbietern nur, wenn du optionale Werbung erlaubst. Die Skripte können deine IP-Adresse sowie Browser- und Gerätedaten an Adsterra übermitteln und eigene Cookies oder ähnliche Kennungen verwenden. Charts und Marktdaten bleiben auch bei Ablehnung verfügbar.",
+    "consentNote": "Deine Wahl wird bis zu sechs Monate in diesem Browser gespeichert. Du kannst sie jederzeit über „Werbeeinstellungen“ im Footer ändern. Gekennzeichnete Partnerlinks sind davon getrennt und öffnen sich nur, wenn du sie anklickst.",
+    "consentActions": "Auswahl zur optionalen Werbung",
+    "allowOptional": "Optionale Werbung erlauben",
+    "rejectOptional": "Optionale Werbung ablehnen",
+    "manage": "Werbeeinstellungen",
+    "settingsTitle": "Werbeeinstellungen",
+    "currentAllowed": "Aktuelle Einstellung: Optionale Werbung ist erlaubt.",
+    "currentDenied": "Aktuelle Einstellung: Optionale Werbung ist abgelehnt.",
+    "privacyLink": "Datenschutzerklärung lesen",
+    "storageError": "Deine Wahl konnte nicht gespeichert werden. Lösche die Websitedaten und lade neu, damit keine frühere Werbefreigabe weiterverwendet wird.",
+    "closeSettings": "Ohne Änderungen schließen"
   },
   "onchain": {
     "button": "On-Chain",
@@ -1182,7 +1217,8 @@
       "gwei": "gwei",
       "util": "Auslastung {value}",
       "txToday": "{value} Tx heute",
-      "tvl": "TVL {value}"
+      "tvl": "TVL {value}",
+      "source": "Quelle: {provider}"
     },
     "solana": {
       "tps": "TPS",
@@ -1205,8 +1241,11 @@
       "taxes": "Buy/Sell-Tax",
       "top10": "Top-10-Anteil",
       "lp": "LP gelockt",
+      "source": "Quelle: {provider}",
+      "partial": "Nur Simulation; Holder-, LP- und Mint-Autoritätsdaten fehlen.",
       "mintable": "MINTBAR",
-      "honeypot": "HONEYPOT"
+      "honeypot": "HONEYPOT",
+      "incomplete": "Einige Provider-Felder fehlen; leere Werte sind unbekannt, nicht null."
     }
   },
   "pro": {
@@ -1215,6 +1254,7 @@
     "close": "Schließen",
     "refresh": "Jetzt aktualisieren",
     "sources": "Quellen: Gate · OKX · CoinGecko · alternative.me · Deribit · Live-Tape (CVD)",
+    "providerLabel": "Snapshot-Quelle: {venue}",
     "live": "LIVE",
     "offline": "OFFLINE",
     "loading": "lädt…",
@@ -1251,7 +1291,7 @@
       "cvd": "CVD Session",
       "delta60": "Δ 60 s",
       "trades": "Trades",
-      "cvdHint": "CVD läuft aus dem Live-Tape – Whale-Stream aktiv lassen",
+      "cvdHint": "CVD basiert auf Trades, die diese Browsersitzung empfängt; bis zum ersten Trade bleibt es leer.",
       "depth": "Orderbuch-Tiefe (kumuliert, ±0,5 %)"
     },
     "global": {
@@ -1261,12 +1301,13 @@
       "coins": "Coins",
       "btcD": "BTC.D",
       "ethD": "ETH.D",
-      "fng": "Fear & Greed"
+      "fng": "Fear & Greed",
+      "fngSource": "Quelle: Alternative.me"
     },
     "vol": {
       "dvolBtc": "DVOL BTC",
       "dvolEth": "DVOL ETH",
-      "putCall": "Put/Call OI",
+      "putCall": "Call/Put OI",
       "maxPain": "Max Pain",
       "painDist": "Max Pain {value} vom Spot",
       "dvolHint": "Implizite Volatilität & Optionsflow (Deribit)",
@@ -1278,7 +1319,7 @@
       "dec": "Fallend",
       "median": "Median 24 h",
       "advPct": "Advancer-Quote",
-      "hint": "{total} USDT-Paare · Steigend vs. fallend"
+      "hint": "Anbieter-Snapshot: {total} USDT-Paare mit gemeldeter 24-h-Änderung · steigend vs. fallend"
     }
   },
   "tools": {
@@ -1317,7 +1358,7 @@
     },
     "screener": {
       "title": "Market Screener",
-      "subtitle": "{n} USDT-Paare · live sortiert & gefiltert",
+      "subtitle": "{n} USDT-Paare im Anbieter-Snapshot",
       "search": "Suchen…",
       "filters": {
         "all": "Alle",
@@ -1331,7 +1372,8 @@
       "chg": "24h %",
       "vol": "Vol 24h",
       "range": "24h-Range",
-      "hint": "Klick auf eine Zeile öffnet den echten Chart – auch für Paare außerhalb der Seed-Liste. Export inklusive: TradingView verlangt dafür ein Abo."
+      "source": "Ticker-Quelle: {venue}",
+      "hint": "Provider-gelistete Paare lassen sich im Chart versuchen; Börsen- und Paarunterstützung können variieren. CSV-Export ist enthalten."
     },
     "risk": {
       "title": "Positions- & Risk-Calculator",
@@ -1351,13 +1393,13 @@
       "targetDist": "Ziel-Distanz",
       "accountTarget": "Konto bei Ziel",
       "invalid": "Entry, Stop und Ziel müssen sich unterscheiden",
-      "hint": "Größt den Trade so, dass der Stop exakt dein Risiko trifft – die einzige Formel, die Konten überleben lässt."
+      "hint": "Schätzt die Positionsgröße für den geplanten Stopp; Slippage, Gebühren und Kurslücken können den tatsächlichen Verlust verändern."
     },
     "watch": {
-      "title": "Watchlist · Live",
+      "title": "Watchlist · Ticker-Snapshot",
       "empty": "Noch leer – Stern im Toolbar sammelt Symbole.",
       "remove": "Entfernen",
-      "hint": "Unbegrenzte Symbole, Live-Kurse aus dem geteilten Ticker-Sweep."
+      "hint": "Kein App-Limit; Browser-Speicher und Leistung begrenzen die praktische Größe. CEX-Kurse stammen aus Gate/OKX-Snapshots (meist bis zu 2 Min. Cache); keine DEX-Kurse oder Live-Feeds je Symbol. Bei Abruffehlern können alte Werte stehen bleiben."
     },
     "ratings": {
       "title": "Technische Ratings",
@@ -1370,7 +1412,7 @@
       "sell": "Sell",
       "neutral": "Neutral",
       "verdict": "Urteil",
-      "foot": "Diese Matrix kostet dich kein Abo – mich aber Kaffee. Tip-Jar?",
+      "foot": "Ratings fassen ausgewählte technische Indikatoren der geladenen Daten zusammen; sie sind weder Garantie noch Handelsempfehlung.",
       "gauge": {
         "strongBuy": "Stark kaufen",
         "buy": "Kaufen",
@@ -1385,7 +1427,7 @@
       "err": "Heatmap nicht erreichbar – Binance-API blockt?",
       "loading": "Lade Ticker …",
       "click": "Klick auf eine Kachel lädt das Paar ins Terminal.",
-      "foot": "Heatmaps gibt es anderswo hinter Logins. Hier hält sie ein Tip-Jar warm."
+      "foot": "Heatmap-Kacheln hängen von verfügbaren Provider-Snapshots ab und können unvollständig oder veraltet sein."
     },
     "journal": {
       "title": "Trade-Journal",
@@ -1402,7 +1444,7 @@
       "save": "Eintrag sichern",
       "del": "Löschen",
       "empty": "Noch keine Trades notiert. Der beste Trade ist der dokumentierte.",
-      "foot": "TradingView hat kein Journal. Du hast jetzt eins – ein Tipp hält es gepflegt.",
+      "foot": "Trade-Notizen und Kennzahlen werden lokal gespeichert; exportiere bei Bedarf eine CSV-Kopie.",
       "stats": {
         "count": "Trades",
         "winRate": "Win-Rate",
@@ -1425,11 +1467,11 @@
       "buys": "Käufe",
       "sells": "Verkäufe",
       "delta": "Taker-Delta",
-      "foot": "Premium-Feature anderswo, hier Offenheit: ein Kaffee hält die Lupe sauber."
+      "foot": "Trade-Details hängen von der Provider-Abdeckung und der ausgewählten Kerze ab."
     },
     "alerts": {
       "title": "Alert-Manager",
-      "sub": "Unbegrenzt · persistiert · nie verfallen · Multi-Condition",
+      "sub": "Mehrere Alerts · in diesem Browser gespeichert · mehrere Bedingungen",
       "permOn": "Benachrichtigungen an",
       "permOff": "Benachrichtigungen aus",
       "testbeep": "Beep testen",
@@ -1448,7 +1490,7 @@
       "armed": "scharf",
       "fired": "ausgelöst",
       "del": "Löschen",
-      "foot": "400 nicht verfallende Alerts kosten anderswo 60 $/Monat. Hier: ein Danke im Tip-Jar.",
+      "foot": "Alerts werden in diesem Browser gespeichert. Browser-Benachrichtigungen benötigen Unterstützung und Berechtigung; freiwillige Tipps helfen der App.",
       "arm": "Chart-Klick-Modus",
       "armHint": "Scharf stellen: nächsten Punkt im Chart klicken, um dort einen Alert zu setzen"
     },
@@ -1457,7 +1499,7 @@
       "sub": "Automatische Erkennung im sichtbaren Buffer",
       "toggle": "Marker im Chart",
       "empty": "Kein Muster im Sichtfeld – der Markt gönnt sich keine Klassiker.",
-      "foot": "Muster-Erkennung ist anderswo ein 239-$-Feature. Hier kostet sie ein Lächeln oder einen Tipp.",
+      "foot": "Musterwerte sind heuristisch und beschreiben erkannte Formen, nicht die künftige Kursrichtung.",
       "kinds": {
         "doubleTop": "Double Top",
         "doubleBottom": "Double Bottom",
@@ -1485,7 +1527,7 @@
       "importGo": "Laden",
       "saved": "Gespeicherte Skripte",
       "guide": "Verfügbar pro Kerze: o h l c v · Funktionen: ema(p) sma(p) rsi(p) atr(p) stoch(p) vwap() highest(p) lowest(p) change(p) · Mathe: abs max min sqrt log pow",
-      "foot": "Skripte laufen nur in deinem Browser – ein Tipp hält den Lab-Tisch sauber.",
+      "foot": "Formeln laufen auf dieser Seite, nicht in einer sicheren Sandbox. Führe nur vertrauenswürdigen Code aus.",
       "last": "Letzter Wert",
       "min": "Min",
       "max": "Max",
@@ -1495,10 +1537,13 @@
         "compile": "Syntaxfehler in der Formel.",
         "runtime": "Laufzeitfehler in der Formel.",
         "https-only": "Nur https://-Quellen werden geladen.",
-        "too-large": "Datei zu groß (max. 20 KB)."
+        "too-large": "Datei zu groß (max. 20 KB).",
+        "timeout": "Zeitüberschreitung beim Import. Versuche eine andere Quelle oder erneut.",
+        "network": "Die Quelle konnte nicht geladen werden. Prüfe URL, CORS-Zugriff oder Verbindung."
       },
       "errHttp": "Import fehlgeschlagen: {code}",
-      "applied": "Skript liegt auf dem Chart."
+      "applied": "Skript liegt auf dem Chart.",
+      "securityWarning": "Sicherheit: Eigene und importierte Formeln werden als JavaScript auf dieser Seite ausgeführt. Sie sind nicht sicher sandboxed und können auf Seitendaten und Browser-APIs zugreifen. Führe nur vertrauenswürdigen Code aus."
     }
   },
   "faq": {
@@ -1507,27 +1552,27 @@
     "items": [
       {
         "q": "Ist NodeChart wirklich kostenlos nutzbar?",
-        "a": "Ja. Alle Charts, Indikatoren, Metriken und Tools laufen ohne Account und ohne Abo vollständig im Browser. Finanziert wird der Betrieb durch dezente Werbung und freiwillige Spenden – es gibt keine Paywall und keine versteckten Premium-Stufen."
+        "a": "Ja. Charts, Indikatoren, Metriken und Tools sind in der aktuellen Version ohne Konto und Abo verfügbar. Optionale Werbung (nur wenn du sie erlaubst) und freiwillige Spenden helfen, die Betriebskosten zu decken; es gibt keine Abo-Paywall."
       },
       {
-        "q": "Welche Börsen und Chains unterstützt NodeChart?",
-        "a": "12 zentralisierte Börsen (u. a. Binance, OKX, Bybit, Gate.io, KuCoin) sowie DEX-Daten über 33 Chains via DexScreener und GeckoTerminal – inklusive Sicherheits-Checks für Token-Adressen."
+        "q": "Welche CEX-Adapter-IDs und Chain-Aliase sind konfiguriert?",
+        "a": "NodeChart enthält 12 konfigurierte CEX-Adapter-IDs und 33 kanonische Chain-IDs mit Provider-Aliasen zur Normalisierung von DEX-Antworten. Das Register belegt keine Live-Marktabdeckung; verfügbare Märkte und Token-Risikosignale hängen von Anbieter, Region und Token ab."
       },
       {
         "q": "Kann ich eigene Indikator-Skripte schreiben?",
-        "a": "Ja. Das Script Lab nimmt Formeln pro Kerze (ema, rsi, vwap, …) entgegen, testet sie live und legt sie als Linie oder Overlay auf den Chart. Skripte lassen sich lokal speichern oder per https-URL z. B. von GitHub importieren."
+        "a": "Ja. Das Script Lab nimmt Formeln pro Kerze entgegen, kann sie testen und zeichnen. Formeln lassen sich lokal speichern oder als Text per HTTPS-URL, zum Beispiel von GitHub, importieren. Der Import lädt den Text in den Editor, führt ihn aber nicht aus. Beim Testen oder Anwenden läuft der Code auf dieser Seite ohne sichere Sandbox und kann auf Browser-APIs oder Websitedaten zugreifen. Führe nur Code aus, dem du vertraust."
       },
       {
         "q": "Wo liegen meine Daten und Zeichnungen?",
-        "a": "Ausschließlich in deinem Browser (localStorage). NodeChart hat kein Backend für Nutzerdaten – keine Accounts, keine Tracker, keine Cloud-Sync."
+        "a": "Design, Sprache, Layout, Watchlist und aktives Symbol werden in diesem Browser gespeichert. Auch deine Werbeauswahl bleibt bis zu sechs Monate lokal. Marktdatenanfragen gehen an öffentliche Anbieter; optionale Adsterra-Skripte laden nur nach deiner Zustimmung. Gekennzeichnete Partnerlinks öffnen sich erst nach einem Klick. Es gibt keine Nutzerdatenbank, aber Hosting- und Datendienstleister können technische Anfragedaten wie IP-Adressen verarbeiten."
       },
       {
-        "q": "Wie funktioniert der Vergleich mit TradingView?",
-        "a": "Funktionen, die dort hinter Essential-, Plus- oder Ultimate-Abos liegen – Volume Profile, Bar-Replay, Renko/Kagi, Muster-Erkennung, MTF-Ratings, eigene Skripte – sind hier offen zugänglich. NodeChart kostet nichts, finanziert sich aber über Werbung und Spenden."
+        "q": "Worauf sollte ich beim Vergleich von Chart-Tools achten?",
+        "a": "NodeChart konzentriert sich auf browserbasierte CEX-/DEX-Charts und lokale Analysen. Die Marktdatenabdeckung hängt von Anbieterzugriff, Region und Ratenlimits ab. Andere Dienste unterscheiden sich bei Funktionen, Daten und Preisen; prüfe deren aktuelle Angaben. Dieses NodeChart-Release ist kostenlos nutzbar und wird durch optionale Werbung (nur mit deiner Zustimmung) und Spenden unterstützt."
       },
       {
         "q": "Für wen ist NodeChart gedacht?",
-        "a": "Für Trader, die Echtzeit-Charts für Krypto (CEX & DEX) ohne Registrierungshürde wollen: Einsteiger dank erklärender Hilfe zu jedem Indikator, Profis dank Orderflow-, Options- und On-Chain-Metriken."
+        "a": "Für Trader, die CEX- und DEX-Charts ohne Konto erkunden möchten: Die Hilfe erläutert die aufgeführten Indikatoren; Orderflow-, Options- und On-Chain-Metriken gibt es, soweit Anbieter Daten liefern. Abdeckung, Aktualität und Umfang variieren."
       }
     ]
   },
@@ -1540,7 +1585,7 @@
     "liqTitle": "Liq Radar",
     "liqSub": "Wo gehebelte Positionen liquidiert werden",
     "liqEnable": "Magnete im Chart einblenden",
-    "liqHow": "Liq Radar schätzt aus den letzten 400 Kerzen, wo Liquidations-Cluster von 10x- bis 100x-Positionen liegen. Der Preis wird von diesen Zonen oft wie von einem Magneten angezogen – nutze sie als Ziel- oder Stopp-Bereiche. Reine Mathematik aus deinem Chart: keine Prognose, keine Positionsdaten einer Börse.",
+    "liqHow": "Liq Radar schätzt hypothetische Liquidationspreis-Zonen für 10x–100x-Hebel aus den letzten 400 Chartkerzen und gewichtet sie nach Spanne, Volumen und Aktualität. Es nutzt keine Positionsdaten einer Börse und ist keine Prognose; die Zonen sind keine bestätigten Ziele oder Stopps.",
     "liqAbove": "Short-Liquidationen über dem Preis",
     "liqBelow": "Long-Liquidationen unter dem Preis",
     "liqSpot": "Aktueller Preis",
@@ -1564,15 +1609,15 @@
     "regimeRecs": "Passende Tools",
     "regimeNeed": "Noch zu wenig Kerzen für eine Einordnung.",
     "rTrendStrong": "Starker Trend",
-    "rdTrendStrong": "Hoher ADX und klare Steigung: mit dem Trend handeln, Rücksetzer sind Einstiege.",
+    "rdTrendStrong": "Die geladene Stichprobe zeigt einen hohen ADX und eine klare berechnete Steigung. Das sind Messwerte zum Trendkontext, keine Handelsanweisung.",
     "rTrendWeak": "Schwacher Trend",
-    "rdTrendWeak": "Richtung erkennbar, aber ohne Kraft: engere Ziele, Divergenzen beachten.",
+    "rdTrendWeak": "Die Richtung ist in der geladenen Stichprobe weniger klar. Prüfe weitere Daten und Indikatoren; dies ist keine Einstiegs- oder Ziel-Empfehlung.",
     "rRange": "Range",
-    "rdRange": "Seitwärtsmarkt: an den Rändern handeln, das Volumen-Profil zeigt die Wertzonen.",
+    "rdRange": "Die geladene Stichprobe wird als Seitwärtsphase eingestuft. Volumenzonen werden aus Chartkerzen berechnet und sind keine garantierte Unterstützung oder Widerstände.",
     "rVolExpand": "Volatilitäts-Expansion",
-    "rdVolExpand": "Die Schwankung explodiert ohne Trend: Positionsgrößen reduzieren, Alerts statt Dauerschauen.",
+    "rdVolExpand": "Die realisierte Volatilität ist in den verfügbaren Kerzen ohne klaren Trend gestiegen. Das ist keine Empfehlung zur Positionsgröße.",
     "rLiqStorm": "Liquidations-Sturm",
-    "rdLiqStorm": "Zwangsliquidationen und extremes Funding dominieren: Der Preis jagt Magnet-Zonen – Liquiditäts-Levels einblenden.",
+    "rdLiqStorm": "Die verfügbaren Funding- und Liquidationswerte sind erhöht. Betrachte die chartbasierten Schätzungen als Kontext, nicht als Kursprognose.",
     "dAdx": "ADX",
     "dRv": "Vol-Ratio",
     "dSlope": "Steigung",
@@ -1580,7 +1625,7 @@
     "dBreadth": "Marktbreite",
     "dLiq": "Liq/5 min",
     "actAvwap": "AVWAP armen",
-    "actSr": "Support/Resistance",
+    "actSr": "NodeCluster",
     "actDiv": "Divergenzen",
     "actVp": "Volumen-Profil",
     "actAlerts": "Alert armen",
@@ -1590,66 +1635,66 @@
     "clockHours": "Stunden (UTC)",
     "clockDays": "Wochentage",
     "clockWin": "Win-Rate",
-    "clockNowYes": "Jetzt ({n} Kerzen Historie): {wr} % Win-Rate, im Schnitt {bps} bps pro 4er-Block – statistisch auffällig (t ≥ 2).",
-    "clockNowNo": "Die aktuelle Stunde ist statistisch unauffällig – kein Saisonalitäts-Edge.",
+    "clockNowYes": "Historie ({n} Kerzen): {wr} % Trefferquote, im Schnitt {bps} bp je 4er-Block; t ≥ 2 beschreibt diese Stichprobe, keine Prognose.",
+    "clockNowNo": "Für die aktuelle Stunde zeigt die geladene Stichprobe kein statistisch auffälliges Muster.",
     "clockLegend": "Grün = positive, rot = negative Durchschnitts-Rendite der nächsten 4 Kerzen; Intensität = t-Wert, heller = nicht signifikant. Nur aus deinen geladenen Kerzen gerechnet.",
     "clockNeed": "Noch zu wenig Kerzen geladen."
   },
   "benefit": {
-    "title": "Dein Vorteil. Nicht unser Marketing.",
-    "sub": "Alles, wofür du anderswo ein Abo brauchst — plus Werkzeuge, die es kein zweites Mal gibt. Kurz und knapp.",
-    "paidTitle": "Kostenlos hier · teuer anderswo",
-    "uniqueTitle": "Nur auf NodeChart",
+    "title": "Werkzeuge für deinen Chart-Workflow.",
+    "sub": "Ein Überblick über Funktionen für browserbasiertes Markt-Charting. Datenabdeckung und Aktualität hängen von öffentlichen Anbietern ab.",
+    "paidTitle": "Enthaltene Funktionen",
+    "uniqueTitle": "Analysewerkzeuge",
     "free": "inklusive",
-    "support": "Ein Dev, eine Server-Rechnung, keine Investoren: Werbung und optionale Tipps halten NodeChart am Laufen — kein Paywall, kein Konto, keine Tracker.",
+    "support": "Ein Entwickler, eine Serverrechnung, keine Investoren: Optionale Werbung (nur nach Zustimmung) und freiwillige Tipps helfen, die App zu betreiben — ohne Paywall oder Konto.",
     "paid": [
       {
-        "feat": "Unbegrenzt Indikatoren pro Chart",
-        "gate": "frei anderswo: 2 · mehr im Premium-Abo"
+        "feat": "Indikatoren je Chart hinzufügen",
+        "gate": "Mehrere Indikatoren je Chart; Darstellung hängt von der Geräteleistung ab"
       },
       {
         "feat": "Bis 4 synchronisierte Charts (TF, Crosshair, Zoom)",
-        "gate": "frei anderswo: 1 Chart · Layouts ab Plus"
+        "gate": "Bis zu vier Panels; Synchronisierung lässt sich einstellen"
       },
       {
-        "feat": "Eigene & Sekunden-Intervalle",
-        "gate": "Premium-Abo"
+        "feat": "Eigene Zeitintervalle",
+        "gate": "Eigene Minuten-Intervalle; Börsenunterstützung und Historie variieren"
       },
       {
         "feat": "Volumen-Profil & Liquidationszonen",
-        "gate": "Premium-Add-on"
+        "gate": "Volumenprofil aus Chartkerzen; Liquidationszonen sind Schätzungen"
       },
       {
-        "feat": "Strategy-Backtest auf echten Candles",
-        "gate": "Premium-Limits"
+        "feat": "Strategie-Backtests auf geladenen Kerzen",
+        "gate": "Lokale historische Simulation; frühere Ergebnisse sagen keine künftige Performance voraus"
       },
       {
-        "feat": "Screener über ~2.000 Paare",
-        "gate": "Essential-Abo"
+        "feat": "USDT-Screener mit Provider-Daten",
+        "gate": "Snapshots hängen von Provider-Abdeckung, Limits und Aktualität ab"
       },
       {
-        "feat": "Unbegrenzte Preis-Alerts",
-        "gate": "frei anderswo: 1 aktiver Alert"
+        "feat": "Mehrere Preis-Alerts mit konfigurierbaren Bedingungen",
+        "gate": "Browserseitige Alerts; der Browser muss zur Verarbeitung geöffnet sein"
       },
       {
         "feat": "Renko, Kagi, Point & Figure, Heikin-Ashi",
-        "gate": "teilweise paywalled"
+        "gate": "Aus geladenen Kerzen abgeleitet; Ergebnisse hängen von Quelldaten ab"
       },
       {
         "feat": "Eigene Scripts & Importe",
-        "gate": "Pine-Skripte: Abo-Stufen"
+        "gate": "Nutzercode läuft in der Seite; importierte Scripts sind nicht sandboxed"
       }
     ],
     "unique": [
-      "Liq Radar: Liquidationszonen direkt im Chart",
-      "Lag Oracle: misst Börsen-Latenz und wählt die schnellste Venue",
-      "Regime Compass: On-Chain- & Volatilitäts-Regime auf einen Blick",
-      "Clock Edge: deine statistisch besten Trading-Stunden",
-      "Whale-Flow: Live-Tape für Orders > 10.000 $",
-      "Bar-Lupe: rohe Trades jeder einzelnen Kerze",
-      "CEX + DEX unified: 33 Chains in einem Grid",
-      "MTF-Technicals-Matrix & Markt-Heatmap",
-      "Lokal & privat: kein Konto, kein API-Key, nichts verlässt deinen Browser"
+      "Liq Radar: aus Chartkerzen abgeleitete Liquidationsschätzungen, keine Exchange-Positionen",
+      "Lag Oracle: historische Candle-Lead-Lag-Schätzungen; Signale sind nur informativ",
+      "Regime Compass: Überblick zu Volatilität und Marktregime aus verfügbaren Daten",
+      "Clock Edge: historische Stunden-/Wochentagsmuster geladener Kerzen – keine Prognose",
+      "Whale Flow: öffentliche Trades über 10.000 $, sofern der gewählte Feed sie liefert",
+      "Kerzenlupe: Trade-Details für ausgewählte Kerzen, sofern Anbieterdaten verfügbar sind",
+      "CEX-/DEX-Suche; Live-Abdeckung hängt vom Anbieter ab",
+      "MTF-Technikmatrix & Heatmap; Snapshots hängen von der Quellenabdeckung ab",
+      "Kein Konto oder API-Key; die Watchlist wird standardmäßig lokal gespeichert, Marktanfragen gehen an Anbieter"
     ]
   }
 }

@@ -90,8 +90,10 @@ export function SiteHeader() {
               <Kbd className="hidden lg:inline-flex">K</Kbd>
             </button>
 
-            <ThemeSwitcher />
-            <LocaleSwitcher />
+            <div className="hidden items-center gap-2 lg:flex">
+              <ThemeSwitcher />
+              <LocaleSwitcher />
+            </div>
 
             <Link
               href={ROUTES.terminal}
@@ -144,6 +146,16 @@ export function SiteHeader() {
               <Terminal className="size-4" aria-hidden />
               {t('launchTerminal')}
             </Link>
+            <div className="mt-2 grid grid-cols-2 gap-3 border-t border-line/60 pt-3">
+              <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <span className="font-mono text-2xs uppercase tracking-cyber text-faint">{t('theme')}</span>
+                <ThemeSwitcher />
+              </div>
+              <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <span className="font-mono text-2xs uppercase tracking-cyber text-faint">{t('language')}</span>
+                <LocaleSwitcher />
+              </div>
+            </div>
             <p className="mt-3 text-center font-mono text-2xs uppercase tracking-cyber text-faint">
               {t('freeForever')}
             </p>

@@ -1,51 +1,56 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
-import { timeoutSignal } from '@/lib/abort';
+import { fetchJson } from '@/api/http';
 import type { ExchangeAdapter, FeedEvent, FeedKey } from '../types';
 import { ALL_TIMEFRAMES, isRecord, num, pairWith, splitPair, str } from './shared';
 
 const QUOTES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH'];
-const BULLET_URL = 'https://api.kucoin.com/api/v1/bullet-public';
+const TOKEN_ENDPOINT = '/api/kucoin/public-token';
+const CLIENT_TOKEN_CACHE_MS = 12 * 60_000;
 
 let messageId = 0;
 let cached: { url: string; fetchedAt: number } | null = null;
-// bullet-public antwortet ohne ACAO-Header (live verifiziert) – im Browser
-// schlägt der Fetch also garantiert fehl. Nach dem ersten CORS-Treffer keine
-// weiteren Versuche (jeder würde einen nicht unterdrückbaren Konsolen-Error
-// loggen); der Reconnect-Backoff läuft dann zügig in 'max-attempts'.
-let browserCorsBlocked = false;
 
-/**
- * KuCoin needs a short-lived public token before the socket can connect –
- * still 100 % free and key-less. The token is cached for 30 min and re-fetched
- * on every reconnect.
- */
-async function resolveKucoinUrl(): Promise<string> {
-  if (cached && Date.now() - cached.fetchedAt < 30 * 60_000) return cached.url;
-  if (browserCorsBlocked) throw new Error('kucoin bullet-public: CORS-blocked in browser');
-
-  try {
-    const response = await fetch(BULLET_URL, { method: 'POST', signal: timeoutSignal(10_000) });
-    if (!response.ok) throw new Error(`kucoin bullet-public HTTP ${response.status}`);
-    const payload = (await response.json()) as {
-      data?: { token?: string; instanceServers?: { endpoint?: string }[] } | undefined;
-    };
-    const endpoint = payload.data?.instanceServers?.[0]?.endpoint;
-    const token = payload.data?.token;
-    if (!endpoint || !token) throw new Error('kucoin bullet-public: no endpoint/token');
-
-    const url = `${endpoint}${endpoint.endsWith('/') ? '' : '/'}?token=${token}`;
-    cached = { url, fetchedAt: Date.now() };
-    return url;
-  } catch (error) {
-    // Fetch-CORS-Rejections werfen einen nackten TypeError (nicht von HTTP-
-    // Status unterscheidbar) – einmal gemerkt, wird nie wieder gefetcht.
-    if (typeof window !== 'undefined' && error instanceof TypeError) browserCorsBlocked = true;
-    throw error;
-  }
+interface KucoinTokenResponse {
+  token?: string;
+  endpoint?: string;
 }
 
 /**
- * KuCoin spot public stream. Verified live:
+ * KuCoin requires a public token before opening its socket. Its public token
+ * endpoint omits browser CORS headers, so this adapter uses our narrow,
+ * same-origin `/api/kucoin/public-token` handler. That handler is a fixed
+ * upstream request with isolate caching; it is not a user-controlled proxy.
+ */
+async function resolveKucoinUrl(signal?: AbortSignal): Promise<string> {
+  if (cached && Date.now() - cached.fetchedAt < CLIENT_TOKEN_CACHE_MS) return cached.url;
+
+  const payload = await fetchJson<KucoinTokenResponse>(TOKEN_ENDPOINT, {
+    source: 'kucoin-token',
+    retries: 1,
+    timeoutMs: 10_000,
+    dedupe: true,
+    signal,
+  });
+  const endpoint = payload.endpoint;
+  const token = payload.token;
+  if (!endpoint || !token || token.length > 4_096) throw new Error('KuCoin token route returned an invalid token');
+
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    throw new Error('KuCoin token route returned an invalid WebSocket endpoint');
+  }
+  if (url.protocol !== 'wss:' || !(url.hostname === 'kucoin.com' || url.hostname.endsWith('.kucoin.com'))) {
+    throw new Error('KuCoin token route returned an untrusted WebSocket endpoint');
+  }
+  url.searchParams.set('token', token);
+  cached = { url: url.toString(), fetchedAt: Date.now() };
+  return cached.url;
+}
+
+/**
+ * KuCoin spot public stream. Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"id":"1","type":"subscribe","topic":"/market/match:BTC-USDT"}
  * trade     : {"topic":"/market/match:BTC-USDT","type":"message","subject":"trade.l3match",

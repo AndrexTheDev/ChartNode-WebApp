@@ -15,7 +15,7 @@ export const GATE_INTERVAL: Record<Timeframe, string> = {
 };
 
 /**
- * Gate.io WebSocket v4 (public, no key). Verified live:
+ * Gate.io WebSocket v4 (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * candles : {"channel":"spot.candlesticks","event":"subscribe","payload":["1m","BTC_USDT"]}
  *           → {"channel":"spot.candlesticks","event":"update",
@@ -127,7 +127,7 @@ export const gateAdapter: ExchangeAdapter = {
 };
 
 /**
- * Gate subscription shapes (verified live):
+ * Gate subscription shape examples (current reachability is not guaranteed):
  *   spot.candlesticks → payload is a flat `[interval, pair]`, one message each
  *   spot.trades       → payload is a list of pairs, batched into one message
  * Sending `[["1m","BTC_USDT"]]` for candlesticks connects but never pushes data.

@@ -12,8 +12,8 @@ import { useViralStore } from '@/store/useViralStore';
  * Ad-block soft-wall: "NodeChart is free. Support the rebellion."
  *
  * Never blocks functionality – it offers two exits ("I have donated" starts
- * the 48-h/5-day ask-free grace window plus the permanent badge, "Dismiss"
- * sleeps for 7 days) and the donation wallets with copy-to-clipboard + neon
+ * the 48-h/5-day ask-free grace window and stores a cosmetic local badge,
+ * "Dismiss" sleeps for 7 days) and the donation wallets with copy-to-clipboard + neon
  * feedback. While a donation grace is active this modal never opens at all
  * (see AdManager) – a donor is not asked again before the window expires.
  */

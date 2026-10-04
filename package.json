@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "UNLICENSED",
-  "description": "NodeChart \u2013 Decode the Market. Free, Fast, Decentralized. A 100% free, client-side TradingView alternative for CEX & DEX.",
+  "description": "NodeChart – browser-first charting for CEX and DEX markets. Public data availability depends on providers, network access and region; optional ads and voluntary tips support the app.",
   "author": "AndrexTheDev <hippie.highho@gmail.com>",
   "engines": {
     "node": ">=20.9.0"
@@ -19,10 +19,14 @@
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "ws:smoke": "node scripts/run-harness.mjs ws-smoke.entry.ts",
+    "ws:smoke:offline": "node scripts/run-harness.mjs ws-smoke.entry.ts --offline",
     "check:i18n": "node scripts/check-i18n.mjs",
     "api:smoke": "node scripts/run-harness.mjs api-smoke.entry.ts",
+    "api:budget-smoke": "node scripts/run-harness.mjs api-budget-smoke.entry.ts",
+    "api:resilience-smoke": "node scripts/run-harness.mjs api-resilience-smoke.entry.ts",
     "chart:smoke": "node scripts/run-harness.mjs chart-smoke.entry.ts",
-    "smoke": "npm run ws:smoke && npm run api:smoke && npm run chart:smoke && npm run edge:smoke && npm run smoke:modules",
+    "smoke": "npm run ws:smoke && npm run api:budget-smoke && npm run api:resilience-smoke && npm run api:smoke && npm run chart:smoke && npm run edge:smoke && npm run smoke:modules",
+    "smoke:offline": "npm run ws:smoke:offline && npm run api:budget-smoke && npm run api:resilience-smoke && npm run chart:smoke && npm run edge:smoke && npm run smoke:modules",
     "smoke:modules": "node scripts/run-harness.mjs modules-smoke.entry.ts",
     "beta": "node scripts/beta-test.mjs",
     "edge:smoke": "node scripts/run-harness.mjs edge-smoke.entry.ts",
@@ -37,14 +41,19 @@
     "verify:matrix": "npm run verify && node scripts/gui-audit.mjs",
     "qa:smartlinks": "node ads-kit/smoke-smartlinks.mjs",
     "ads:sync": "cp ads-kit/landing-smartlinks.js ads-kit/app-smartlinks.js ads-kit/smartlinks.css public/ads/",
-    "qa:full": "node scripts/release-audit/run.mjs"
+    "qa:full": "node scripts/release-audit/run.mjs",
+    "qa:offline": "node scripts/release-audit/run.mjs --offline"
   },
   "dependencies": {
+    "@fontsource-variable/exo-2": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource-variable/orbitron": "5.3.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "lightweight-charts": "^5.2.1",
     "lucide-react": "1.43.0",
-    "next": "16.3.4",
+    "next": "16.3.8",
     "next-intl": "4.14.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -59,12 +68,11 @@
     "@types/react-dom": "19.3.0",
     "autoprefixer": "10.5.5",
     "eslint": "^9.39.5",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.3.8",
     "postcss": "8.5.28",
-    "puppeteer": "^24.43.1",
+    "puppeteer": "25.12.0",
     "tailwindcss": "3.4.19",
-    "tailwindcss-animate": "1.0.7",
     "typescript": "5.9.3",
-    "wrangler": "4.130.0"
+    "wrangler": "4.147.0"
   }
 }

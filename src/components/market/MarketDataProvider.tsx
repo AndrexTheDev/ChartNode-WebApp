@@ -2,7 +2,9 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import type { ChainId } from '@/lib/chains';
 import { dexscreenerByToken } from '@/api/dexscreener';
+import { geckoPoolsByToken } from '@/api/geckoterminal';
 import { TOKEN_INDEX } from '@/lib/constants';
 import { baseForCustomInterval } from '@/lib/charttypes';
 import { pickExchange } from '@/lib/exchange-select';
@@ -35,8 +37,9 @@ const DEX_POLL_MS = 20_000;
 /**
  * The single owner of live connections for the current view.
  *
- *  - active CEX token  → kline feed on the *best reachable* venue
- *    (region-aware: measured latency + geo blocks + whether the pair is listed)
+ *  - active CEX token  → kline feed on the currently best-ranked configured venue
+ *    (heuristic: cached browser probe, region rules, pair hints and user preference;
+ *    none of these observations guarantees that the live stream will connect)
  *  - watchlist CEX     → trade channels for the whale stream
  *  - active DEX token  → DexScreener polling (REST aggregator, 20 s cadence)
  *
@@ -162,7 +165,7 @@ export function MarketDataProvider() {
     const seen = new Set<string>();
 
     const push = (tokenExchange: string | undefined, symbol: string) => {
-      // Prefer the venue we already have a socket for, else the best reachable one.
+      // Prefer the already-open socket, else the best-ranked candidate by current hints.
       const venue: ExchangeId | null =
         exchange && symbol === activeToken.symbol
           ? exchange
@@ -221,17 +224,27 @@ export function MarketDataProvider() {
     }
 
     let cancelled = false;
+    let polling = false;
     const controller = new AbortController();
 
     const poll = async () => {
+      if (cancelled || polling || document.visibilityState === 'hidden' || navigator.onLine === false) return;
+      polling = true;
       try {
-        const pairs = await dexscreenerByToken([contract], controller.signal);
+        let pairs = await dexscreenerByToken([contract], controller.signal).catch(() => []);
         if (cancelled) return;
-        const onChain = pairs.filter((pair) => pair.chain === chain);
-        const best =
-          (onChain.length > 0 ? onChain : pairs).sort(
-            (a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0),
-          )[0] ?? null;
+        let best = pairs
+          .filter((pair) => pair.chain === chain)
+          .sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))[0] ?? null;
+
+        // Use the independent free aggregator only on an empty/failed primary
+        // result; the normal path stays within DexScreener's quota and the
+        // previous quote remains visible during transient outages.
+        if (!best) {
+          pairs = await geckoPoolsByToken(chain as ChainId, contract, controller.signal).catch(() => []);
+          if (cancelled) return;
+          best = pairs.sort((a, b) => (b.liquidityUsd ?? 0) - (a.liquidityUsd ?? 0))[0] ?? null;
+        }
         if (!best) return;
         useMarketStore.getState().setDexQuote({
           tokenId: activeToken.id,
@@ -245,15 +258,23 @@ export function MarketDataProvider() {
           updatedAt: Date.now(),
         });
       } catch {
-        // 429s are handled globally (overlay + retry); transient errors just
-        // keep the previous quote on screen.
+        // Rate limits/outages do not clear the last good quote.
+      } finally {
+        polling = false;
       }
     };
 
+    const resume = () => {
+      if (document.visibilityState !== 'hidden' && navigator.onLine !== false) void poll();
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
     void poll();
     const timer = window.setInterval(() => void poll(), DEX_POLL_MS);
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
       window.clearInterval(timer);
       controller.abort();
     };

@@ -20,7 +20,7 @@ let subId = 0;
 const toHtxSymbol = toHtxRestSymbol;
 
 /**
- * HTX (Huobi) spot stream – public, no key. Verified live.
+ * HTX (Huobi) spot stream – public, no key. Protocol example; current reachability is not guaranteed.
  *
  * ⚠️ Every frame is **gzip-compressed binary**, and the server pings with
  * `{"ping":<ts>}` expecting `{"pong":<ts>}` back, otherwise it drops the

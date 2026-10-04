@@ -89,7 +89,7 @@ interface ChartUiState {
   avwapArm: boolean;
   /** paneId → anchor candle time (unix s); null = no anchor. */
   avwapAnchor: Record<string, number | null>;
-  /** Auto support/resistance price lines (clustered pivots, computed locally). */
+  /** NodeCluster pivot zones (clustered locally from chart candles). */
   srOn: boolean;
   /** RSI divergence markers on the price chart. */
   divOn: boolean;
@@ -98,8 +98,8 @@ interface ChartUiState {
   /** When armed, the next chart click creates a price alert at that level. */
   alertArm: boolean;
   /**
-   * Price alerts — persisted, never expiring (TradingView sells non-expiring
-   * alerts at Premium, multi-condition at Plus). Unlimited here.
+   * Price alerts persist in browser storage. Multiple conditions are supported;
+   * practical retention and capacity depend on the browser and its storage.
    */
   alerts: PriceAlert[];
   /** Wave-4 auto chart-pattern markers on the price chart. */

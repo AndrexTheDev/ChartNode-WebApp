@@ -48,7 +48,7 @@ function check(name, condition, detail = '') {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const browser = await puppeteer.launch({
-  headless: 'new',
+  headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   defaultViewport: { width: 1440, height: 900 },
 });
@@ -76,6 +76,9 @@ try {
   console.log('\n— desktop viewport (1440px) —');
   const page = await browser.newPage();
   const hydrationNoise = [];
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+  });
   page.on('console', (msg) => {
     const text = msg.text();
     if (/hydrat/i.test(text)) hydrationNoise.push(text.slice(0, 160));
@@ -137,6 +140,9 @@ try {
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   );
   await mobile.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await mobile.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+  });
   await mobile.goto(URL, { waitUntil: 'domcontentloaded' });
   await mobile.waitForSelector('canvas', { timeout: 30000 });
   await wait(2500);

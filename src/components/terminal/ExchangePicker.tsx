@@ -91,7 +91,7 @@ export function ExchangePicker({ symbol, timeframe, selected, rerouted, classNam
     {
       id: 'reprobe',
       label: tx('reprobe'),
-      hint: tx('reprobeHint', { count: ranked.length }),
+      hint: tx('reprobeHint'),
       onSelect: () => void probeAllExchanges({ symbol, timeframe }),
     },
   ];

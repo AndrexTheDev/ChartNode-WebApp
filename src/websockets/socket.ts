@@ -1,4 +1,5 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
+import { createAbortContext } from '@/lib/abort';
 import { ExponentialBackoff } from './backoff';
 import type { FeedStatus } from './types';
 
@@ -7,7 +8,7 @@ export interface ManagedSocketOptions {
   /** Static endpoint. Ignored when `resolveUrl` is set. */
   url?: string;
   /** Async endpoint (e.g. KuCoin's token handshake). Re-run on every reconnect. */
-  resolveUrl?: () => Promise<string>;
+  resolveUrl?: (signal?: AbortSignal) => Promise<string>;
   /** Called with every parsed message payload. */
   onMessage: (payload: unknown) => void;
   /** Called on every (re)connect – send your SUBSCRIBE ops here. */
@@ -132,11 +133,14 @@ export class ManagedSocket {
   private async openSocket(): Promise<void> {
     let url = this.options.url ?? '';
     if (this.options.resolveUrl) {
+      const context = createAbortContext(10_000);
       try {
-        url = await this.options.resolveUrl();
+        url = await this.options.resolveUrl(context.signal);
       } catch {
-        this.scheduleReconnect();
+        if (!this.intentionallyClosed) this.scheduleReconnect();
         return;
+      } finally {
+        context.dispose();
       }
     }
     if (!url || this.intentionallyClosed) return;
@@ -223,7 +227,16 @@ export class ManagedSocket {
   private scheduleReconnect(): void {
     if (this.intentionallyClosed || this.reconnectTimer !== null) return;
     if (this.backoff.exhausted) {
-      this.setStatus('error', { note: 'max-attempts' });
+      // A finite retry budget made a long provider outage silently permanent
+      // until the tab was focused again. Keep a slow, jittered probe alive
+      // instead; this caps traffic while still recovering without user action.
+      const delay = 60_000 + Math.floor(Math.random() * 15_000);
+      this.setStatus('reconnecting', { attempt: this.backoff.attempts, note: 'retry-paused' });
+      this.reconnectTimer = window.setTimeout(() => {
+        this.reconnectTimer = null;
+        this.backoff.reset();
+        this.connect();
+      }, delay);
       return;
     }
     const delay = this.backoff.next();

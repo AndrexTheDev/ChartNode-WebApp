@@ -3,48 +3,47 @@
 
 import { useRateLimitStore } from '@/store/useRateLimitStore';
 
-/** The glitch overlay runs exactly this long before the retry fires. */
+/** Default pause for providers that do not return a Retry-After header. */
 export const COOLDOWN_MS = 5_000;
 
+/** The shared overlay may be extended if several providers are rate-limited. */
 type Resolver = () => void;
 
 let cooldownPromise: Promise<void> | null = null;
 let resolveCooldown: Resolver | null = null;
-let safetyTimer: number | null = null;
+let safetyTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Central rate-limit controller.
+ * Shared, provider-aware cooldown UI.
  *
- * Flow on HTTP 429:
- *   1. `beginCooldown(source)` flips the store → <RateLimitOverlay/> mounts and
- *      renders the glitch + 5 s countdown.
- *   2. The awaited promise blocks the calling fetch (so the retry happens
- *      exactly when the countdown hits zero, not before).
- *   3. The overlay calls `endCooldown()` at zero → promise resolves → retry.
- *
- * Concurrent 429s from other sources during an active cooldown simply join the
- * running promise instead of stacking overlays.
+ * This is a presentation/wait primitive only: `http.ts` tracks provider
+ * cooldowns independently, so an unrelated API is never held back by another
+ * provider's 429. If a provider supplies Retry-After, its duration is used up
+ * to the HTTP client's short automatic-retry ceiling; longer waits fail fast
+ * and can be served from the stale cache instead.
  */
 export function beginCooldown(source: string, ms: number = COOLDOWN_MS): Promise<void> {
   const store = useRateLimitStore.getState();
+  const duration = Math.max(250, Math.min(ms, 60_000));
 
   if (store.active) {
-    store.bump(source);
+    store.bump(source, duration);
+    scheduleSafetyEnd();
     return cooldownPromise ?? Promise.resolve();
   }
 
-  store.begin(source, ms);
-
+  store.begin(source, duration);
   cooldownPromise = new Promise<void>((resolve) => {
     resolveCooldown = resolve;
   });
-
-  // Safety net: if the overlay never unmounts (tab hidden, rAF throttled),
-  // release the waiters anyway so requests cannot hang forever.
-  if (safetyTimer !== null) clearTimeout(safetyTimer);
-  safetyTimer = window.setTimeout(() => endCooldown(), ms + 2_000);
-
+  scheduleSafetyEnd();
   return cooldownPromise;
+}
+
+function scheduleSafetyEnd(): void {
+  if (safetyTimer !== null) clearTimeout(safetyTimer);
+  const { deadline } = useRateLimitStore.getState();
+  safetyTimer = setTimeout(() => endCooldown(), Math.max(0, deadline - Date.now()) + 2_000);
 }
 
 export function endCooldown(): void {

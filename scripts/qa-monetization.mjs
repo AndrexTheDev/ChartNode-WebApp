@@ -33,6 +33,9 @@ const browser = await puppeteer.launch({
 async function openTerminal(page, { blockAdsJs = false } = {}) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message.slice(0, 140)));
+  await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+  });
   if (blockAdsJs) {
     const client = await page.createCDPSession();
     await client.send('Network.enable');
@@ -188,7 +191,7 @@ console.log('\n— 3: Viral Loop (Share → Unlock → Premium-Theme) —');
   check('Share-Menüeintrag öffnet das Modal', await clickMenuItem(page, 'Teilen'));
   await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
   const preview = await page.evaluate(() => document.querySelector('[role="dialog"]')?.textContent ?? '');
-  check('Tweet-Vorschau ist der Spec-Text mit Cashtag', preview.includes('Found an insane setup for $BTC on NodeChart') && preview.includes('#Crypto #Trading'));
+  check('Tweet-Vorschau ist der Spec-Text mit Cashtag', preview.includes('Found a setup for $BTC on NodeChart') && preview.includes('#Crypto #Trading'));
 
   await page.evaluate(() => {
     [...document.querySelectorAll('[role="dialog"] button')].find((b) => (b.textContent ?? '').trim() === 'Auf X posten')?.click();

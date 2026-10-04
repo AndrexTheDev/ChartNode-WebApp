@@ -15,7 +15,7 @@ export interface CexInstrument {
   exchanges: ExchangeId[];
 }
 
-/** Every venue we can stream from, best-first. */
+/** Configured venue candidates in selection-preference order; not a live-availability list. */
 const ALL: ExchangeId[] = [
   'binance',
   'okx',

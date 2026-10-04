@@ -5,7 +5,7 @@
 // Two-Tab-Betrieb, OG-Edge × Locales.
 import { mkdirSync, rmSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { BASE, makeReporter, launchBrowser, newPage, attachConsole, gotoSafe, wait, isNoise } from './lib.mjs';
+import { BASE, makeReporter, launchBrowser, newPage, attachConsole, gotoSafe, wait } from './lib.mjs';
 
 export const META = { id: 'M10', name: 'Daten-Resilienz & Session' };
 

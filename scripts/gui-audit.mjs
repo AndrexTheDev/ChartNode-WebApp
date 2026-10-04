@@ -252,12 +252,23 @@ for (const vp of ['tablet', 'mobile', 'mini']) {
     await wait(4500);
     await shot(page, vp, `t-${vp}-forced`);
   }
-  // Ein Menü öffnen
-  await page.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
-  await wait(400);
+  // Wide screens keep the ToolMenu; compact layouts open the organized sheet.
+  const compact = await page.evaluate(() => window.innerWidth < 1280);
+  if (compact) {
+    await page.evaluate(() => document.querySelector('[data-mobile-controls-trigger]')?.click());
+  } else {
+    await page.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
+  }
+  await wait(500);
   await shot(page, vp, `t-${vp}-menu-tools`);
   // Alerts-Modal (repräsentatives Modal mit Formular)
-  await page.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim().startsWith('Alerts'))?.click());
+  if (compact) {
+    await page.evaluate(() => document.querySelector('[data-mobile-section="tools"] button[aria-controls]')?.click());
+    await wait(200);
+    await page.evaluate(() => document.querySelector('[data-mobile-action="alerts-manager"]')?.click());
+  } else {
+    await page.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim().startsWith('Alerts'))?.click());
+  }
   await wait(1000);
   await shot(page, vp, `t-${vp}-alerts-dialog`);
   await page.keyboard.press('Escape'); await wait(350);

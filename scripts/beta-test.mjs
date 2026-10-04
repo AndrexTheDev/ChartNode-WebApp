@@ -29,7 +29,7 @@ function check(name, condition, detail = '') {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const browser = await puppeteer.launch({
-  headless: 'new',
+  headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   defaultViewport: { width: 1440, height: 900 },
 });
@@ -145,7 +145,7 @@ try {
     await wait(150);
   }
   await wait(600);
-  const shareOpen = await user.evaluate(() => document.querySelector('[role="dialog"]')?.textContent?.includes('Found an insane setup') ?? false);
+  const shareOpen = await user.evaluate(() => document.querySelector('[role="dialog"]')?.textContent?.includes('Found a setup') ?? false);
   check('newcomer finds the share modal with the spec tweet', shareOpen);
   await user.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Auf X posten');
@@ -208,14 +208,14 @@ try {
       [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim() === text)?.click();
     }, label);
   };
-  await wave2ClickChip('S/R Auto');
+  await wave2ClickChip('NodeCluster');
   await wave2ClickChip('Divergenzen');
   await wait(800);
   await user.evaluate(() => document.querySelector('[data-menu-trigger="analyse"]')?.click());
   await wait(200);
-  check('newcomer toggles auto S/R + divergence overlays', await user.evaluate(() => {
+  check('newcomer toggles NodeCluster + divergence overlays', await user.evaluate(() => {
     const pressed = [...document.querySelectorAll('[role="menuitem"]')]
-      .filter((b) => ['S/R Auto', 'Divergenzen'].includes((b.textContent ?? '').trim()))
+      .filter((b) => ['NodeCluster', 'Divergenzen'].includes((b.textContent ?? '').trim()))
       .map((b) => b.getAttribute('aria-pressed'));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     return pressed.length === 2 && pressed.every((value) => value === 'true');
@@ -234,7 +234,7 @@ try {
     chip?.click();
   });
   await wait(300);
-  await wave2ClickChip('S/R Auto');
+  await wave2ClickChip('NodeCluster');
   await wave2ClickChip('Divergenzen');
   await wait(300);
 

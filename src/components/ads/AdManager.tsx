@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
 import { detectAdBlockOnce } from '@/lib/ads/adblock';
+import { canLoadAdScripts, useAdConsent } from '@/lib/ads/consent';
 import { mountNativeBanner, whenIdle } from '@/lib/ads/adsterra';
 import {
   AD_BREAKPOINT,
@@ -85,13 +86,13 @@ function measureSocialBar(): void {
  *    Injection zur Laufzeit per `body.appendChild` = „right above the closing
  *    </body> tag", lazy (Timer) und mit `data-cfasync="false"` gegen Cloudflare
  *    Rocket Loader. Anti-Blocker-Strategie (transparent, keine Maskierung):
- *      – onerror ⇒ detectAdBlockOnce(): echter Blocker ⇒ Cyberpunk-Soft-Wall
- *        (bittet um Deaktivierung/Spende), Netz-Flake ⇒ 1 stiller Retry;
- *      – Wall-Close ⇒ ein weiterer Retry (Blocker ggf. gerade deaktiviert);
- *      – Donation-Grace & navigator.webdriver ⇒ gar keine Injection.
- *  · Ad-block detection runs once per session; a blocked visitor sees the
- *    cyberpunk soft-wall (unless supporter or inside the 7-day cooldown).
- *    `?adwall=1` forces it open – used by the browser proof and for demos.
+ *      – Läuft ausschließlich nach expliziter Zustimmung zu optionaler Werbung.
+ *      – onerror ⇒ detectAdBlockOnce(): echter Blocker ⇒ Soft-Wall,
+ *        Netz-Flake ⇒ stiller Retry; Ablehnung umgeht Erkennung und Wall.
+ *      – Wall-Close ⇒ ein weiterer Versuch; Donation-Grace & navigator.webdriver
+ *        unterdrücken die Injection weiterhin.
+ *  · Ad-block detection runs once per session only after consent. `?adwall=1`
+ *    is likewise consent-gated and is reserved for browser proofs/demos.
  *  · Hosts <SupportModal/> + <ShareModal/> so both work on every route.
  *
  * Renders no markup of its own besides the modals → zero hydration risk and
@@ -99,6 +100,7 @@ function measureSocialBar(): void {
  */
 function AdManagerInner() {
   const [wallOpen, setWallOpen] = useState(false);
+  const consent = useAdConsent();
   const pathname = usePathname();
   /** „APP page" im Monetization-Sinn: das Charting-Terminal. */
   const isAppPage = pathname.includes('/terminal');
@@ -112,7 +114,7 @@ function AdManagerInner() {
     // Benannte Function-Expression: legale Selbstreferenz für die Retries
     // (react-hooks verbietet den Zugriff auf das eigene const vor Deklaration).
     function inject(src: string): void {
-      if (socialDone.current || socialTries.current >= SOCIAL_MAX_TRIES) return;
+      if (!canLoadAdScripts() || socialDone.current || socialTries.current >= SOCIAL_MAX_TRIES) return;
       socialTries.current += 1;
       const script = document.createElement('script');
       script.src = src;
@@ -120,12 +122,18 @@ function AdManagerInner() {
       script.setAttribute('data-cfasync', 'false');
       script.dataset.ncSocialTry = String(socialTries.current);
       script.onload = () => {
+        if (!canLoadAdScripts()) return;
         socialDone.current = true;
         measureSocialBar();
       };
       script.onerror = () => {
         script.remove();
+        if (!canLoadAdScripts()) {
+          socialDone.current = true;
+          return;
+        }
         void detectAdBlockOnce().then((blocked) => {
+          if (!canLoadAdScripts()) return;
           if (blocked) {
             // Transparente Gegenmaßnahme: Soft-Wall statt stiller Verlust.
             socialBlocked.current = true;
@@ -144,7 +152,7 @@ function AdManagerInner() {
   );
 
   useEffect(() => {
-    if (!isAppPage || !ADS_ENABLED) return;
+    if (consent !== 'granted' || !canLoadAdScripts() || !isAppPage || !ADS_ENABLED) return;
     if (donationGraceActive()) return; // Spende schlägt alles – auch die Bar
     if (navigator.webdriver) return; // QA/CI (Puppeteer) bleibt werbefrei
     const src = socialBarPlacement(isDesktopViewport() ? 'desktop' : 'mobile');
@@ -154,7 +162,7 @@ function AdManagerInner() {
     // Chart-Seeding oder First Paint um die Main Thread kämpfen.
     const timer = setTimeout(() => injectSocial(src), 0);
     return () => clearTimeout(timer);
-  }, [isAppPage, injectSocial]);
+  }, [consent, isAppPage, injectSocial]);
 
   const closeWall = useCallback(() => {
     setWallOpen(false);
@@ -162,7 +170,7 @@ function AdManagerInner() {
     // letzten Retry – Blocker ggf. gerade deaktiviert.
     window.dispatchEvent(new CustomEvent('nc-adwall-closed'));
     // Wall eben geschlossen ⇒ Blocker ggf. gerade deaktiviert: letzter Versuch.
-    if (socialBlocked.current && socialSrcRef.current && socialTries.current < SOCIAL_MAX_TRIES) {
+    if (canLoadAdScripts() && socialBlocked.current && socialSrcRef.current && socialTries.current < SOCIAL_MAX_TRIES) {
       socialBlocked.current = false;
       socialDone.current = false;
       injectSocial(socialSrcRef.current);
@@ -175,6 +183,7 @@ function AdManagerInner() {
     // Donation-Grace schlägt alles – auch den ?adwall=1-Testweg: Wer
     // gespendet hat (48 h, über $5 → 5 Tage), bekommt keinen Aufruf zu
     // sehen. Punkt. (QA nutzt genau das als deterministischen Beweis.)
+    if (consent !== 'granted' || !canLoadAdScripts()) return;
     if (donationGraceActive()) return;
 
     const force = new URLSearchParams(window.location.search).get('adwall') === '1';
@@ -192,7 +201,7 @@ function AdManagerInner() {
 
     const timer = setTimeout(() => {
       void detectAdBlockOnce().then((blocked) => {
-        if (!cancelled && blocked) setWallOpen(true);
+        if (!cancelled && canLoadAdScripts() && blocked) setWallOpen(true);
       });
     }, 1500); // never interrupt first paint
 
@@ -200,7 +209,7 @@ function AdManagerInner() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, []);
+  }, [consent]);
 
   return (
     <>
@@ -237,30 +246,33 @@ function SlotTag({ label }: { label: string }) {
  * Visibility is pure CSS (`lg:hidden` / `hidden lg:block`), so orientation
  * changes and resizes flip instantly without JS; the *injection* follows the
  * same breakpoint via matchMedia and lazy-loads the other placement when the
- * visitor crosses it. Containers render only when a placement is configured
- * (build-time env), keeping server/client markup identical.
+ * visitor crosses it. Containers render only after consent and when a
+ * placement is configured (build-time env), keeping server/client markup identical.
  */
 export function AdSlot({ variant }: { variant: AdVariant }) {
   const ref = useRef<HTMLElement | null>(null);
   const t = useTranslations('ads');
+  const consent = useAdConsent();
   const src = nativePlacement(variant);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !src) return;
+    if (consent !== 'granted' || !canLoadAdScripts() || !el || !src) return;
     const mq = window.matchMedia(AD_BREAKPOINT);
     const apply = () => {
       const active = variant === 'desktop' ? mq.matches : !mq.matches;
       // Container-bound self-placing script (next/script cannot target a
       // container) -> async + idle-scheduled so it never fights chart work.
-      if (active) whenIdle(() => void mountNativeBanner(el, variant));
+      if (active) whenIdle(() => {
+        if (canLoadAdScripts()) void mountNativeBanner(el, variant);
+      });
     };
     apply();
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
-  }, [variant, src]);
+  }, [consent, variant, src]);
 
-  if (!src) return null;
+  if (!src || consent !== 'granted') return null;
   const label = t('sponsored');
 
   if (variant === 'desktop') {
