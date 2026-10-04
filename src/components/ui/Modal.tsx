@@ -14,6 +14,8 @@ interface ModalProps {
   footer?: ReactNode;
   /** Tailwind max-width class, e.g. `max-w-3xl`. */
   widthClass?: string;
+  /** Bottom-anchored, safe-area-aware sheet for compact-screen controls. */
+  variant?: 'dialog' | 'sheet';
   labelledBy?: string;
 }
 
@@ -25,7 +27,16 @@ interface ModalProps {
  * because the terminal is the only consumer and stacking contexts are already
  * handled by the panel z-index.
  */
-export function Modal({ open, onClose, title, subtitle, children, footer, widthClass = 'max-w-2xl' }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  subtitle,
+  children,
+  footer,
+  widthClass = 'max-w-2xl',
+  variant = 'dialog',
+}: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
 
@@ -35,14 +46,18 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Let an open portalled popup consume Escape first. Its trigger remains
+        // inside the dialog and declares the popup with aria-haspopup; ordinary
+        // expanded sections must not block Escape from closing the dialog.
+        if (panelRef.current?.querySelector('[aria-expanded="true"][aria-haspopup][aria-controls]')) return;
         event.stopPropagation();
         onClose();
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
-      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+      const focusables = Array.from(panelRef.current.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      )).filter((element) => element.getClientRects().length > 0 && !element.closest('[hidden]'));
       if (focusables.length === 0) return;
       const first = focusables[0]!;
       const last = focusables[focusables.length - 1]!;
@@ -56,6 +71,8 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
     };
 
     document.addEventListener('keydown', onKey, true);
+    const previousOverflow = document.body.style.overflow;
+    if (variant === 'sheet') document.body.style.overflow = 'hidden';
     // Ad-Overlays (Adsterra Social Bar mit Eigen-Z-Index) pausieren, solange
     // ein Dialog offen ist – sonst liegt fremdes UI über Modal-Controls.
     document.body.classList.add('nc-modal-open');
@@ -66,16 +83,22 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
     return () => {
       document.removeEventListener('keydown', onKey, true);
       document.body.classList.remove('nc-modal-open');
+      if (variant === 'sheet') document.body.style.overflow = previousOverflow;
       window.clearTimeout(focusTimer);
       restoreRef.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open, onClose, variant]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-modal flex animate-fade-in items-start justify-center overflow-y-auto bg-black/72 p-3 backdrop-blur-sm sm:p-6"
+      className={cn(
+        'fixed inset-0 z-modal flex animate-fade-in overflow-y-auto bg-black/72 backdrop-blur-sm',
+        variant === 'sheet'
+          ? 'items-end justify-center p-0 sm:items-center sm:p-6'
+          : 'items-start justify-center p-3 sm:p-6',
+      )}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -86,9 +109,11 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
-          'nc-clip my-auto w-full animate-fade-up border border-primary/35 bg-elevated/95 shadow-[0_0_45px_-12px_hsl(var(--nc-primary)/0.55)]',
+          'nc-clip w-full animate-fade-up border border-primary/35 bg-elevated/95 shadow-[0_0_45px_-12px_hsl(var(--nc-primary)/0.55)]',
           '[animation-duration:220ms]',
-          widthClass,
+          variant === 'sheet'
+            ? 'my-0 max-h-[min(82dvh,calc(100dvh-1rem))] max-w-none overflow-hidden rounded-t-md border-b-0 sm:my-auto sm:max-h-[85vh] sm:max-w-2xl sm:rounded-md sm:border-b'
+            : cn('my-auto', widthClass),
         )}
       >
         <header className="flex items-start gap-3 border-b border-line/70 px-4 py-3">
@@ -106,7 +131,15 @@ export function Modal({ open, onClose, title, subtitle, children, footer, widthC
           </button>
         </header>
 
-        <div className="max-h-[70vh] overflow-y-auto px-4 py-3">{children}</div>
+        <div
+          className={cn(
+            'max-h-[70vh] overflow-y-auto px-4 py-3',
+            variant === 'sheet' &&
+              'max-h-[calc(82dvh-4.25rem)] overscroll-contain pb-[calc(1rem+env(safe-area-inset-bottom))] sm:max-h-[calc(85vh-4.25rem)]',
+          )}
+        >
+          {children}
+        </div>
 
         {footer && <footer className="flex items-center justify-end gap-2 border-t border-line/70 px-4 py-3">{footer}</footer>}
       </div>

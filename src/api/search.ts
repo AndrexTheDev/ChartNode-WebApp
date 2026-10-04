@@ -4,7 +4,7 @@
 import { classifyQuery, type QueryKind } from '@/lib/address';
 import { matchCexUniverse } from '@/lib/cex-universe';
 import { dexscreenerByToken, dexscreenerSearch } from './dexscreener';
-import { geckoPoolsByToken, geckoSearchPools } from './geckoterminal';
+import { geckoSearchPools } from './geckoterminal';
 import type { DexPair, SearchHit } from './types';
 
 export interface SmartSearchResult {
@@ -18,8 +18,8 @@ const DEX_HIT_CAP = 10;
 /**
  * One entry point for the Smart Search bar.
  *
- *   text          → CEX universe (sync) ∥ DexScreener ∥ GeckoTerminal
- *   EVM/Solana CA → DexScreener token lookup ∥ GeckoTerminal pools (known chain)
+ *   text          → CEX universe (sync) + DexScreener, GeckoTerminal only as fallback
+ *   EVM/Solana CA → DexScreener token lookup, GeckoTerminal only on a miss
  *
  * Security audits are intentionally NOT awaited here – the dropdown renders
  * immediately and the badges resolve asynchronously (green/red glow).
@@ -47,17 +47,30 @@ export async function smartSearch(query: string, signal?: AbortSignal): Promise<
   }
 
   const address = query.trim();
-  const pairs = await dexscreenerByToken([address], signal);
-
-  // GeckoTerminal needs a network: reuse whatever chain DexScreener detected.
-  const chains = [...new Set(pairs.map((pair) => pair.chain))].slice(0, 2);
-  const geckoExtra = await Promise.allSettled(
-    chains.map((chain) => geckoPoolsByToken(chain, address, signal)),
-  );
-  for (const result of geckoExtra) {
-    if (result.status === 'fulfilled') pairs.push(...result.value);
+  const pairs: DexPair[] = [];
+  try {
+    pairs.push(...(await dexscreenerByToken([address], signal)));
+  } catch {
+    // Try the independent fallback below.
   }
 
+  // If DexScreener is down or has no match, search GeckoTerminal by address
+  // instead of returning an empty dropdown. This keeps the common path cheap:
+  // the extra global search is only issued when the primary lookup is empty.
+  if (pairs.length === 0) {
+    try {
+      pairs.push(...(await geckoSearchPools(address, signal)));
+    } catch {
+      // Search remains usable even when both public aggregators are offline.
+    }
+  }
+
+  // Do not issue a second GeckoTerminal lookup to enrich a successful primary
+  // response: the public API is about 10 calls/minute, and the search result
+  // already has enough pool data to select and chart the token.
+
+  // A failure with no Gecko result is intentionally represented as no hits,
+  // not a rejected promise that can collapse the surrounding search UI.
   return {
     kind,
     hits: dedupePairs(pairs).map(toDexHit).slice(0, DEX_HIT_CAP),
@@ -66,16 +79,22 @@ export async function smartSearch(query: string, signal?: AbortSignal): Promise<
 }
 
 async function searchDex(query: string, signal?: AbortSignal): Promise<DexPair[]> {
-  const results = await Promise.allSettled([
-    dexscreenerSearch(query, signal),
-    geckoSearchPools(query, signal),
-  ]);
-
-  const pairs: DexPair[] = [];
-  for (const result of results) {
-    if (result.status === 'fulfilled') pairs.push(...result.value);
+  try {
+    const primary = await dexscreenerSearch(query, signal);
+    if (primary.length > 0) return dedupePairs(primary);
+  } catch {
+    if (signal?.aborted) return [];
+    // Fall through to the independent index below.
   }
-  return dedupePairs(pairs);
+
+  // GeckoTerminal is deliberately fallback-only. Its public keyless limit is
+  // much lower than DexScreener's, so don't spend a request when the primary
+  // search already found pools.
+  try {
+    return dedupePairs(await geckoSearchPools(query, signal));
+  } catch {
+    return [];
+  }
 }
 
 /** Same token on the same chain from two providers → keep the deeper pool. */

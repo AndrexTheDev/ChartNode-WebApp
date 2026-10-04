@@ -20,11 +20,11 @@ export interface OgInput {
 
 /** Card-Copy je Locale – Social-Karten sprechen die Sprache des Links. */
 const OG_STRINGS: Record<string, { tagline: string; footer: string }> = {
-  en: { tagline: 'real-time · zero fees · on-chain', footer: 'CEX + DEX terminal · no account · no keys · nodechart' },
-  de: { tagline: 'Echtzeit · keine Gebühren · On-Chain', footer: 'CEX + DEX Terminal · kein Account · keine Keys · nodechart' },
-  es: { tagline: 'tiempo real · sin comisiones · on-chain', footer: 'Terminal CEX + DEX · sin cuenta · sin claves · nodechart' },
-  ru: { tagline: 'реальное время · без комиссий · on-chain', footer: 'CEX + DEX терминал · без аккаунта · без ключей · nodechart' },
-  zh: { tagline: '实时 · 零费用 · 链上', footer: 'CEX + DEX 终端 · 无需账户 · 无需密钥 · nodechart' },
+  en: { tagline: 'CEX + DEX · browser-first · feeds vary', footer: 'Market analysis · no account required · no user API key · nodechart' },
+  de: { tagline: 'CEX + DEX · browserbasiert · Datenquellen variieren', footer: 'Marktanalyse · kein Konto nötig · kein eigener API-Key · nodechart' },
+  es: { tagline: 'CEX + DEX · en navegador · las fuentes varían', footer: 'Análisis de mercado · sin cuenta obligatoria · sin API key propia · nodechart' },
+  ru: { tagline: 'CEX + DEX · в браузере · источники различаются', footer: 'Анализ рынка · аккаунт не нужен · свой API-ключ не нужен · nodechart' },
+  zh: { tagline: 'CEX + DEX · 浏览器优先 · 数据源各异', footer: '市场分析 · 无需账户 · 无需个人 API 密钥 · nodechart' },
 };
 
 /** Whitelist-Fallback: unbekannte/?constructor-Locales landen auf EN. */

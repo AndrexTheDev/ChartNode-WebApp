@@ -13,11 +13,11 @@ import { selectDivOn, selectReplayOn, selectSrOn, selectVpOn, useChartStore } fr
  * The (polite) survival kit – honest nudges, zero dark patterns. Every ask
  * below shares ONE gate: `donationGraceActive()` – a declared donation buys
  * 48 h of silence (5 days above $5), and while that window runs nothing here
- * fires. The permanent supporter badge lives on regardless:
+ * fires. A cosmetic supporter badge is stored in this browser's workspace state:
  *
  *   1. a rotating tip-jar toast every ~7 minutes of active terminal time
  *   2. a session-milestone card (3rd / 10th / 25th / 50th visit)
- *   3. a one-time ribbon when a feature lands that paid charting suites sell
+ *   3. a one-time ribbon for recently added analysis tools
  *
  * Everything is dismissible, everything is stored locally, nothing pretends
  * to be something it is not: one dev, ads + tips, no paywalls.

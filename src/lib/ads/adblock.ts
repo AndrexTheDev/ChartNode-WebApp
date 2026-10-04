@@ -1,4 +1,6 @@
 /* © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md. */
+import { canLoadAdScripts } from './consent';
+
 /**
  * Ad-block detection – two independent signals, no fingerprinting.
  *
@@ -21,7 +23,7 @@ declare global {
 }
 
 export async function detectAdBlock(): Promise<boolean> {
-  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+  if (!canLoadAdScripts() || typeof document === 'undefined' || typeof window === 'undefined') return false;
 
   const bait = document.createElement('div');
   bait.className = 'ad-banner adsbox ad-placement pub_300x250 textads banner-ads ad-container';
@@ -67,6 +69,7 @@ export async function detectAdBlock(): Promise<boolean> {
 
 /** One detection per session is enough – the result is cached in sessionStorage. */
 export async function detectAdBlockOnce(): Promise<boolean> {
+  if (!canLoadAdScripts()) return false;
   try {
     const cached = sessionStorage.getItem(AD_CHECK_SESSION_KEY);
     if (cached !== null) return cached === '1';

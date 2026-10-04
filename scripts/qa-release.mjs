@@ -1,7 +1,8 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 // RELEASE-QA (CTO-Abnahme): Konsolen-Scan über Start + Interaktions-Batterie,
 // Edge-Cases (Offline, Click-Storm, Resize-Storm, Altbrowser-Emulation) und
-// die finale Funktions-Checkliste (12 CEX, 33 Chains, Edge Suite, 5 Sprachen).
+// die finale Funktions-Checkliste (12 konfigurierte CEX-IDs, 33 kanonische Chain-IDs,
+// Edge Suite, 5 Sprachen). Chain-Aliase sind keine Aussage zur Provider-Abdeckung.
 //
 // Läuft gegen den Production-Build ohne Ad-Env auf :3000.
 // Nutzung: node scripts/qa-release.mjs
@@ -360,6 +361,7 @@ console.log('\n— B5: Altbrowser-Emulation (API-Lücken + alte UA) —');
   const page = await browser.newPage();
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36');
   await page.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
     // Moderne APIs hart entfernen – Fallbacks müssen tragen:
     Object.defineProperty(Navigator.prototype, 'clipboard', { value: undefined, configurable: true });
     window.requestIdleCallback = undefined;
@@ -406,10 +408,10 @@ console.log('\n— C: Finale Checkliste —');
   const expected = ['binance', 'okx', 'bybit', 'coinbase', 'kraken', 'gate', 'bitget', 'kucoin', 'bitfinex', 'cryptocom', 'htx', 'coinex'];
   check('C1 12 CEX-Venues im Code', cexIds.length === 12 && expected.every((e) => cexIds.includes(e)), cexIds.join(','));
 
-  // C2: Multichain-DEX
+  // C2: canonical chain IDs and aliases only; this is not a live-provider coverage test.
   const chainsSrc = readFileSync(resolve(root, 'src/lib/chains.ts'), 'utf8');
   const chainIds = [...chainsSrc.match(/export type ChainId =([^;]+);/s)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-  check('C2 Multichain-DEX: 33 Chains definiert', chainIds.length === 33, `${chainIds.length}: ${chainIds.slice(0, 8).join(',')}…`);
+  check('C2 33 canonical chain IDs are registered (aliases only)', chainIds.length === 33, `${chainIds.length}: ${chainIds.slice(0, 8).join(',')}…`);
 
   // C3: On-Chain-Signale (Module + Live-Beweis in anderen Suiten)
   const onchain = readFileSync(resolve(root, 'src/api/onchain.ts'), 'utf8');
@@ -449,6 +451,9 @@ console.log('\n— C: Finale Checkliste —');
 
   // C9: Spendensystem (Grace-Gate live, inkl. Mobile-Breite der Chip-Zeile)
   const c9 = await browser.newPage();
+  await c9.evaluateOnNewDocument(() => {
+    localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+  });
   const seed9 = (at, usd) =>
     c9.evaluate(
       (json) => localStorage.setItem('nc-viral-v1', json),

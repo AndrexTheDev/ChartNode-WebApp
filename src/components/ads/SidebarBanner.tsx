@@ -10,6 +10,7 @@ import {
   SIDEBAR_BANNER_WIDTH,
 } from '@/lib/ads/config';
 import { detectAdBlockOnce } from '@/lib/ads/adblock';
+import { canLoadAdScripts, useAdConsent } from '@/lib/ads/consent';
 import { donationGraceActive } from '@/store/useViralStore';
 
 /** atOptions-Loader: globale Konfiguration, die invoke.js beim Ausführen liest. */
@@ -38,6 +39,7 @@ const SIDEBAR_BREAKPOINT = '(min-width: 1280px)';
  */
 export function SidebarBanner() {
   const t = useTranslations('ads');
+  const consent = useAdConsent();
   // Ehrlicher Demo-Weg (?addemo=1): Rail + klar beschrifteter Platzhalter statt
   // iframe – zum Sichtbar-Testen ohne Ad-Netz/Blocker. Keine Fake-Werbung.
   const [demo] = useState(
@@ -54,6 +56,7 @@ export function SidebarBanner() {
       setFilled(true);
       return;
     }
+    if (consent !== 'granted' || !canLoadAdScripts()) return;
     if (donationGraceActive() || navigator.webdriver) {
       setCollapsed(true);
       return;
@@ -80,7 +83,7 @@ export function SidebarBanner() {
     };
 
     const inject = function injectFn(srcIndex: number): void {
-      if (cancelled || done.current || srcIndex >= SIDEBAR_BANNER_SRCS.length) {
+      if (!canLoadAdScripts() || cancelled || done.current || srcIndex >= SIDEBAR_BANNER_SRCS.length) {
         if (srcIndex >= SIDEBAR_BANNER_SRCS.length) {
           done.current = true;
           setCollapsed(true);
@@ -114,8 +117,9 @@ export function SidebarBanner() {
       loader.onerror = () => {
         loader.remove();
         opt.remove();
+        if (!canLoadAdScripts()) return;
         void detectAdBlockOnce().then((blocked) => {
-          if (cancelled || done.current) return;
+          if (!canLoadAdScripts() || cancelled || done.current) return;
           if (blocked) {
             // Soft-Wall läuft global; Rail zusätzlich kollabieren
             done.current = true;
@@ -131,7 +135,7 @@ export function SidebarBanner() {
     };
 
     const apply = () => {
-      if (!mq.matches) return; // Mobile: gar nichts laden
+      if (!canLoadAdScripts() || !mq.matches) return; // no consent/mobile: no third-party request
       window.setTimeout(() => inject(0), 0);
     };
     apply();
@@ -149,9 +153,9 @@ export function SidebarBanner() {
       window.clearTimeout(armCollapse);
       mq.removeEventListener('change', apply);
     };
-  }, [demo]);
+  }, [consent, demo]);
 
-  if (collapsed) return null;
+  if (collapsed || (!demo && consent !== 'granted')) return null;
 
   return (
     <aside

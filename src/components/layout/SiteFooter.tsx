@@ -6,6 +6,7 @@ import type { Locale } from '@/i18n/routing';
 import { APP_VERSION, CONTACT, ROUTES, SITE_NAME } from '@/lib/constants';
 import { cn } from '@/lib/cn';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { AdPreferencesButton } from '@/components/ads/AdPreferencesButton';
 import { Logo } from './Logo';
 import { StatusLed } from '@/components/ui/StatusLed';
 
@@ -121,6 +122,7 @@ export async function SiteFooter({ locale }: { locale: Locale }) {
               {t(labelKey)}
             </Link>
           ))}
+          <AdPreferencesButton />
         </nav>
 
         {/* Support */}

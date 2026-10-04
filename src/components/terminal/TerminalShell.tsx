@@ -1,9 +1,7 @@
 // © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md.
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useFixedPopover } from '@/lib/useFixedPopover';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Anchor,
@@ -13,7 +11,7 @@ import {
   Gauge,
   Heart,
   History,
-  Layers,
+  Network,
   LifeBuoy,
   List,
   Radar,
@@ -35,11 +33,14 @@ import {
   Magnet,
   Compass,
   Clock3,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { Dropdown, type DropdownItem } from '@/components/ui/Dropdown';
-import { ToolMenu } from '@/components/ui/ToolMenu';
+import { ToolMenu, type ToolMenuItem } from '@/components/ui/ToolMenu';
+import { ControlSection, MobileActionGrid, TerminalControlsSheet } from './TerminalControlsSheet';
+import { TimeframePicker } from './TimeframePicker';
 import { AdSlot } from '@/components/ads/AdManager';
 import { SmartlinkKit } from '@/components/ads/SmartlinkKit';
 import { SidebarBanner } from '@/components/ads/SidebarBanner';
@@ -48,13 +49,15 @@ import { ProMetricsPanel } from '@/components/pro/ProMetricsPanel';
 import { requestPopunder } from '@/lib/ads/adsterra';
 import { offerToast, SMARTLINKS_ENABLED } from '@/lib/ads/smartlinks';
 import { ExchangePicker } from './ExchangePicker';
+import { ThemeSwitcher } from '@/components/layout/ThemeSwitcher';
+import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher';
 import { ChartGrid } from '@/components/chart/ChartGrid';
 import { SEED_TOKENS } from '@/lib/constants';
 import { EXCHANGE_META } from '@/lib/exchanges';
 import { cn } from '@/lib/cn';
 import { compactUsd, pct, usd } from '@/lib/format';
 import { realizedVolPct, sessionStats } from '@/lib/premium';
-import { CHART_LAYOUTS, CHART_TYPES, LAYOUT_IDS, TIMEFRAMES } from '@/store/presets';
+import { CHART_LAYOUTS, CHART_TYPES, LAYOUT_IDS } from '@/store/presets';
 import { selectDexQuote, useMarketStore } from '@/store/useMarketStore';
 import {
   selectActiveToken,
@@ -108,15 +111,24 @@ import type { ChartLayoutId, ChartType } from '@/store/types';
  * status (live / reconnecting / region-blocked). The whale toggle controls the
  * trade channels that feed the bottom ticker.
  */
-/** Turns a raw feed note into a localised chip suffix (`seed-via:okx` → "History via okx"). */
+/** Turns raw feed notes into localised source/staleness chips. */
 function feedNoteLabel(
   note: string | null | undefined,
-  tf: (key: 'region' | 'unsupported' | 'seedFailed' | 'seedVia', vars?: { venue: string }) => string,
+  tf: (
+    key: 'region' | 'unsupported' | 'seedFailed' | 'seedVia' | 'seedStale',
+    vars?: { venue: string; age?: string },
+  ) => string,
 ): string {
   if (!note) return '';
   if (note === 'region') return tf('region');
   if (note === 'unsupported') return tf('unsupported');
   if (note.startsWith('seed-via:')) return tf('seedVia', { venue: note.slice('seed-via:'.length) });
+  if (note.startsWith('seed-stale:')) {
+    const [, venue, rawAge = '0'] = note.split(':');
+    const seconds = Math.max(0, Number(rawAge) || 0);
+    const age = seconds >= 3600 ? `${Math.floor(seconds / 3600)}h` : seconds >= 60 ? `${Math.floor(seconds / 60)}m` : `${seconds}s`;
+    return tf('seedStale', { venue: venue || '—', age });
+  }
   return tf('seedFailed');
 }
 
@@ -154,7 +166,6 @@ export function TerminalShell() {
   const layout = useAppStore(selectLayout);
   const setLayout = useAppStore((s) => s.setLayout);
   const timeframe = useAppStore(selectTimeframe);
-  const setTimeframe = useAppStore((s) => s.setTimeframe);
   const chartType = useAppStore(selectChartType);
   const setChartType = useAppStore((s) => s.setChartType);
   const vpOn = useChartStore(selectVpOn);
@@ -207,12 +218,14 @@ export function TerminalShell() {
     };
   }, []);
   const [patternsOpen, setPatternsOpen] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
-  const { triggerRef: customTriggerRef, panelRef: customPanelRef, style: customAnchorStyle } =
-    useFixedPopover<HTMLSpanElement, HTMLSpanElement>(customOpen, 'start');
   const scriptLabOpen = useChartStore((state) => state.scriptLabOpen);
   const setScriptLabOpen = useChartStore((state) => state.setScriptLabOpen);
-  const [customDraft, setCustomDraft] = useState(10);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [mobileWatchOpen, setMobileWatchOpen] = useState(false);
+  const closeMobileControls = useCallback(() => {
+    setMobileControlsOpen(false);
+    setMobileWatchOpen(false);
+  }, []);
   const activeToken = useAppStore(selectActiveToken);
   const compareToken = useMemo(
     () => (compare ? (TOKEN_INDEX[compare] ?? null) : null),
@@ -240,7 +253,7 @@ export function TerminalShell() {
 
   const watched = watchlist.includes(activeToken.id);
 
-  // Region-aware venue choice: manual pick > token venue > fastest reachable.
+  // Region-aware venue choice: manual pick > token venue > best heuristic match.
   const selection = useExchangeSelection(activeToken.symbol, timeframe, activeToken.exchange);
   const activeFeedId = selection
     ? feedId({ exchange: selection.exchange, symbol: activeToken.symbol, timeframe })
@@ -255,7 +268,6 @@ export function TerminalShell() {
   // Session analytics: today's OHLC + range position + realized vol, all local.
   const sessionCandles = useMemo(() => feed?.candles ?? dexCandles ?? [], [feed, dexCandles]);
   const customAgg = useChartStore((state) => state.customAgg);
-  const setCustomAgg = useChartStore((state) => state.setCustomAgg);
   const patternsOnStore = useChartStore((state) => state.patternsOn);
   const alertsCount = useChartStore((state) => state.alerts.length);
   const TF_MINUTES: Record<string, number> = { '1m': 1, '5m': 5, '15m': 15, '1h': 60, '4h': 240, '1d': 1440, '1w': 10080 };
@@ -274,8 +286,186 @@ export function TerminalShell() {
   const status: FeedStatus = feed?.status ?? 'idle';
   const connected = status === 'open';
 
+  const chartTypeItems: DropdownItem[] = CHART_TYPES.map((type) => ({
+    id: type,
+    label: t(`types.${type}`),
+    selected: hydrated && type === chartType,
+    onSelect: () => setChartType(type as ChartType),
+  }));
+
+  const edgeItems: ToolMenuItem[] = [
+    {
+      key: 'liq',
+      label: te('menuLiq'),
+      icon: Magnet,
+      active: hydrated && liqMagnetsOn,
+      onClick: () => {
+        useViralStore.getState().bumpTool();
+        useChartStore.getState().setEdgeLiqOpen(true);
+      },
+    },
+    {
+      key: 'lag',
+      label: te('menuLag'),
+      icon: Activity,
+      onClick: () => {
+        useViralStore.getState().bumpTool();
+        useChartStore.getState().setEdgeLagOpen(true);
+      },
+    },
+    {
+      key: 'regime',
+      label: te('menuRegime'),
+      icon: Compass,
+      onClick: () => {
+        useViralStore.getState().bumpTool();
+        useChartStore.getState().setEdgeRegimeOpen(true);
+      },
+    },
+    {
+      key: 'clock',
+      label: te('menuClock'),
+      icon: Clock3,
+      onClick: () => {
+        useViralStore.getState().bumpTool();
+        useChartStore.getState().setEdgeClockOpen(true);
+      },
+    },
+  ];
+
+  const analyseItems: ToolMenuItem[] = [
+    { key: 'vp', label: t('vp'), icon: BarChart3, active: hydrated && vpOn, onClick: toggleVp },
+    {
+      key: 'avwap',
+      label: t('avwap'),
+      icon: Anchor,
+      active: hydrated && (avwapArm || avwapAnchored),
+      onClick: () => {
+        if (avwapArm) {
+          setAvwapArm(false);
+        } else if (avwapAnchored) {
+          for (const paneId of Object.keys(useChartStore.getState().avwapAnchor)) {
+            setAvwapAnchorAll(paneId, null);
+          }
+        } else {
+          setAvwapArm(true);
+        }
+      },
+    },
+    { key: 'sr', label: t('sr'), icon: Network, active: hydrated && srOn, onClick: toggleSr },
+    { key: 'div', label: t('div'), icon: Activity, active: hydrated && divOn, onClick: toggleDiv },
+    {
+      key: 'patterns',
+      label: t('patterns'),
+      icon: Shapes,
+      active: hydrated && patternsOnStore,
+      onClick: () => {
+        setPatternsOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+    {
+      key: 'ratings',
+      label: t('ratings'),
+      icon: Gauge,
+      active: hydrated && ratingsOpen,
+      onClick: () => {
+        setRatingsOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+    {
+      key: 'heatmap',
+      label: t('heatmap'),
+      icon: Flame,
+      active: hydrated && heatmapOpen,
+      onClick: () => {
+        setHeatmapOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+  ];
+
+  const toolsItems: ToolMenuItem[] = [
+    {
+      key: 'replay',
+      label: t('replay'),
+      icon: History,
+      active: hydrated && replayOn,
+      onClick: () => (replayOn ? stopReplay() : startReplay()),
+    },
+    { key: 'backtest', label: t('backtest'), icon: FlaskConical, active: hydrated && backtestOpen, onClick: () => setBacktestOpen(true) },
+    { key: 'screener', label: t('screener'), icon: Table2, active: hydrated && screenerOpen, onClick: () => setScreenerOpen(true) },
+    { key: 'risk', label: t('risk'), icon: Calculator, active: hydrated && riskOpen, onClick: () => setRiskOpen(true) },
+    {
+      key: 'journal',
+      label: t('journal'),
+      icon: BookOpen,
+      active: hydrated && journalOpen,
+      onClick: () => {
+        setJournalOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+    {
+      key: 'magnifier',
+      label: t('magnifier'),
+      icon: ZoomIn,
+      active: hydrated && magnifierOpen,
+      onClick: () => {
+        setMagnifierOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+    {
+      key: 'scripts',
+      label: t('scripts'),
+      icon: Code2,
+      active: hydrated && scriptLabOpen,
+      onClick: () => {
+        setScriptLabOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+    {
+      key: 'alerts-manager',
+      label: alertsCount > 0 ? `${t('alerts')} · ${alertsCount}` : t('alerts'),
+      icon: BellRing,
+      active: hydrated && alertsOpen,
+      onClick: () => {
+        setAlertsOpen(true);
+        useViralStore.getState().bumpTool();
+      },
+    },
+  ];
+
+  const moreItems: ToolMenuItem[] = [
+    {
+      key: 'share',
+      label: ts('button'),
+      icon: Share2,
+      onClick: () => {
+        openShare('chart');
+        offerToast('action:share');
+      },
+    },
+    {
+      key: 'whale',
+      label: tw('title'),
+      icon: Waves,
+      active: whaleEnabled,
+      onClick: () => setWhaleEnabled(!whaleEnabled),
+    },
+    { key: 'help', label: t('menus.help'), icon: LifeBuoy, onClick: () => router.push('/help', { locale }) },
+  ];
+
+  const chooseLayout = (id: ChartLayoutId) => {
+    setLayout(id);
+    if (id !== '1x1') requestPopunder();
+  };
+
   return (
-    <div className="flex min-h-[calc(100dvh-var(--nc-header-h))] pb-[max(2.5rem,calc(var(--nc-dock-offset,0px)+env(safe-area-inset-bottom)))] xl:flex-row">
+    <div className="flex min-h-[calc(100dvh-var(--nc-header-h))] flex-col pb-[max(2.5rem,calc(var(--nc-dock-offset,0px)+env(safe-area-inset-bottom)))] xl:flex-row">
       {/* linke Sidebar: Banner 160×600, Desktop only (xl-Row-Layout) */}
       <SidebarBanner />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -287,462 +477,414 @@ export function TerminalShell() {
 
       {/* ------------------------------- toolbar ---------------------------- */}
       <div className="sticky top-header z-40 border-b border-line/80 bg-bg/85 backdrop-blur-xl">
-        {/* Wrap-stable: font-swap reflow must never change the row count on
-          desktop (CLS), so ≥sm keeps one scrollable line; phones still wrap. */}
-        <div className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-2 px-3 py-2.5 lg:overflow-x-auto [&>*]:lg:shrink-0">
-          {/* live symbol + price */}
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-display text-base font-extrabold tracking-tight">
-              {activeToken.symbol}
-            </span>
-            <span className={cn('font-mono text-sm tabular-nums', livePrice != null ? 'text-primary' : 'text-faint')}>
-              {usd(livePrice)}
-            </span>
-            {liveChange != null && (
-              <span className={cn('font-mono text-2xs tabular-nums', liveChange >= 0 ? 'text-bull' : 'text-bear')}>
-                {pct(liveChange)}
+        {/* Compact toolbar for phones and tablets: status, timeframes and one
+            predictable entry point for chart setup and less-frequent actions. */}
+        <div className="xl:hidden">
+          <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              <span className="shrink-0 font-display text-sm font-extrabold tracking-tight sm:text-base">
+                {activeToken.symbol}
               </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => toggleWatchlist(activeToken.id)}
-            aria-pressed={watched}
-            className={cn(
-              'nc-clip-sm inline-flex size-9 items-center justify-center border transition-colors',
-              watched ? 'border-warning/60 bg-warning/12 text-warning hover:bg-warning/22' : 'border-line bg-surface/70 text-muted hover:border-primary/50 hover:text-fg',
-            )}
-          >
-            <Star className="size-4" fill={watched ? 'currentColor' : 'none'} aria-hidden />
-            <span className="sr-only">{activeToken.symbol}</span>
-          </button>
-
-          {/* feed status */}
-          <span
-            className={cn(
-              'nc-chip shrink-0',
-              connected && 'border-primary/50 text-primary',
-              status === 'error' && 'border-bear/60 text-bear',
-              status === 'reconnecting' && 'border-warning/60 text-warning',
-            )}
-            title={feed?.note ?? undefined}
-          >
-            {connected ? <Wifi className="size-3" aria-hidden /> : <WifiOff className="size-3" aria-hidden />}
-            {tf(status)}
-            {feed?.note
-              ? ` · ${feedNoteLabel(feed.note, tf)}`
-              : ''}
-            {status === 'reconnecting' && feed ? ` · ${tf('attempt', { n: feed.attempt })}` : ''}
-          </span>
-
-          {/* which venue is feeding this chart – and why */}
-          {selection && (
-            <ExchangePicker
-              symbol={activeToken.symbol}
-              timeframe={timeframe}
-              selected={selection.exchange}
-              rerouted={selection.rerouted}
-            />
-          )}
-
-          {activeToken.venue === 'DEX' && dexQuote?.tokenId === activeToken.id && (
-            <span className="nc-chip hidden shrink-0 md:inline-flex" title={dexQuote.poolName ?? undefined}>
-              {dexQuote.chain} · {compactUsd(dexQuote.liquidityUsd)} liq
-            </span>
-          )}
-
-          <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
-
-          {/* timeframes */}
-          <div role="group" aria-label={t('timeframe')} className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-1">
-            {TIMEFRAMES.map((value) => (
-              <Chip key={value} active={hydrated && value === timeframe} onClick={() => setTimeframe(value)}>
-                {value}
-              </Chip>
-            ))}
-            <span ref={customTriggerRef} className="relative shrink-0">
-              <Chip active={hydrated && customAgg != null} onClick={() => setCustomOpen((value) => !value)}>
-                {customAgg != null ? `${customAgg}m` : t('custom.label')}
-              </Chip>
-              {customOpen && createPortal(
-                <span ref={customPanelRef} style={customAnchorStyle} className="z-overlay flex items-center gap-1 border border-line bg-surface p-2 shadow-neon-sm">
-                  <input
-                    type="number"
-                    min={2}
-                    max={43200}
-                    value={customDraft}
-                    onChange={(event) => setCustomDraft(Number(event.target.value))}
-                    aria-label={t('custom.label')}
-                    className="w-20 border border-line bg-surface/60 px-2 py-1 font-mono text-xs tabular-nums text-fg outline-none transition-[border-color,box-shadow] duration-200 focus:border-secondary/70 focus:shadow-neon-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomAgg(customDraft);
-                      setCustomOpen(false);
-                    }}
-                    className="border border-bull/50 px-2 py-1 font-mono text-2xs uppercase tracking-cyber text-bull transition-colors hover:bg-bull/15"
-                  >
-                    {t('custom.apply')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomAgg(null);
-                      setCustomOpen(false);
-                    }}
-                    className="border border-line px-2 py-1 font-mono text-2xs uppercase tracking-cyber text-muted transition-colors hover:border-line/90 hover:text-fg"
-                  >
-                    {t('custom.clear')}
-                  </button>
-                </span>,
-                document.body,
+              <span className={cn('min-w-0 truncate font-mono text-sm tabular-nums', livePrice != null ? 'text-primary' : 'text-faint')}>
+                {usd(livePrice)}
+              </span>
+              {liveChange != null && (
+                <span className={cn('shrink-0 font-mono text-2xs tabular-nums', liveChange >= 0 ? 'text-bull' : 'text-bear')}>
+                  {pct(liveChange)}
+                </span>
               )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => toggleWatchlist(activeToken.id)}
+              aria-pressed={watched}
+              aria-label={activeToken.symbol}
+              title={activeToken.symbol}
+              className={cn(
+                'nc-clip-sm inline-flex size-9 shrink-0 items-center justify-center border transition-colors',
+                watched ? 'border-warning/60 bg-warning/12 text-warning hover:bg-warning/22' : 'border-line bg-surface/70 text-muted hover:border-primary/50 hover:text-fg',
+              )}
+            >
+              <Star className="size-4" fill={watched ? 'currentColor' : 'none'} aria-hidden />
+            </button>
+
+            <span
+              role="status"
+              aria-label={tf(status)}
+              title={feed?.note ? feedNoteLabel(feed.note, tf) : tf(status)}
+              className={cn(
+                'nc-chip inline-flex size-8 shrink-0 items-center justify-center px-0',
+                connected && 'border-primary/50 text-primary',
+                status === 'error' && 'border-bear/60 text-bear',
+                status === 'reconnecting' && 'border-warning/60 text-warning',
+              )}
+            >
+              {connected ? <Wifi className="size-3" aria-hidden /> : <WifiOff className="size-3" aria-hidden />}
             </span>
           </div>
 
-          {/* whale toggle + layouts */}
-          <div role="group" aria-label={tn('layouts')} className="ml-auto flex items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2 border-t border-line/60 px-3 py-2">
+            <TimeframePicker touchTargets className="flex-1" />
             <button
               type="button"
-              onClick={toggleOnChain}
-              aria-pressed={onChainOpen}
-              aria-label={toc('button')}
-              title={toc('button')}
-              data-testid="onchain-toggle"
-              className={cn(
-                'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
-                onChainOpen
-                  ? 'border-primary/60 bg-primary/12 text-primary shadow-[0_0_10px_-2px_hsl(var(--nc-primary)/0.7)] hover:bg-primary/22'
-                  : 'border-line bg-surface/50 text-muted hover:border-primary/50 hover:text-fg',
-              )}
+              data-mobile-controls-trigger
+              aria-haspopup="dialog"
+              aria-expanded={mobileControlsOpen}
+              onClick={() => setMobileControlsOpen(true)}
+              className="nc-clip-sm inline-flex h-9 shrink-0 items-center gap-1.5 border border-primary/50 bg-primary/10 px-2.5 font-mono text-2xs uppercase tracking-cyber text-primary transition-colors hover:bg-primary/18"
             >
-              <Radar className="size-3" aria-hidden />
-              <span className="hidden sm:inline">{toc('button')}</span>
+              <SlidersHorizontal className="size-3.5" aria-hidden />
+              {t('menus.controls')}
             </button>
-            <button
-              type="button"
-              onClick={togglePro}
-              aria-pressed={proOpen}
-              aria-label={tp('button')}
-              title={tp('button')}
-              data-testid="pro-toggle"
-              className={cn(
-                'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
-                proOpen
-                  ? 'border-secondary/60 bg-secondary/12 text-secondary shadow-[0_0_10px_-2px_hsl(var(--nc-secondary)/0.7)] hover:bg-secondary/22'
-                  : 'border-line bg-surface/50 text-muted hover:border-secondary/50 hover:text-fg',
-              )}
-            >
-              <Gauge className="size-3" aria-hidden />
-              <span className="hidden sm:inline">{tp('button')}</span>
-            </button>
-            {LAYOUT_IDS.map((id) => (
-              <Chip
-                key={id}
-                active={hydrated && id === layout}
-                onClick={() => {
-                  setLayout(id);
-                  // Adsterra popunder arms on the multi-chart gesture (1×/session).
-                  if (id !== '1x1') requestPopunder();
-                }}
-              >
-                <LayoutMini id={id} />
-                <span className="hidden sm:inline">{id}</span>
-              </Chip>
-            ))}
-
-            {/* share / whale / help live behind one tidy trigger */}
-            <ToolMenu
-              id="more"
-              label={t('menus.more')}
-              icon={LifeBuoy}
-              align="right"
-              engaged={whaleEnabled}
-              items={[
-                {
-                  key: 'share',
-                  label: ts('button'),
-                  icon: Share2,
-                  onClick: () => {
-                    openShare('chart');
-                    // Post-Action-Offer: Share läuft IMMER zuerst, der Toast
-                    // kommt verzögert + gedeckelt (Cap/Interval im Kit).
-                    offerToast('action:share');
-                  },
-                },
-                {
-                  key: 'whale',
-                  label: tw('title'),
-                  icon: Waves,
-                  active: whaleEnabled,
-                  onClick: () => setWhaleEnabled(!whaleEnabled),
-                },
-                { key: 'help', label: t('menus.help'), icon: LifeBuoy, onClick: () => router.push('/help', { locale }) },
-              ]}
-            />
           </div>
         </div>
 
-        {/* chart types */}
-        <div className="flex max-lg:flex-wrap lg:flex-nowrap items-center gap-1 border-t border-line/60 px-3 py-2 lg:overflow-x-auto [&>*]:lg:shrink-0">
-          <Terminal className="mr-1 size-3.5 text-primary" aria-hidden />
-          <Dropdown
-            triggerLabel={t(`types.${chartType}`)}
-            triggerText={<span>{t(`types.${chartType}`)}</span>}
-            menuLabel={t(`types.${chartType}`)}
-            align="start"
-            widthClass="w-48"
-            items={CHART_TYPES.map((type) => ({
-              id: type,
-              label: t(`types.${type}`),
-              selected: hydrated && type === chartType,
-              onSelect: () => setChartType(type as ChartType),
-            }))}
-          />
-
-          <span className="mx-1 h-6 w-px bg-line" aria-hidden />
-
-          {/* wave-7 Edge Suite – four signals no classic chart app ships */}
-          <ToolMenu
-            id="edge"
-            label={te('menuLabel')}
-            icon={Sparkles}
-            engaged={liqMagnetsOn || edgeLiqOpen || edgeLagOpen || edgeRegimeOpen || edgeClockOpen}
-            items={[
-              {
-                key: 'liq',
-                label: te('menuLiq'),
-                icon: Magnet,
-                active: hydrated && liqMagnetsOn,
-                onClick: () => {
-                  useViralStore.getState().bumpTool();
-                  useChartStore.getState().setEdgeLiqOpen(true);
-                },
-              },
-              {
-                key: 'lag',
-                label: te('menuLag'),
-                icon: Activity,
-                onClick: () => {
-                  useViralStore.getState().bumpTool();
-                  useChartStore.getState().setEdgeLagOpen(true);
-                },
-              },
-              {
-                key: 'regime',
-                label: te('menuRegime'),
-                icon: Compass,
-                onClick: () => {
-                  useViralStore.getState().bumpTool();
-                  useChartStore.getState().setEdgeRegimeOpen(true);
-                },
-              },
-              {
-                key: 'clock',
-                label: te('menuClock'),
-                icon: Clock3,
-                onClick: () => {
-                  useViralStore.getState().bumpTool();
-                  useChartStore.getState().setEdgeClockOpen(true);
-                },
-              },
-            ]}
-          />
-
-          {/* grouped premium analytics – one tidy trigger instead of a chip wall */}
-          <ToolMenu
-            id="analyse"
-            label={t('menus.analyse')}
-            icon={BarChart3}
-            engaged={vpOn || avwapArm || avwapAnchored || srOn || divOn || patternsOnStore || ratingsOpen || heatmapOpen}
-            items={[
-              { key: 'vp', label: t('vp'), icon: BarChart3, active: hydrated && vpOn, onClick: toggleVp },
-              {
-                key: 'avwap',
-                label: t('avwap'),
-                icon: Anchor,
-                active: hydrated && (avwapArm || avwapAnchored),
-                onClick: () => {
-                  if (avwapArm) {
-                    setAvwapArm(false);
-                  } else if (avwapAnchored) {
-                    // third state: clear every anchor
-                    for (const paneId of Object.keys(useChartStore.getState().avwapAnchor)) {
-                      setAvwapAnchorAll(paneId, null);
-                    }
-                  } else {
-                    setAvwapArm(true);
-                  }
-                },
-              },
-              { key: 'sr', label: t('sr'), icon: Layers, active: hydrated && srOn, onClick: toggleSr },
-              { key: 'div', label: t('div'), icon: Activity, active: hydrated && divOn, onClick: toggleDiv },
-              {
-                key: 'patterns',
-                label: t('patterns'),
-                icon: Shapes,
-                active: hydrated && patternsOnStore,
-                onClick: () => {
-                  setPatternsOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-              {
-                key: 'ratings',
-                label: t('ratings'),
-                icon: Gauge,
-                active: hydrated && ratingsOpen,
-                onClick: () => {
-                  setRatingsOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-              {
-                key: 'heatmap',
-                label: t('heatmap'),
-                icon: Flame,
-                active: hydrated && heatmapOpen,
-                onClick: () => {
-                  setHeatmapOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-            ]}
-          />
-
-          {/* grouped workspace tools */}
-          <ToolMenu
-            id="tools"
-            label={t('menus.tools')}
-            icon={Wrench}
-            engaged={replayOn || backtestOpen || screenerOpen || riskOpen || journalOpen || magnifierOpen || scriptLabOpen || alertsOpen}
-            items={[
-              {
-                key: 'replay',
-                label: t('replay'),
-                icon: History,
-                active: hydrated && replayOn,
-                onClick: () => (replayOn ? stopReplay() : startReplay()),
-              },
-              { key: 'backtest', label: t('backtest'), icon: FlaskConical, active: hydrated && backtestOpen, onClick: () => setBacktestOpen(true) },
-              { key: 'screener', label: t('screener'), icon: Table2, active: hydrated && screenerOpen, onClick: () => setScreenerOpen(true) },
-              { key: 'risk', label: t('risk'), icon: Calculator, active: hydrated && riskOpen, onClick: () => setRiskOpen(true) },
-              {
-                key: 'journal',
-                label: t('journal'),
-                icon: BookOpen,
-                active: hydrated && journalOpen,
-                onClick: () => {
-                  setJournalOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-              {
-                key: 'magnifier',
-                label: t('magnifier'),
-                icon: ZoomIn,
-                active: hydrated && magnifierOpen,
-                onClick: () => {
-                  setMagnifierOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-              {
-                key: 'scripts',
-                label: t('scripts'),
-                icon: Code2,
-                active: hydrated && scriptLabOpen,
-                onClick: () => {
-                  setScriptLabOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-              {
-                key: 'alerts-manager',
-                label: alertsCount > 0 ? `${t('alerts')} · ${alertsCount}` : t('alerts'),
-                icon: BellRing,
-                active: hydrated && alertsOpen,
-                onClick: () => {
-                  setAlertsOpen(true);
-                  useViralStore.getState().bumpTool();
-                },
-              },
-            ]}
-          />
-          <Dropdown
-            items={compareItems}
-            align="start"
-            widthClass="w-44"
-            triggerLabel={t('compare')}
-            title={t('compare')}
-            triggerText={
-              <span className="font-mono text-2xs uppercase tracking-cyber">
-                {compareToken ? compareToken.base : t('compare')}
+        {/* Full-density workspace toolbar stays available on wide screens. */}
+        <div className="hidden xl:block">
+          <div className="flex items-center gap-2 overflow-x-auto px-3 py-2.5 [&>*]:shrink-0">
+            {/* live symbol + price */}
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="truncate font-display text-base font-extrabold tracking-tight">
+                {activeToken.symbol}
               </span>
-            }
-          />
-          <Chip active={hydrated && axisLog} onClick={toggleAxisLog}>
-            {t('log')}
-          </Chip>
-          <Chip active={hydrated && axisPct} onClick={toggleAxisPct}>
-            {t('pct')}
-          </Chip>
-          <span className="relative shrink-0">
-            <Chip active={hydrated && watchOpen} onClick={() => setWatchOpen((value) => !value)}>
-              <List className="size-3" aria-hidden />
-              {t('watch')}
-            </Chip>
-            <WatchlistPopover open={watchOpen} onClose={() => setWatchOpen(false)} />
-          </span>
-          <button
-            type="button"
-            onClick={openSupport}
-            title={t2('openTip')}
-            aria-label={t2('openTip')}
-            className={cn(
-              'nc-clip-sm inline-flex h-7 shrink-0 items-center gap-1 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
-              supporter
-                ? 'border-bull/60 bg-bull/12 text-bull shadow-neon-sm hover:bg-bull/22'
-                : 'border-line bg-surface/50 text-muted hover:border-secondary/60 hover:text-secondary',
-            )}
-          >
-            <Heart className={cn('size-3', supporter && 'fill-current')} aria-hidden />
-            {supporter && <span className="hidden lg:inline">{t2('supporter')}</span>}
-          </button>
-          {session && (
-            <span
-              className="nc-chip ml-auto hidden shrink-0 lg:inline-flex"
-              title={`${t('session.open')} ${usd(session.open)} · ${t('session.high')} ${usd(session.high)} · ${t('session.low')} ${usd(session.low)}`}
-            >
-              <span className="text-faint">{t('session.title')}</span>
-              <span className={session.changePct >= 0 ? 'text-bull' : 'text-bear'}>
-                {pct(session.changePct, 2)}
+              <span className={cn('font-mono text-sm tabular-nums', livePrice != null ? 'text-primary' : 'text-faint')}>
+                {usd(livePrice)}
               </span>
-              <span className="text-faint">{t('session.range')}</span>
-              <span className="relative inline-block h-1.5 w-12 bg-line/60" aria-hidden>
-                <span
-                  className="absolute top-0 h-full w-0.5 bg-secondary"
-                  style={{ left: `${Math.min(100, Math.max(0, session.rangePosition * 100)).toFixed(0)}%` }}
-                />
-              </span>
-              <span className="tabular-nums text-fg">{(session.rangePosition * 100).toFixed(0)}%</span>
-              {realizedVol != null && (
-                <>
-                  <span className="text-faint">{t('session.rv')}</span>
-                  <span className="tabular-nums text-warning">{realizedVol.toFixed(0)}%</span>
-                </>
+              {liveChange != null && (
+                <span className={cn('font-mono text-2xs tabular-nums', liveChange >= 0 ? 'text-bull' : 'text-bear')}>
+                  {pct(liveChange)}
+                </span>
               )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => toggleWatchlist(activeToken.id)}
+              aria-pressed={watched}
+              className={cn(
+                'nc-clip-sm inline-flex size-9 items-center justify-center border transition-colors',
+                watched ? 'border-warning/60 bg-warning/12 text-warning hover:bg-warning/22' : 'border-line bg-surface/70 text-muted hover:border-primary/50 hover:text-fg',
+              )}
+            >
+              <Star className="size-4" fill={watched ? 'currentColor' : 'none'} aria-hidden />
+              <span className="sr-only">{activeToken.symbol}</span>
+            </button>
+
+            {/* feed status */}
+            <span
+              className={cn(
+                'nc-chip shrink-0',
+                connected && 'border-primary/50 text-primary',
+                status === 'error' && 'border-bear/60 text-bear',
+                status === 'reconnecting' && 'border-warning/60 text-warning',
+              )}
+              title={feed?.note ?? undefined}
+            >
+              {connected ? <Wifi className="size-3" aria-hidden /> : <WifiOff className="size-3" aria-hidden />}
+              {tf(status)}
+              {feed?.note ? ` · ${feedNoteLabel(feed.note, tf)}` : ''}
+              {status === 'reconnecting' && feed ? ` · ${tf('attempt', { n: feed.attempt })}` : ''}
             </span>
-          )}
-          <span className={cn('nc-chip hidden lg:inline-flex', session && 'lg:hidden xl:inline-flex')}>
-{(feed?.candles.length ?? dexCandles?.length ?? 0) > 0
-              ? tf('candles', { n: (feed?.candles.length ?? dexCandles?.length) as number })
-              : t('waiting')}
-          </span>
+
+            {/* which venue is feeding this chart – and why */}
+            {selection && (
+              <ExchangePicker
+                symbol={activeToken.symbol}
+                timeframe={timeframe}
+                selected={selection.exchange}
+                rerouted={selection.rerouted}
+              />
+            )}
+
+            {activeToken.venue === 'DEX' && dexQuote?.tokenId === activeToken.id && (
+              <span className="nc-chip hidden shrink-0 md:inline-flex" title={dexQuote.poolName ?? undefined}>
+                {dexQuote.chain} · {compactUsd(dexQuote.liquidityUsd)} liq
+              </span>
+            )}
+
+            <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
+            <TimeframePicker />
+
+            {/* panel toggles + layouts */}
+            <div role="group" aria-label={tn('layouts')} className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleOnChain}
+                aria-pressed={onChainOpen}
+                aria-label={toc('button')}
+                title={toc('button')}
+                data-testid="onchain-toggle"
+                className={cn(
+                  'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
+                  onChainOpen
+                    ? 'border-primary/60 bg-primary/12 text-primary shadow-[0_0_10px_-2px_hsl(var(--nc-primary)/0.7)] hover:bg-primary/22'
+                    : 'border-line bg-surface/50 text-muted hover:border-primary/50 hover:text-fg',
+                )}
+              >
+                <Radar className="size-3" aria-hidden />
+                <span className="hidden sm:inline">{toc('button')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={togglePro}
+                aria-pressed={proOpen}
+                aria-label={tp('button')}
+                title={tp('button')}
+                data-testid="pro-toggle"
+                className={cn(
+                  'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
+                  proOpen
+                    ? 'border-secondary/60 bg-secondary/12 text-secondary shadow-[0_0_10px_-2px_hsl(var(--nc-secondary)/0.7)] hover:bg-secondary/22'
+                    : 'border-line bg-surface/50 text-muted hover:border-secondary/50 hover:text-fg',
+                )}
+              >
+                <Gauge className="size-3" aria-hidden />
+                <span className="hidden sm:inline">{tp('button')}</span>
+              </button>
+              {LAYOUT_IDS.map((id) => (
+                <Chip key={id} active={hydrated && id === layout} onClick={() => chooseLayout(id)}>
+                  <LayoutMini id={id} />
+                  <span className="hidden sm:inline">{id}</span>
+                </Chip>
+              ))}
+
+              <ToolMenu
+                id="more"
+                label={t('menus.more')}
+                icon={LifeBuoy}
+                align="right"
+                engaged={whaleEnabled}
+                items={moreItems}
+              />
+            </div>
+          </div>
+
+          {/* chart types, analysis and workspace tools */}
+          <div className="flex items-center gap-1 overflow-x-auto border-t border-line/60 px-3 py-2 [&>*]:shrink-0">
+            <Terminal className="mr-1 size-3.5 text-primary" aria-hidden />
+            <div data-testid="chart-type-control">
+              <Dropdown
+                triggerLabel={t(`types.${chartType}`)}
+                triggerText={<span>{t(`types.${chartType}`)}</span>}
+                menuLabel={t(`types.${chartType}`)}
+                align="start"
+                widthClass="w-48"
+                items={chartTypeItems}
+              />
+            </div>
+
+            <span className="mx-1 h-6 w-px bg-line" aria-hidden />
+
+            <ToolMenu
+              id="edge"
+              label={te('menuLabel')}
+              icon={Sparkles}
+              engaged={liqMagnetsOn || edgeLiqOpen || edgeLagOpen || edgeRegimeOpen || edgeClockOpen}
+              items={edgeItems}
+            />
+            <ToolMenu
+              id="analyse"
+              label={t('menus.analyse')}
+              icon={BarChart3}
+              engaged={vpOn || avwapArm || avwapAnchored || srOn || divOn || patternsOnStore || ratingsOpen || heatmapOpen}
+              items={analyseItems}
+            />
+            <ToolMenu
+              id="tools"
+              label={t('menus.tools')}
+              icon={Wrench}
+              engaged={replayOn || backtestOpen || screenerOpen || riskOpen || journalOpen || magnifierOpen || scriptLabOpen || alertsOpen}
+              items={toolsItems}
+            />
+            <div data-testid="compare-control">
+              <Dropdown
+                items={compareItems}
+                align="start"
+                widthClass="w-44"
+                triggerLabel={t('compare')}
+                title={t('compare')}
+                triggerText={
+                  <span className="font-mono text-2xs uppercase tracking-cyber">
+                    {compareToken ? compareToken.base : t('compare')}
+                  </span>
+                }
+              />
+            </div>
+            <Chip active={hydrated && axisLog} onClick={toggleAxisLog}>
+              {t('log')}
+            </Chip>
+            <Chip active={hydrated && axisPct} onClick={toggleAxisPct}>
+              {t('pct')}
+            </Chip>
+            <span className="relative shrink-0">
+              <Chip active={hydrated && watchOpen} onClick={() => setWatchOpen((value) => !value)}>
+                <List className="size-3" aria-hidden />
+                {t('watch')}
+              </Chip>
+              <WatchlistPopover open={watchOpen} onClose={() => setWatchOpen(false)} />
+            </span>
+            <button
+              type="button"
+              onClick={openSupport}
+              title={t2('openTip')}
+              aria-label={t2('openTip')}
+              className={cn(
+                'nc-clip-sm inline-flex h-7 shrink-0 items-center gap-1 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors',
+                supporter
+                  ? 'border-bull/60 bg-bull/12 text-bull shadow-neon-sm hover:bg-bull/22'
+                  : 'border-line bg-surface/50 text-muted hover:border-secondary/60 hover:text-secondary',
+              )}
+            >
+              <Heart className={cn('size-3', supporter && 'fill-current')} aria-hidden />
+              {supporter && <span className="hidden lg:inline">{t2('supporter')}</span>}
+            </button>
+            {session && (
+              <span
+                className="nc-chip ml-auto hidden shrink-0 lg:inline-flex"
+                title={`${t('session.open')} ${usd(session.open)} · ${t('session.high')} ${usd(session.high)} · ${t('session.low')} ${usd(session.low)}`}
+              >
+                <span className="text-faint">{t('session.title')}</span>
+                <span className={session.changePct >= 0 ? 'text-bull' : 'text-bear'}>
+                  {pct(session.changePct, 2)}
+                </span>
+                <span className="text-faint">{t('session.range')}</span>
+                <span className="relative inline-block h-1.5 w-12 bg-line/60" aria-hidden>
+                  <span
+                    className="absolute top-0 h-full w-0.5 bg-secondary"
+                    style={{ left: `${Math.min(100, Math.max(0, session.rangePosition * 100)).toFixed(0)}%` }}
+                  />
+                </span>
+                <span className="tabular-nums text-fg">{(session.rangePosition * 100).toFixed(0)}%</span>
+                {realizedVol != null && (
+                  <>
+                    <span className="text-faint">{t('session.rv')}</span>
+                    <span className="tabular-nums text-warning">{realizedVol.toFixed(0)}%</span>
+                  </>
+                )}
+              </span>
+            )}
+            <span className={cn('nc-chip hidden lg:inline-flex', session && 'lg:hidden xl:inline-flex')}>
+              {(feed?.candles.length ?? dexCandles?.length ?? 0) > 0
+                ? tf('candles', { n: (feed?.candles.length ?? dexCandles?.length) as number })
+                : t('waiting')}
+            </span>
+          </div>
         </div>
       </div>
+
+      <TerminalControlsSheet
+        open={mobileControlsOpen}
+        onClose={closeMobileControls}
+        title={t('menus.controls')}
+      >
+        <ControlSection title={t('menus.chartSettings')} sectionKey="chart-settings" collapsible defaultOpen>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div data-testid="chart-type-control">
+              <p className="mb-1 font-mono text-micro-10 uppercase tracking-cyber text-faint">{t('menus.chartType')}</p>
+              <Dropdown
+                triggerLabel={t(`types.${chartType}`)}
+                triggerText={<span>{t(`types.${chartType}`)}</span>}
+                menuLabel={t(`types.${chartType}`)}
+                align="start"
+                widthClass="w-48"
+                items={chartTypeItems}
+              />
+            </div>
+            <div data-testid="compare-control">
+              <p className="mb-1 font-mono text-micro-10 uppercase tracking-cyber text-faint">{t('compare')}</p>
+              <Dropdown
+                items={compareItems}
+                align="start"
+                widthClass="w-44"
+                triggerLabel={t('compare')}
+                title={t('compare')}
+                triggerText={
+                  <span className="font-mono text-2xs uppercase tracking-cyber">
+                    {compareToken ? compareToken.base : t('compare')}
+                  </span>
+                }
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 font-mono text-micro-10 uppercase tracking-cyber text-faint">{tn('layouts')}</p>
+            <div role="group" aria-label={tn('layouts')} className="flex flex-wrap gap-2">
+              {LAYOUT_IDS.map((id) => (
+                <Chip key={id} className="h-9 px-3" active={hydrated && id === layout} onClick={() => chooseLayout(id)}>
+                  <LayoutMini id={id} />
+                  {id}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Chip className="h-9 px-3" active={hydrated && axisLog} onClick={toggleAxisLog}>{t('log')}</Chip>
+            <Chip className="h-9 px-3" active={hydrated && axisPct} onClick={toggleAxisPct}>{t('pct')}</Chip>
+          </div>
+        </ControlSection>
+
+        <ControlSection title={t('menus.marketPanels')} sectionKey="market-panels" collapsible defaultOpen>
+          {selection && (
+            <div data-testid="market-data-source" className="rounded-sm border border-line/60 bg-bg/40 p-2">
+              <p className="mb-1 font-mono text-micro-10 uppercase tracking-cyber text-faint">{t('menus.dataSource')}</p>
+              <ExchangePicker
+                symbol={activeToken.symbol}
+                timeframe={timeframe}
+                selected={selection.exchange}
+                rerouted={selection.rerouted}
+                className="max-w-full"
+              />
+            </div>
+          )}
+          {activeToken.venue === 'DEX' && dexQuote?.tokenId === activeToken.id && (
+            <p className="font-mono text-2xs text-muted" title={dexQuote.poolName ?? undefined}>
+              {dexQuote.chain} · {compactUsd(dexQuote.liquidityUsd)} liq
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <ControlButton toggle active={onChainOpen} label={toc('button')} onClick={() => { closeMobileControls(); toggleOnChain(); }}>
+              <Radar className="size-4 shrink-0" aria-hidden />
+            </ControlButton>
+            <ControlButton toggle active={proOpen} label={tp('button')} onClick={() => { closeMobileControls(); togglePro(); }}>
+              <Gauge className="size-4 shrink-0" aria-hidden />
+            </ControlButton>
+            <ControlButton toggle active={mobileWatchOpen} label={t('watch')} onClick={() => setMobileWatchOpen((value) => !value)}>
+              <List className="size-4 shrink-0" aria-hidden />
+              {watchlist.length > 0 && <span className="tabular-nums">{watchlist.length}</span>}
+            </ControlButton>
+            <ControlButton active={supporter} label={t2('openTip')} onClick={() => { closeMobileControls(); openSupport(); }}>
+              <Heart className={cn('size-4 shrink-0', supporter && 'fill-current')} aria-hidden />
+            </ControlButton>
+          </div>
+          <WatchlistPopover
+            open={mobileWatchOpen}
+            onClose={() => setMobileWatchOpen(false)}
+            placement="panel"
+          />
+        </ControlSection>
+
+        <ControlSection title={te('menuLabel')} sectionKey="edge" collapsible>
+          <MobileActionGrid items={edgeItems} onClose={closeMobileControls} />
+        </ControlSection>
+        <ControlSection title={t('menus.analyse')} sectionKey="analyse" collapsible>
+          <MobileActionGrid items={analyseItems} onClose={closeMobileControls} />
+        </ControlSection>
+        <ControlSection title={t('menus.tools')} sectionKey="tools" collapsible>
+          <MobileActionGrid items={toolsItems} onClose={closeMobileControls} />
+        </ControlSection>
+        <ControlSection title={t('menus.more')} sectionKey="more" collapsible>
+          <MobileActionGrid items={moreItems} onClose={closeMobileControls} />
+        </ControlSection>
+        <ControlSection title={tn('theme')} sectionKey="theme" collapsible>
+          <ThemeSwitcher />
+        </ControlSection>
+        <ControlSection title={tn('language')} sectionKey="language" collapsible>
+          <LocaleSwitcher />
+        </ControlSection>
+      </TerminalControlsSheet>
 
       {/* mobile ad container (Adsterra native strip) – null without config */}
       <AdSlot variant="mobile" />
@@ -809,10 +951,12 @@ function Chip({
   children,
   active,
   onClick,
+  className,
 }: {
   children: React.ReactNode;
   active?: boolean;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <button
@@ -821,12 +965,53 @@ function Chip({
       aria-pressed={active}
       className={cn(
         'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-2xs uppercase tracking-cyber transition-colors duration-150',
+        className,
         active
           ? 'border-primary/70 bg-primary/14 text-primary shadow-neon-sm hover:bg-primary/22'
           : 'border-line bg-surface/50 text-muted hover:border-primary/40 hover:text-fg',
       )}
     >
       {children}
+    </button>
+  );
+}
+
+function ControlButton({
+  children,
+  label,
+  active,
+  toggle = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  active?: boolean;
+  toggle?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={toggle ? active : undefined}
+      title={label}
+      className={cn(
+        'nc-clip-sm flex min-h-11 min-w-0 items-center gap-2 border px-2.5 py-2 text-left font-mono text-2xs uppercase tracking-cyber transition-colors',
+        active
+          ? 'border-primary/60 bg-primary/10 text-primary shadow-neon-sm'
+          : 'border-line bg-bg/45 text-muted hover:border-primary/40 hover:text-fg',
+      )}
+    >
+      <span className="flex shrink-0 items-center gap-1">{children}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span
+        aria-hidden
+        className={cn(
+          'size-1.5 shrink-0 rounded-full',
+          active ? 'bg-primary shadow-[0_0_8px_hsl(var(--nc-primary)/0.9)]' : 'bg-line',
+        )}
+      />
     </button>
   );
 }

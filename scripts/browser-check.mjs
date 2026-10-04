@@ -69,7 +69,7 @@ async function shot(page, name) {
 }
 
 const browser = await puppeteer.launch({
-  headless: 'new',
+  headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none'],
   defaultViewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
 });
@@ -164,7 +164,7 @@ try {
     check('parameter editable in the modal', changed === '21', `value=${changed}`);
 
     const activeCount = await page.$$eval('[role="dialog"] ul li', (nodes) => nodes.length);
-    check('three instances listed (unlimited per chart)', activeCount === 3, `${activeCount} instances`);
+    check('three indicator instances are listed in the modal', activeCount === 3, `${activeCount} instances`);
 
     await shot(page, 'indicator-modal.png');
 
@@ -345,6 +345,9 @@ await shared.close();
 // ad-block soft-wall (forced via ?adwall=1) + wallet clipboard
 
 const wall = await browser.newPage();
+await wall.evaluateOnNewDocument(() => {
+  localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+});
 await wall.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded' });
 await wall.waitForSelector('[role="dialog"]', { timeout: 30000 });
 // This puppeteer build has no grantPermissions – stub the clipboard instead
@@ -391,7 +394,7 @@ await page.evaluate(() => {
 await clickMenuItem(page, 'Teilen');
 await page.waitForSelector('[role="dialog"]', { timeout: 10000 });
 const sharePreview = await page.evaluate(() => document.querySelector('[role="dialog"]')?.textContent ?? '');
-check('share modal previews the spec tweet', sharePreview.includes('Found an insane setup for $BTC on NodeChart') && sharePreview.includes('#Crypto #Trading'));
+check('share modal previews the spec tweet', sharePreview.includes('Found a setup for $BTC on NodeChart') && sharePreview.includes('#Crypto #Trading'));
 await page.screenshot({ path: join(artifacts, 'share-modal.png') });
 await page.evaluate(() => {
   const button = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Auf X posten');
@@ -593,7 +596,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
       .catch(() => {});
     const heatTiles = await pro.$$eval('aside[aria-label="Pro-Metriken"] section[aria-label="Heatmap"] span[title]', (nodes) => nodes.length);
     check('heatmap paints 28 tiles', heatTiles === 28, `${heatTiles} tiles`);
-    check('options: DVOL + put/call + max pain render', proText.includes('DVOL BTC') && proText.includes('Put/Call OI') && proText.includes('Max Pain'));
+    check('options: DVOL + call/put + max pain render', proText.includes('DVOL BTC') && proText.includes('Call/Put OI') && proText.includes('Max Pain'));
     // wave 2: countdown + sparklines need deriv/flow/hist; smile/term need Deribit
     await pro.waitForFunction(
       () => {
@@ -689,11 +692,13 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
     return before;
   };
   const wave2Labels = await menuLabels();
-  check('wave2 entries present (S/R Auto, Divergenzen, Alerts-Manager)', wave2Labels.includes('S/R Auto') && wave2Labels.includes('Divergenzen') && wave2Labels.some((l) => l.startsWith('Alerts')));
-  const srBefore = await chipByLabel('S/R Auto');
+  check('wave2 entries present (NodeCluster, Divergenzen, Alerts-Manager)', wave2Labels.includes('NodeCluster') && wave2Labels.includes('Divergenzen') && wave2Labels.some((l) => l.startsWith('Alerts')));
+  const srBefore = await chipByLabel('NodeCluster');
   await wait(900);
-  const srAfter = await analysePressed('S/R Auto');
-  check('S/R auto entry toggles price lines on', srBefore === 'false' && srAfter === 'true', `${srBefore} → ${srAfter}`);
+  const srAfter = await analysePressed('NodeCluster');
+  check('NodeCluster entry toggles cluster bands on', srBefore === 'false' && srAfter === 'true', `${srBefore} → ${srAfter}`);
+  const nodeClusterAttr = await pro.$eval('[data-node-cluster]', (element) => element.getAttribute('data-node-cluster'));
+  check('NodeCluster overlay is wired to the canvas source', nodeClusterAttr === 'on', nodeClusterAttr ?? 'missing');
   const divBefore = await chipByLabel('Divergenzen');
   await wait(900);
   const divAfter = await analysePressed('Divergenzen');
@@ -1539,7 +1544,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   const landHtml = await land.evaluate(() => document.body.innerHTML);
   check('landing support line keeps funding doctrine', /ein dev, eine server-rechnung|one dev, one server bill/i.test(landText));
   check('landing frames funding instead of \"free project\"', /werbung und optionale tipps|ads and optional tips/i.test(landText) && !/100 ?% ?(kostenlos|free)/i.test(landText));
-  check('landing benefit block lists paid-elsewhere gates', /unbegrenzt indikatoren|unlimited indicators/i.test(landText) && /premium/i.test(landText) && /screener/i.test(landText));
+  check('landing benefit block lists paid-elsewhere gates', /indikatoren je chart|add indicators to each chart/i.test(landText) && /premium/i.test(landText) && /screener/i.test(landText));
   check('landing benefit block lists unique tools (wave-7)', /liq radar/i.test(landText) && /clock edge/i.test(landText) && /lag oracle/i.test(landText));
   check('landing benefit block lists unique tools (wave-3/5)', /bar-lupe|bar magnifier/i.test(landText) && /whale-flow|whale flow/i.test(landText));
   check('landing ist schlank (keine FAQ-/Story-Sektionen)', !landHtml.includes('id="survival"') && !landHtml.includes('id="faq"') && landText.length < 12000);

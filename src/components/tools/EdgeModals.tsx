@@ -35,7 +35,7 @@ export function EdgeLiqModal({ candles }: EdgeModalProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={t('liqTitle')} subtitle={t('liqSub')} widthClass="max-w-2xl">
-      <div className="flex flex-col gap-5 p-5">
+      <div className="flex min-w-0 flex-col gap-4 px-2 py-2 sm:gap-5 sm:p-5">
         <label className="flex cursor-pointer items-center gap-3 font-mono text-2xs uppercase tracking-cyber text-fg">
           <input type="checkbox" checked={on} onChange={toggle} className="size-4 accent-[hsl(var(--nc-primary))]" />
           {t('liqEnable')}
@@ -77,22 +77,29 @@ function MagnetRows({
   return (
     <ul className="flex flex-col gap-1.5">
       {rows.map((row) => (
-        <li key={`${row.side}-${row.price}`} className="flex items-center gap-3 border border-line/60 bg-surface/40 px-3 py-2">
-          <span className={cn('font-mono text-2xs', tone === 'bull' ? 'text-bull' : 'text-bear')}>
+        <li
+          key={`${row.side}-${row.price}`}
+          className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 border border-line/60 bg-surface/40 px-2 py-2 sm:flex sm:gap-3 sm:px-3"
+        >
+          <span className={cn('whitespace-nowrap font-mono text-2xs', tone === 'bull' ? 'text-bull' : 'text-bear')}>
             {row.leverage}× {row.side === 'long' ? 'L' : 'S'}
           </span>
-          <span className="flex-1 font-mono text-xs tabular-nums text-fg">{usd(row.price)}</span>
-          <span className="font-mono text-2xs tabular-nums text-faint">
+          <span className="min-w-0 truncate text-right font-mono text-xs tabular-nums text-fg sm:flex-1 sm:text-left">
+            {usd(row.price)}
+          </span>
+          <span className="whitespace-nowrap text-right font-mono text-2xs tabular-nums text-faint">
             {row.distancePct >= 0 ? '+' : ''}
-            {row.distancePct.toFixed(2)} %
+            {row.distancePct.toFixed(2)}%
           </span>
-          <span className="h-1.5 w-24 bg-line/60" aria-hidden>
-            <span
-              className={cn('block h-full', tone === 'bull' ? 'bg-bull' : 'bg-bear')}
-              style={{ width: `${Math.round(row.intensity * 100)}%` }}
-            />
+          <span className="col-span-2 flex min-w-0 items-center gap-2 sm:flex-none" aria-hidden>
+            <span className="h-1.5 min-w-0 flex-1 bg-line/60 sm:w-24 sm:flex-none">
+              <span
+                className={cn('block h-full', tone === 'bull' ? 'bg-bull' : 'bg-bear')}
+                style={{ width: `${Math.round(row.intensity * 100)}%` }}
+              />
+            </span>
           </span>
-          <span className="w-10 text-right font-mono text-2xs tabular-nums text-faint">
+          <span className="w-8 text-right font-mono text-2xs tabular-nums text-faint sm:w-10">
             {Math.round(row.intensity * 100)}
           </span>
         </li>

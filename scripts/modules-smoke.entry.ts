@@ -6,16 +6,42 @@
  *   2. `jsonld`        – alle sechs Structured-Data-Builder (SEO)
  *   3. `notifications` – Graceful-Degradation ohne window/Notification/Audio
  *   4. `locale-param`  – assertLocale-Gate (Server-Pfad, hier offline simuliert)
+ *   5. `ad consent`    – local/session parsing, denial priority and fail-closed storage fallback
  *
  * Run with: npm run smoke:modules
  */
 
 (globalThis as unknown as { window: unknown }).window = globalThis;
+let failLocalStorageWrites = false;
+let failSessionStorageWrites = false;
+let failLocalStorageRemovals = false;
 {
   const mem = new Map<string, string>();
   (globalThis as unknown as { localStorage: unknown }).localStorage = {
     getItem: (k: string) => mem.get(k) ?? null,
-    setItem: (k: string, v: string) => void mem.set(k, String(v)),
+    setItem: (k: string, v: string) => {
+      if (failLocalStorageWrites) throw new Error('simulated localStorage write failure');
+      mem.set(k, String(v));
+    },
+    removeItem: (k: string) => {
+      if (failLocalStorageRemovals) throw new Error('simulated localStorage removal failure');
+      mem.delete(k);
+    },
+    clear: () => mem.clear(),
+    key: (i: number) => [...mem.keys()][i] ?? null,
+    get length() {
+      return mem.size;
+    },
+  };
+}
+{
+  const mem = new Map<string, string>();
+  (globalThis as unknown as { sessionStorage: unknown }).sessionStorage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => {
+      if (failSessionStorageWrites) throw new Error('simulated sessionStorage write failure');
+      mem.set(k, String(v));
+    },
     removeItem: (k: string) => void mem.delete(k),
     clear: () => mem.clear(),
     key: (i: number) => [...mem.keys()][i] ?? null,
@@ -92,6 +118,62 @@ console.log('\n— locale-param: assertLocale-Gate —');
 const { isLocale } = await import('@/i18n/routing');
 check('unterstützte Locales passieren das Gate', (['de', 'en', 'es', 'ru', 'zh'] as string[]).every((l) => isLocale(l)));
 check('fremde Locales werden abgewiesen (→ 404 live in qa-modules)', !isLocale('fr') && !isLocale('xx') && !isLocale('de-DE'));
+
+/* ----------------------------- 5) ad consent ------------------------------- */
+
+console.log('\n— ad consent: fail-closed local preference —');
+const consent = await import('@/lib/ads/consent');
+const now = 1_800_000_000_000;
+const consentRecord = (choice: 'granted' | 'denied', decidedAt = now, version = 1) =>
+  JSON.stringify({ version, choice, decidedAt });
+check('missing/malformed consent defaults to unknown', consent.parseAdConsent(null, now) === 'unknown' && consent.parseAdConsent('{broken', now) === 'unknown');
+check('only a valid fresh grant/denial is accepted', consent.parseAdConsent(consentRecord('granted'), now) === 'granted' && consent.parseAdConsent(consentRecord('denied'), now) === 'denied');
+check('expired, future-dated or unknown-version consent fails closed', consent.parseAdConsent(consentRecord('granted', now - consent.AD_CONSENT_TTL_MS - 1), now) === 'unknown' && consent.parseAdConsent(consentRecord('granted', now + 10 * 60_000), now) === 'unknown' && consent.parseAdConsent(consentRecord('granted', now, 2), now) === 'unknown');
+localStorage.removeItem(consent.AD_CONSENT_STORAGE_KEY);
+sessionStorage.removeItem('nc-ad-consent-session-v1');
+check('no stored choice does not permit ad scripts', consent.getAdConsent() === 'unknown' && !consent.canLoadAdScripts());
+check('explicit grant is stored and permits ads', consent.setAdConsent('granted') && consent.canLoadAdScripts());
+check('explicit rejection is stored and blocks ads', consent.setAdConsent('denied') && consent.getAdConsent() === 'denied' && !consent.canLoadAdScripts());
+
+// A valid session denial overrides a still-readable local grant; no stale grant fallback.
+localStorage.setItem(consent.AD_CONSENT_STORAGE_KEY, consentRecord('granted', Date.now()));
+sessionStorage.setItem('nc-ad-consent-session-v1', consentRecord('denied', Date.now()));
+check('session denial overrides local grant and blocks ad scripts', consent.getAdConsent() === 'denied' && !consent.canLoadAdScripts());
+sessionStorage.removeItem('nc-ad-consent-session-v1');
+check('removing session denial reveals only the fresh local grant', consent.getAdConsent() === 'granted' && consent.canLoadAdScripts());
+localStorage.removeItem(consent.AD_CONSENT_STORAGE_KEY);
+sessionStorage.setItem('nc-ad-consent-session-v1', consentRecord('granted', Date.now()));
+check('a session grant alone is ignored', consent.getAdConsent() === 'unknown' && !consent.canLoadAdScripts());
+sessionStorage.removeItem('nc-ad-consent-session-v1');
+
+localStorage.setItem(consent.AD_CONSENT_STORAGE_KEY, consentRecord('granted', Date.now()));
+failLocalStorageWrites = true;
+const denialFallbackWorks = consent.setAdConsent('denied') && consent.getAdConsent() === 'denied' && !consent.canLoadAdScripts();
+failLocalStorageWrites = false;
+check('a local-storage write failure can still persist a session denial', denialFallbackWorks);
+localStorage.removeItem(consent.AD_CONSENT_STORAGE_KEY);
+sessionStorage.removeItem('nc-ad-consent-session-v1');
+
+localStorage.setItem(consent.AD_CONSENT_STORAGE_KEY, consentRecord('granted', Date.now()));
+failLocalStorageWrites = true;
+failSessionStorageWrites = true;
+const denialWithRemoval = !consent.setAdConsent('denied') && consent.getAdConsent() === 'denied' && !consent.canLoadAdScripts() && localStorage.getItem(consent.AD_CONSENT_STORAGE_KEY) === null && consent.hasVolatileAdDenial();
+failLocalStorageWrites = false;
+failSessionStorageWrites = false;
+check('if both stores fail but local removal works, ads stay blocked in memory', denialWithRemoval);
+
+localStorage.setItem(consent.AD_CONSENT_STORAGE_KEY, consentRecord('granted', Date.now()));
+failLocalStorageWrites = true;
+failSessionStorageWrites = true;
+failLocalStorageRemovals = true;
+const staleGrantBlocked = !consent.setAdConsent('denied') && consent.getAdConsent() === 'denied' && !consent.canLoadAdScripts() && localStorage.getItem(consent.AD_CONSENT_STORAGE_KEY) !== null && consent.hasVolatileAdDenial();
+failLocalStorageWrites = false;
+failSessionStorageWrites = false;
+failLocalStorageRemovals = false;
+check('if storage and removal fail, volatile denial overrides a readable stale grant', staleGrantBlocked);
+check('a later explicit grant clears the in-memory denial', consent.setAdConsent('granted') && consent.getAdConsent() === 'granted' && !consent.hasVolatileAdDenial());
+localStorage.removeItem(consent.AD_CONSENT_STORAGE_KEY);
+sessionStorage.removeItem('nc-ad-consent-session-v1');
 
 console.log(failures === 0 ? '\n✔ modules smoke OK\n' : `\n✖ ${failures} failure(s)\n`);
 process.exit(failures === 0 ? 0 : 1);

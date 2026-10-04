@@ -34,12 +34,14 @@ export default async function LandingPage({ params }: PageProps) {
   const locale = assertLocale((await params).locale);
   setRequestLocale(locale);
 
-  // featureList = exakt was die Landing sichtbar verspricht (9 bezahlte
-  // Konkurrenz-Features + 9 NodeChart-Uniques) → LD und Seite deckungsgleich
+  // Keep structured data aligned with the visible feature inventory: paid[]
+  // uses { feat, gate } rows, while unique[] contains plain strings.
   const tb = await getTranslations({ locale, namespace: 'benefit' });
-  const paid = tb.raw('paid') as { title: string }[];
-  const unique = tb.raw('unique') as { title: string }[];
-  const featureList = [...paid, ...unique].map((item) => item.title);
+  const paid = tb.raw('paid') as { feat: string }[];
+  const unique = tb.raw('unique') as string[];
+  const featureList = [...paid.map((row) => row.feat), ...unique].filter(
+    (feature): feature is string => typeof feature === 'string' && feature.trim().length > 0,
+  );
 
   return (
     <>

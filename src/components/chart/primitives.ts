@@ -26,6 +26,7 @@ import type {
   SeriesAttachedParameter,
   SeriesType,
   Time,
+  UTCTimestamp,
 } from 'lightweight-charts';
 import { CHART_THEME_FALLBACK, withAlpha, type ChartTheme } from '@/lib/chart-theme';
 import { drawingLabel, extendToRight, fibLevelsFor, type ToXY } from '@/lib/drawings';
@@ -581,6 +582,229 @@ export class VolumeProfilePrimitive implements ISeriesPrimitive<Time> {
         ctx.moveTo(0, yLevel);
         ctx.lineTo(width, yLevel);
         ctx.stroke();
+        ctx.restore();
+      }
+    });
+  }
+}
+
+/* ---------------------------- NodeCluster ---------------------------------- */
+
+export interface NodeClusterPoint {
+  /** Candle open time in milliseconds (UTC). */
+  time: number;
+  price: number;
+}
+
+export interface NodeClusterBand {
+  price: number;
+  lower: number;
+  upper: number;
+  touches: number;
+  /** Candle-derived pivot density, not order-book depth. */
+  strength: number;
+  kind: 'support' | 'resistance';
+  nodes: NodeClusterPoint[];
+}
+
+export interface NodeClusterSource {
+  levels: NodeClusterBand[];
+  digits: number;
+  theme: ChartTheme;
+}
+
+/**
+ * NodeCluster renders the locally computed pivot groups as layered price zones.
+ * It stays inside the chart canvas (so it pans, zooms, resizes, and exports
+ * with the chart) and uses pivot count only as a visual density estimate.
+ */
+export class NodeClusterPrimitive implements ISeriesPrimitive<Time> {
+  private source: NodeClusterSource | null = null;
+  private chart: IChartApi | null = null;
+  private series: ISeriesApi<SeriesType> | null = null;
+  private notify: () => void = () => {};
+  private views: readonly IPrimitivePaneView[] = [
+    {
+      zOrder: () => 'top' as PrimitivePaneViewZOrder,
+      renderer: () => ({ draw: (target: CanvasRenderingTarget2D) => this.paint(target) }),
+    },
+  ];
+
+  attached(param: SeriesAttachedParameter<Time, SeriesType>): void {
+    this.chart = param.chart;
+    this.series = param.series;
+    this.notify = param.requestUpdate;
+  }
+
+  detached(): void {
+    this.chart = null;
+    this.series = null;
+    this.notify = () => {};
+  }
+
+  paneViews(): readonly IPrimitivePaneView[] {
+    return this.views;
+  }
+
+  setSource(source: NodeClusterSource | null): void {
+    this.source = source;
+    this.notify();
+  }
+
+  private y(price: number): number | null {
+    const coordinate = this.series?.priceToCoordinate(price);
+    if (coordinate == null) return null;
+    const value = Number(coordinate);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  private x(timeMs: number): number | null {
+    if (!this.chart || !Number.isFinite(timeMs)) return null;
+    const coordinate = this.chart.timeScale().timeToCoordinate(Math.floor(timeMs / 1000) as UTCTimestamp);
+    if (coordinate == null) return null;
+    const value = Number(coordinate);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  paint(target: CanvasRenderingTarget2D): void {
+    const source = this.source;
+    if (!source || source.levels.length === 0) return;
+
+    target.useMediaCoordinateSpace((scope) => {
+      const ctx = scope.context;
+      const { width, height } = scope.mediaSize;
+      if (width < 32 || height < 32) return;
+
+      const visible: { level: NodeClusterBand; color: string; centerY: number }[] = [];
+      for (const level of source.levels) {
+        const upper = this.y(level.upper);
+        const lower = this.y(level.lower);
+        if (upper == null || lower == null) continue;
+
+        const top = Math.min(upper, lower);
+        const bottom = Math.max(upper, lower);
+        if (bottom < 0 || top > height) continue;
+        const centerY = this.y(level.price) ?? (top + bottom) / 2;
+        const strength = Math.min(1, Math.max(0, level.strength));
+        const color = level.kind === 'support' ? source.theme.bull : source.theme.bear;
+        const bandHeight = Math.max(3, bottom - top);
+        const bandTop = bottom - top < 3 ? centerY - bandHeight / 2 : top;
+        const bandBottom = bandTop + bandHeight;
+
+        ctx.save();
+
+        // A soft horizontal field plus a brighter centre gives each cluster
+        // visual depth without obscuring candles or volume bars.
+        const field = ctx.createLinearGradient(0, 0, width, 0);
+        field.addColorStop(0, withAlpha(color, 0.012 + strength * 0.012));
+        field.addColorStop(0.18, withAlpha(color, 0.035 + strength * 0.025));
+        field.addColorStop(0.82, withAlpha(color, 0.035 + strength * 0.025));
+        field.addColorStop(1, withAlpha(color, 0.012 + strength * 0.012));
+        ctx.fillStyle = field;
+        ctx.fillRect(0, bandTop, width, bandHeight);
+
+        const depth = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
+        depth.addColorStop(0, withAlpha(color, 0.04 + strength * 0.06));
+        depth.addColorStop(0.5, withAlpha(color, 0.08 + strength * 0.12));
+        depth.addColorStop(1, withAlpha(color, 0.04 + strength * 0.06));
+        ctx.fillStyle = depth;
+        ctx.fillRect(0, bandTop, width, bandHeight);
+
+        // Top/bottom lips and a glowing dotted median create a raised zone.
+        ctx.strokeStyle = withAlpha(color, 0.2 + strength * 0.25);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, bandTop);
+        ctx.lineTo(width, bandTop);
+        ctx.moveTo(0, bandBottom);
+        ctx.lineTo(width, bandBottom);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 5 + strength * 8;
+        ctx.strokeStyle = withAlpha(color, 0.45 + strength * 0.4);
+        ctx.lineWidth = 1 + strength * 0.55;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(width, centerY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Recent pivot nodes are shown as small, outlined beads in the band.
+        // Keep the count bounded so realtime updates stay cheap on phones.
+        for (const node of level.nodes.slice(-10)) {
+          const nodeX = this.x(node.time);
+          const nodeY = this.y(node.price);
+          if (nodeX == null || nodeY == null || nodeX < 0 || nodeX > width || nodeY < bandTop || nodeY > bandBottom) continue;
+          ctx.strokeStyle = withAlpha(color, 0.16 + strength * 0.16);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(nodeX, bandTop + 1);
+          ctx.lineTo(nodeX, bandBottom - 1);
+          ctx.stroke();
+          ctx.fillStyle = withAlpha(source.theme.bg, 0.92);
+          ctx.strokeStyle = withAlpha(color, 0.65 + strength * 0.3);
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(nodeX, nodeY, 2.5 + strength * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(nodeX, nodeY, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+        visible.push({ level, color, centerY });
+      }
+
+      // Right-edge chips stay inside the plot (instead of disappearing under
+      // the price scale) and spread vertically when nearby bands converge.
+      const fontSize = width < 360 ? 8 : 9;
+      const chipHeight = 18;
+      const chipGap = 3;
+      ctx.font = `600 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      ctx.textBaseline = 'middle';
+      visible.sort((a, b) => a.centerY - b.centerY);
+      let previousBottom = 3;
+
+      for (const entry of visible) {
+        const { level, color, centerY } = entry;
+        const side = level.kind === 'support' ? 'S' : 'R';
+        const text = `NC ${side}×${level.touches} · ${level.price.toFixed(source.digits)}`;
+        const chipWidth = Math.min(width - 8, Math.ceil(ctx.measureText(text).width) + 18);
+        const x = Math.max(4, width - chipWidth - 5);
+        let y = Math.min(height - chipHeight - 3, Math.max(3, centerY - chipHeight / 2));
+        y = Math.max(y, previousBottom + chipGap);
+        if (y + chipHeight > height - 3) y = Math.max(3, height - chipHeight - 3);
+        previousBottom = y + chipHeight;
+
+        ctx.save();
+        if (Math.abs(y + chipHeight / 2 - centerY) > 8) {
+          ctx.strokeStyle = withAlpha(color, 0.5);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x - 4, centerY);
+          ctx.lineTo(x - 7, y + chipHeight / 2);
+          ctx.stroke();
+        }
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 4 + level.strength * 7;
+        ctx.fillStyle = withAlpha(source.theme.bg, 0.9);
+        ctx.fillRect(x, y, chipWidth, chipHeight);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = withAlpha(color, 0.58 + level.strength * 0.35);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, chipWidth - 1, chipHeight - 1);
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 1, y + 1, 2, chipHeight - 2);
+        ctx.fillStyle = source.theme.text;
+        ctx.fillText(text, x + 7, y + chipHeight / 2, Math.max(0, chipWidth - 11));
+        ctx.fillStyle = withAlpha(color, 0.88);
+        ctx.fillRect(x + 1, y + chipHeight - 2, (chipWidth - 2) * level.strength, 1);
         ctx.restore();
       }
     });

@@ -10,9 +10,11 @@
  * is persisted, so a tablet user with a stylus is not locked out.
  */
 
+import { useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   BarChart3,
+  ChevronDown,
   Crosshair,
   Eraser,
   Minus,
@@ -53,10 +55,21 @@ interface DrawingToolbarProps {
   paneId: string;
   drawingCount: number;
   onClearDrawings: () => void;
+  /** Cross-pane controls only matter in a multi-chart layout. */
+  showSync?: boolean;
+  /** Keep the touch warning/override in one place, not once per chart pane. */
+  showMobileWarning?: boolean;
   className?: string;
 }
 
-export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, className }: DrawingToolbarProps) {
+export function DrawingToolbar({
+  paneId,
+  drawingCount,
+  onClearDrawings,
+  showSync = true,
+  showMobileWarning = true,
+  className,
+}: DrawingToolbarProps) {
   const t = useTranslations('chart');
   const isTouch = useIsTouchHost();
   const forced = useChartStore(selectDrawingToolsForced);
@@ -74,16 +87,38 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
   const setSyncTimeframe = useChartStore((s) => s.setSyncTimeframe);
   const setSyncCrosshair = useChartStore((s) => s.setSyncCrosshair);
   const setSyncZoom = useChartStore((s) => s.setSyncZoom);
+  const [drawOpen, setDrawOpen] = useState(false);
+  const drawMenuId = useId();
 
   const toolsLocked = isTouch && !forced;
 
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      {/* ------------------------------- tools -------------------------------- */}
+      {/* Touch users see one clear entry point instead of a row of disabled icons. */}
+      {isTouch && !toolsLocked && (
+        <button
+          type="button"
+          aria-expanded={drawOpen}
+          aria-controls={drawMenuId}
+          onClick={() => setDrawOpen((value) => !value)}
+          className="nc-clip-sm inline-flex min-h-9 items-center gap-1.5 border border-line bg-surface/50 px-2.5 font-mono text-2xs uppercase tracking-cyber text-muted transition-colors hover:border-primary/40 hover:text-fg"
+        >
+          <MousePointer2 className="size-3.5" aria-hidden />
+          {t('tools.group')}
+          <ChevronDown className={cn('size-3 transition-transform', drawOpen && 'rotate-180')} aria-hidden />
+        </button>
+      )}
+
       <div
+        id={drawMenuId}
         role="group"
         aria-label={t('tools.group')}
-        className={cn('flex items-center gap-1', toolsLocked && 'pointer-events-none opacity-35')}
+        aria-disabled={toolsLocked || undefined}
+        className={cn(
+          'flex items-center gap-1',
+          (toolsLocked || (isTouch && !drawOpen)) && 'hidden',
+          toolsLocked && 'pointer-events-none opacity-35',
+        )}
       >
         <ToolButton
           active={tool === 'none'}
@@ -115,28 +150,32 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
         />
       </div>
 
-      <span className="mx-0.5 hidden h-5 w-px bg-line sm:block" />
+      {showSync && <span className="mx-0.5 hidden h-5 w-px bg-line sm:block" />}
 
-      {/* ------------------------------- sync --------------------------------- */}
-      <div role="group" aria-label={t('sync.group')} className="flex items-center gap-1">
-        <ToolButton
-          active={syncTimeframe}
-          label={t('sync.timeframe')}
-          onClick={() => setSyncTimeframe(!syncTimeframe)}
-          icon={<Scan className="size-3.5" aria-hidden />}
-        />
-        <ToolButton
-          active={syncCrosshair}
-          label={t('sync.crosshair')}
-          onClick={() => setSyncCrosshair(!syncCrosshair)}
-          icon={<Crosshair className="size-3.5" aria-hidden />}
-        />
-        <ToolButton
-          active={syncZoom}
-          label={t('sync.zoom')}
-          onClick={() => setSyncZoom(!syncZoom)}
-          icon={<MoveRight className="size-3.5" aria-hidden />}
-        />
+      {showSync && (
+        <div role="group" aria-label={t('sync.group')} className="flex items-center gap-1">
+          <ToolButton
+            active={syncTimeframe}
+            label={t('sync.timeframe')}
+            onClick={() => setSyncTimeframe(!syncTimeframe)}
+            icon={<Scan className="size-3.5" aria-hidden />}
+          />
+          <ToolButton
+            active={syncCrosshair}
+            label={t('sync.crosshair')}
+            onClick={() => setSyncCrosshair(!syncCrosshair)}
+            icon={<Crosshair className="size-3.5" aria-hidden />}
+          />
+          <ToolButton
+            active={syncZoom}
+            label={t('sync.zoom')}
+            onClick={() => setSyncZoom(!syncZoom)}
+            icon={<MoveRight className="size-3.5" aria-hidden />}
+          />
+        </div>
+      )}
+
+      <div role="group" aria-label={t('sync.volume')} className="flex items-center gap-1">
         <ToolButton
           active={volume}
           label={t('sync.volume')}
@@ -145,8 +184,8 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
         />
       </div>
 
-      {/* ------------------------------ mobile gate ---------------------------- */}
-      {isTouch && !dismissed && (
+      {/* Only the first pane explains the touch gate; the preference is shared. */}
+      {isTouch && showMobileWarning && !dismissed && (
         <div
           role="status"
           className="nc-clip flex w-full items-start gap-2 border border-warning/45 bg-warning/10 px-3 py-2"
@@ -164,7 +203,7 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
               onClick={() => setForced(!forced)}
               aria-pressed={forced}
               className={cn(
-                'nc-clip-sm inline-flex h-7 items-center gap-1.5 border px-2 font-mono text-micro-10 uppercase tracking-cyber transition-colors',
+                'nc-clip-sm inline-flex h-8 items-center gap-1.5 border px-2 font-mono text-micro-10 uppercase tracking-cyber transition-colors',
                 forced
                   ? 'border-primary/70 bg-primary/14 text-primary hover:bg-primary/22'
                   : 'border-line bg-surface/60 text-muted hover:border-primary/40 hover:text-fg',
@@ -175,7 +214,7 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
             <button
               type="button"
               onClick={dismiss}
-              className="nc-clip-sm inline-flex h-7 items-center border border-line bg-surface/40 px-2 font-mono text-micro-10 uppercase tracking-cyber text-faint transition-colors hover:text-fg"
+              className="nc-clip-sm inline-flex h-8 items-center border border-line bg-surface/40 px-2 font-mono text-micro-10 uppercase tracking-cyber text-faint transition-colors hover:text-fg"
             >
               {t('mobile.dismiss')}
             </button>
@@ -183,11 +222,11 @@ export function DrawingToolbar({ paneId, drawingCount, onClearDrawings, classNam
         </div>
       )}
 
-      {toolsLocked && dismissed && (
+      {toolsLocked && showMobileWarning && dismissed && (
         <button
           type="button"
           onClick={() => setForced(true)}
-          className="nc-clip-sm inline-flex h-7 items-center gap-1.5 border border-line px-2 font-mono text-micro-10 uppercase tracking-cyber text-faint transition-colors hover:border-primary/50 hover:text-primary"
+          className="nc-clip-sm inline-flex min-h-9 items-center gap-1.5 border border-line px-2.5 font-mono text-micro-10 uppercase tracking-cyber text-faint transition-colors hover:border-primary/50 hover:text-primary"
         >
           <TriangleAlert className="size-3" aria-hidden />
           {t('mobile.force')}

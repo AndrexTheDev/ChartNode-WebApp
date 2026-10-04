@@ -171,10 +171,12 @@ for (const locale of LOCALES) {
     }
     if (route.name === 'landing') {
       const app = graph.find((g) => g['@type'] === 'SoftwareApplication');
+      const features = app?.featureList ?? [];
       check(
-        `${tag}: SoftwareApplication featureList ≥12 + Offer 0 + Version`,
-        (app?.featureList ?? []).length >= 12 && app?.offers?.price === '0' && typeof app?.softwareVersion === 'string',
-        `features=${(app?.featureList ?? []).length}`,
+        `${tag}: SoftwareApplication has ≥12 non-empty feature strings + Offer 0 + Version`,
+        features.length >= 12 && features.every((feature) => typeof feature === 'string' && feature.trim().length > 0)
+          && app?.offers?.price === '0' && typeof app?.softwareVersion === 'string',
+        `features=${features.length}`,
       );
     }
     if (route.name === 'help') {
@@ -256,9 +258,9 @@ for (const locale of LOCALES) {
 // Social Cards: lokalisierte OG-SVGs, Injection-Guards, Bot-Fetch, Card-Images
 const og = async (qs) => (await fetch(`${BASE}/api/og${qs}`)).text();
 const ogDe = await og('?ticker=SOL&locale=de');
-check('M7: OG-Card de lokalisiert', ogDe.includes('kein Account') && ogDe.includes('Echtzeit'), '');
+check('M7: OG-Card de localization uses the current data-availability copy', ogDe.includes('kein Konto nötig') && ogDe.includes('Datenquellen variieren'), '');
 const ogZh = await og('?ticker=SOL&locale=zh');
-check('M7: OG-Card zh lokalisiert', ogZh.includes('终端'), '');
+check('M7: OG-Card zh localization uses the current data-availability copy', ogZh.includes('数据源各异') && ogZh.includes('无需账户'), '');
 const ogEn = await og('?ticker=SOL&locale=en');
 check('M7: OG-Card en lokalisiert', ogEn.includes('no account'), '');
 const ogInj = await og('?ticker=%3Csvg%20onload%3Dalert(1)%3E&locale=de');
@@ -324,7 +326,7 @@ for (const locale of LOCALES) {
   const html = await (await fetch(`${BASE}/${locale}`)).text();
   const tag = `${locale}/ [landing-M4]`;
   const h1 = decode(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  check(`${tag}: H1 trägt Keyword-Cluster (TradingView + CEX)`, /TradingView/i.test(h1) && /CEX/i.test(h1), h1);
+  check(`${tag}: H1 names both CEX and DEX chart coverage`, /CEX/i.test(h1) && /DEX/i.test(h1), h1);
   const levels = [...html.matchAll(/<h([1-6])[\s>]/gi)].map((m) => Number(m[1]));
   let skip = false;
   for (let i = 1; i < levels.length; i += 1) if (levels[i] - levels[i - 1] > 1) skip = true;

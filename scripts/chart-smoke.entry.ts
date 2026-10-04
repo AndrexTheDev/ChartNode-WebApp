@@ -6,7 +6,7 @@
  *   1. indicator maths from `technicalindicators` is re-checked against
  *      independent reference implementations written in this file
  *   2. warm-up alignment, Heikin-Ashi, price precision
- *   3. chart store: unlimited indicator instances, param clamping, drawings,
+ *   3. chart store: multiple indicator instances, param clamping, drawings,
  *      per-pane timeframes
  *   4. drawing geometry: fib levels, hit tests, translation, ray projection
  *   5. the cross-chart sync bus (echo suppression + epsilon comparison)
@@ -382,16 +382,16 @@ console.log('\n— alignment, warm-up & robustness —');
 
 /* ================================ chart store =============================== */
 
-console.log('\n— chart store (unlimited indicators, drawings, sync) —');
+console.log('\n— chart store (indicator instances, drawings, sync) —');
 
 const store = useChartStore;
 const PANE = 'pane-1';
 
 {
   const ids: string[] = [];
-  for (let i = 0; i < 25; i += 1) ids.push(store.getState().addIndicator(PANE, i % 2 === 0 ? 'RSI' : 'EMA', { period: 5 + i }));
+  for (let i = 0; i < 25; i += 1) ids.push(store.getState().addIndicator(PANE, i % 2 === 0 ? 'RSI' : 'EMA', { period: 5 + i }));;
   const list = store.getState().indicators[PANE] ?? [];
-  check('25 indicator instances on one pane (no cap)', list.length === 25);
+  check('25 indicator instances can coexist on one pane', list.length === 25);
   check('instance ids are unique', new Set(ids).size === 25);
   check('params are clamped on the way in', list.every((entry) => (entry.params.period ?? 0) <= 400));
 
@@ -666,7 +666,7 @@ console.log('\n— wave 2: new oscillator maths —');
   check('ICHIMOKU cloud spans are finite', lastValue(ichi?.spanA ?? []) != null && lastValue(ichi?.spanB ?? []) != null);
 }
 
-console.log('\n— wave 2: premium analytics (S/R, divergences, risk) —');
+console.log('\n— wave 2: premium analytics (NodeCluster, divergences, risk) —');
 
 {
   const premium = await import('@/lib/premium');
@@ -679,13 +679,21 @@ console.log('\n— wave 2: premium analytics (S/R, divergences, risk) —');
     ranging.push({ t: start + i * 3_600_000, o: base, h: base + 0.8, l: base - 0.8, c: base - 0.2, v: 900 });
   }
   const levels = premium.supportResistance(ranging);
-  check('support/resistance clusters a range into ≤ 4 levels', levels.length > 0 && levels.length <= 4);
+  check('NodeCluster groups a range into ≤ 4 levels', levels.length > 0 && levels.length <= 4);
   check(
-    'support/resistance finds the range floor as support and the ceiling as resistance',
+    'NodeCluster finds the range floor as support and the ceiling as resistance',
     levels.some((level) => level.kind === 'support' && level.price < 96 && level.touches >= 3) &&
       levels.some((level) => level.kind === 'resistance' && level.price > 104 && level.touches >= 3),
   );
-  check('support/resistance levels come back sorted by price', levels.every((level, index) => index === 0 || level.price >= (levels[index - 1]?.price ?? 0)));
+  check('NodeCluster levels come back sorted by price', levels.every((level, index) => index === 0 || level.price >= (levels[index - 1]?.price ?? 0)));
+  check(
+    'NodeCluster exposes padded bands and source pivot nodes',
+    levels.every((level) => level.lower < level.price && level.price < level.upper && level.nodes.length > 0 && level.nodes.length <= 12),
+  );
+  check(
+    'NodeCluster strength stays a bounded local candle metric',
+    levels.every((level) => Number.isFinite(level.strength) && level.strength > 0 && level.strength <= 1),
+  );
 
   // Divergence: price prints a lower low while RSI prints a higher low.
   const diverging: Candle[] = [];
@@ -814,10 +822,10 @@ const themeLib = await import('@/lib/theme');
 check('baseSymbol strips the quote asset', viral.baseSymbol('BTC/USDT') === 'BTC' && viral.baseSymbol('sol') === 'SOL');
 
 const tweet = viral.buildShareText(
-  'Found an insane setup for {ticker} on NodeChart. Zero fees, real-time on-chain data. #Crypto #Trading',
+  'Found a setup for {ticker} on NodeChart. Public market and on-chain signals are provider-dependent and best-effort. #Crypto #Trading',
   'SOL/USDT',
 );
-check('share text matches the spec template', tweet === 'Found an insane setup for $SOL on NodeChart. Zero fees, real-time on-chain data. #Crypto #Trading');
+check('share text matches the spec template', tweet === 'Found a setup for $SOL on NodeChart. Public market and on-chain signals are provider-dependent and best-effort. #Crypto #Trading');
 
 const links = viral.buildShareLinks(tweet, 'https://nodechart.app/de/terminal?ticker=SOL');
 check('X intent carries text + url', links.x.startsWith('https://twitter.com/intent/tweet?text=') && decodeURIComponent(links.x.split('text=')[1] ?? '').includes('#Crypto #Trading https://nodechart.app/de/terminal?ticker=SOL'));
@@ -841,7 +849,7 @@ check('premium themes are gated', themeLib.isPremiumTheme('matrix') && themeLib.
 useViralStore.setState({ shareUnlocked: false, shareOpen: false, supporter: false, shares: 0 });
 check('locked premium theme opens the share modal', useViralStore.getState().requestTheme('matrix') === false && useViralStore.getState().shareOpen === true && useViralStore.getState().shareReason === 'theme');
 useViralStore.getState().unlockViaShare();
-check('share unlocks permanently + counts', useViralStore.getState().shareUnlocked === true && useViralStore.getState().shares === 1);
+check('share unlock persists in browser state + counts', useViralStore.getState().shareUnlocked === true && useViralStore.getState().shares === 1);
 check('unlocked premium theme applies', useViralStore.getState().requestTheme('matrix') === true && useAppStore.getState().theme === 'matrix');
 // donation grace: any donation → 48 h silence, > $5 → 5 days
 useViralStore.getState().registerDonation(1);

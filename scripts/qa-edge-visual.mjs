@@ -335,7 +335,7 @@ async function regimeFlow(browser) {
     await page.screenshot({ path: 'artifacts/qa-step3-regime.png' });
 
     // every recommendation maps to a real, verifiable store toggle
-    const known = ['AVWAP armen', 'Support/Resistance', 'Volumen-Profil', 'Divergenzen', 'Liq-Magnete', 'Alert armen'];
+    const known = ['AVWAP armen', 'NodeCluster', 'Volumen-Profil', 'Divergenzen', 'Liq-Magnete', 'Alert armen'];
     check('all recommendations are known actions', state.recs.every((label) => known.includes(label)), state.recs.join(' | '));
 
     const analysePressed = async (label) => {
@@ -366,7 +366,7 @@ async function regimeFlow(browser) {
 
     let proven = null;
     if (label === 'AVWAP armen') proven = (await analysePressed('aVWAP')) === 'true';
-    if (label === 'Support/Resistance') proven = (await analysePressed('S/R Auto')) === 'true';
+    if (label === 'NodeCluster') proven = (await analysePressed('NodeCluster')) === 'true';
     if (label === 'Volumen-Profil') proven = (await analysePressed('VP')) === 'true';
     if (label === 'Divergenzen') proven = (await analysePressed('Divergenzen')) === 'true';
     if (label === 'Liq-Magnete') proven = (await hostAttr()) === 'on';
@@ -374,8 +374,8 @@ async function regimeFlow(browser) {
     check(`recommendation "${label}" flips the real tool toggle`, proven === true);
 
     // revert so later steps start from a clean slate
-    if (label === 'AVWAP armen' || label === 'Support/Resistance' || label === 'Volumen-Profil' || label === 'Divergenzen') {
-      const menuLabel = { 'AVWAP armen': 'aVWAP', 'Support/Resistance': 'S/R Auto', 'Volumen-Profil': 'VP', Divergenzen: 'Divergenzen' }[label];
+    if (label === 'AVWAP armen' || label === 'NodeCluster' || label === 'Volumen-Profil' || label === 'Divergenzen') {
+      const menuLabel = { 'AVWAP armen': 'aVWAP', NodeCluster: 'NodeCluster', 'Volumen-Profil': 'VP', Divergenzen: 'Divergenzen' }[label];
       await page.evaluate(() => document.querySelector('[data-menu-trigger="analyse"]')?.click());
       await wait(250);
       await page.evaluate((t) => {
@@ -615,7 +615,10 @@ async function menuFlow(browser) {
         const r = el.getBoundingClientRect();
         if (r.right > vw + 2 && !clipped(el)) visual = Math.max(visual, Math.round(r.right - vw));
       }
-      const rect = document.querySelector('[data-menu-trigger="edge"]')?.getBoundingClientRect();
+      const trigger = vw < 1280
+        ? document.querySelector('[data-mobile-controls-trigger]')
+        : document.querySelector('[data-menu-trigger="edge"]');
+      const rect = trigger?.getBoundingClientRect();
       return { scrollable, visual, right: rect ? Math.round(rect.right) : -1, vw };
     });
     check(`toolbar stays intact at ${width}px (no h-overflow, trigger visible)`, !layout.scrollable && layout.visual <= 2 && layout.right > 0 && layout.right <= layout.vw, JSON.stringify(layout));
@@ -893,15 +896,26 @@ async function mobileFlow(browser) {
     [...document.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim() === 'Trotzdem aktivieren')?.click();
   });
   await wait(2500);
-  check('force-enable unlocks the mobile terminal', await page.evaluate(() => !!document.querySelector('[data-menu-trigger="edge"]')));
+  check('force-enable unlocks touch drawing controls', await page.evaluate(() => {
+    const group = [...document.querySelectorAll('[role="group"]')]
+      .find((el) => el.getAttribute('aria-label') === 'Zeichenwerkzeuge');
+    return Boolean(group) && group?.getAttribute('aria-disabled') !== 'true';
+  }));
+  check('compact toolbar exposes its controls entry point', await page.evaluate(() => !!document.querySelector('[data-mobile-controls-trigger]')));
 
   const noOverflow = () =>
     page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth <= 2);
   const openEdge = async (label) => {
-    await page.evaluate(() => document.querySelector('[data-menu-trigger="edge"]')?.click());
+    await page.evaluate(() => document.querySelector('[data-mobile-controls-trigger]')?.click());
     await wait(300);
+    await page.evaluate(() => {
+      const trigger = document.querySelector('[data-mobile-section="edge"] button[aria-controls]');
+      if (trigger?.getAttribute('aria-expanded') !== 'true') trigger?.click();
+    });
+    await wait(200);
     const ok = await page.evaluate((t) => {
-      const item = [...document.querySelectorAll('[role="menuitem"]')].find((b) => (b.textContent ?? '').trim() === t);
+      const item = [...document.querySelectorAll('[data-mobile-controls-sheet] button')]
+        .find((b) => (b.textContent ?? '').trim() === t);
       if (!item) return false;
       item.click();
       return true;

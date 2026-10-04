@@ -12,8 +12,8 @@ import { WalletsList } from './WalletsList';
 /**
  * The tip jar. No paywall, no guilt-trip countdowns – just the honest story:
  * one dev, ads + donations, and three concrete slots your tip fills.
- * Declaring a donation grants the permanent SUPPORTER badge and starts the
- * ask-free grace window (48 h, or 5 days above $5 – see DonatedFlow).
+ * Declaring a donation stores a cosmetic SUPPORTER badge in this browser and
+ * starts the ask-free grace window (48 h, or 5 days above $5 – see DonatedFlow).
  */
 
 export function SupportModal() {

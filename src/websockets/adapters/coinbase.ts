@@ -13,7 +13,7 @@ export const COINBASE_GRANULARITY: Partial<Record<Timeframe, number>> = {
 };
 
 /**
- * Coinbase Exchange feed (public, no key). Verified live:
+ * Coinbase Exchange feed (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"type":"subscribe","product_ids":["BTC-USDT"],"channels":["matches"]}
  * trade     : {"type":"match","trade_id":…,"side":"buy","size":"…","price":"…","product_id":"BTC-USDT","time":"2026-…Z"}
@@ -87,7 +87,7 @@ export const coinbaseAdapter: ExchangeAdapter = {
   },
 };
 
-/** Candle seed URL (needs a User-Agent – browsers always send one). */
+/** Candle seed URL (Coinbase expects a User-Agent; browser behavior can vary). */
 export function coinbaseCandlesUrl(symbol: string, timeframe: Timeframe, limit: number): string | null {
   const granularity = COINBASE_GRANULARITY[timeframe];
   if (!granularity) return null;

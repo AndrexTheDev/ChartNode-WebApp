@@ -2,11 +2,11 @@
 /**
  * Canonical chain ids used across DEX + security providers.
  *
- * All mappings below were verified against the live provider responses
- * (`/api/v2/networks`, `/api/v1/supported_chains`, DexScreener `chainId`s),
- * not copied from documentation – the three services spell the same network
- * differently (`avax` vs `avalanche`, `polygon_pos` vs `polygon`, `xdai` vs
- * `gnosis`, `sei-network` vs `seiv2`).
+ * These mappings normalise provider identifiers observed in API responses;
+ * they do not assert that a provider currently serves every mapped chain or
+ * token. Providers use different spellings (`avax` vs `avalanche`,
+ * `polygon_pos` vs `polygon`, `xdai` vs `gnosis`, `sei-network` vs `seiv2`),
+ * and live coverage/reachability must be checked independently.
  */
 export type ChainId =
   | 'ethereum'

@@ -18,7 +18,7 @@ export interface DexPair {
   url: string | null;
 }
 
-export type AuditProvider = 'goplus' | 'rugcheck' | 'honeypot';
+export type AuditProvider = 'goplus' | 'rugcheck' | 'honeypot' | 'solana-rpc';
 
 export type AuditVerdict = 'safe' | 'warn' | 'danger' | 'unknown';
 

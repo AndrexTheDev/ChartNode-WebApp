@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${SITE_NAME} – Decode the Market`,
     short_name: SITE_NAME,
-    description: 'Free, fast, decentralized charting terminal for CEX & DEX markets.',
+    description: 'Free-to-use, browser-first charting terminal for CEX and DEX markets.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

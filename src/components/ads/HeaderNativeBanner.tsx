@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { usePathname } from '@/i18n/navigation';
 import { detectAdBlockOnce } from '@/lib/ads/adblock';
 import { NATIVE_BANNER_CONTAINER_ID, NATIVE_BANNER_SRC } from '@/lib/ads/config';
+import { canLoadAdScripts, useAdConsent } from '@/lib/ads/consent';
 import { cn } from '@/lib/cn';
 import { donationGraceActive } from '@/store/useViralStore';
 
@@ -20,9 +21,9 @@ let injectedOnce = false;
  * Terminal: dort sitzt bereits der Sponsored-Strip in der Header-Zone
  * („nur wenn dort noch keine Werbung ist").
  *
- *  · SSR rendert die reservierte 4:1-Box ⇒ kein CLS, wenn das Kreativ füllt.
- *  · Füllt Adsterra nicht (Blocker/Flake/kein Fill), kollabiert die Box nach
- *    ~6 s ⇒ kein toter Raum. Donation-Grace & QA kollabieren sofort.
+ *  · Ohne frische Zustimmung wird weder Box noch Drittanbieter-Skript gerendert.
+ *  · Nach Zustimmung reserviert die 4:1-Box Platz; bei No-Fill/Blockade
+ *    kollabiert sie nach Retries. Donation-Grace & QA kollabieren sofort.
  *  · Anti-Blocker-Kette (transparent): onerror ⇒ detectAdBlockOnce() ⇒
  *    echter Blocker → Soft-Wall, Netz-Flake → stiller Retry; nach Wall-Close
  *    (Event `nc-adwall-closed`) ein letzter Versuch. `data-cfasync="false"`.
@@ -31,6 +32,7 @@ let injectedOnce = false;
 export function HeaderNativeBanner() {
   const t = useTranslations('ads');
   const pathname = usePathname();
+  const consent = useAdConsent();
   /** Terminal-Header trägt schon Werbung (Sponsored-Strip) ⇒ kein Banner. */
   const isTerminal = pathname.includes('/terminal');
   const [collapsed, setCollapsed] = useState(false);
@@ -38,7 +40,7 @@ export function HeaderNativeBanner() {
   const done = useRef(false);
 
   useEffect(() => {
-    if (isTerminal) return;
+    if (isTerminal || consent !== 'granted' || !canLoadAdScripts()) return;
     // Spender & QA: keine Injection, reservierte Box sofort kollabieren.
     if (donationGraceActive() || navigator.webdriver) {
       setCollapsed(true);
@@ -65,7 +67,7 @@ export function HeaderNativeBanner() {
     };
 
     const inject = function injectFn(src: string): void {
-      if (done.current || tries.current >= MAX_TRIES) return;
+      if (!canLoadAdScripts() || done.current || tries.current >= MAX_TRIES) return;
       tries.current += 1;
       const script = document.createElement('script');
       script.src = src;
@@ -75,7 +77,12 @@ export function HeaderNativeBanner() {
       script.onload = () => pollFilled(4); // ≈ 1,5/3/4,5/6/7,5 s
       script.onerror = () => {
         script.remove();
+        if (!canLoadAdScripts()) {
+          done.current = true;
+          return;
+        }
         void detectAdBlockOnce().then((blocked) => {
+          if (!canLoadAdScripts()) return;
           if (blocked) {
             done.current = true;
             setCollapsed(true);
@@ -92,7 +99,7 @@ export function HeaderNativeBanner() {
     };
 
     const onWallClosed = () => {
-      if (!done.current && tries.current < MAX_TRIES) inject(NATIVE_BANNER_SRC);
+      if (canLoadAdScripts() && !done.current && tries.current < MAX_TRIES) inject(NATIVE_BANNER_SRC);
     };
     window.addEventListener('nc-adwall-closed', onWallClosed);
     const timer = setTimeout(() => inject(NATIVE_BANNER_SRC), 0);
@@ -100,9 +107,9 @@ export function HeaderNativeBanner() {
       clearTimeout(timer);
       window.removeEventListener('nc-adwall-closed', onWallClosed);
     };
-  }, [isTerminal]);
+  }, [consent, isTerminal]);
 
-  if (isTerminal) return null;
+  if (isTerminal || consent !== 'granted') return null;
 
   return (
     <div

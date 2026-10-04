@@ -4,13 +4,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Modal } from '@/components/ui/Modal';
+import { fetchHeatmap } from '@/api/prometrics';
 import { useViralStore } from '@/store/useViralStore';
 
 interface TickerRow {
   symbol: string;
   base: string;
-  changePct: number;
+  changePct: number | null;
   quoteVolume: number;
+  source: 'gate' | 'okx';
 }
 
 interface Rect {
@@ -20,8 +22,6 @@ interface Rect {
   w: number;
   h: number;
 }
-
-const EXCLUDE = new Set(['USDCUSDT', 'TUSDUSDT', 'BUSDUSDT', 'USDPUSDT', 'FDUSDUSDT', 'EURUSDT', 'USTCUSDT']);
 
 /** Squarified-ish treemap: rows of tiles with balanced aspect ratios. */
 function treemap(rows: TickerRow[], width: number, height: number): Rect[] {
@@ -49,7 +49,8 @@ function treemap(rows: TickerRow[], width: number, height: number): Rect[] {
   return out;
 }
 
-function colorFor(change: number): string {
+function colorFor(change: number | null): string {
+  if (change == null) return 'hsl(var(--nc-muted) / 0.16)';
   const clamped = Math.max(-8, Math.min(8, change));
   if (clamped >= 0) {
     const intensity = clamped / 8;
@@ -66,9 +67,9 @@ interface HeatmapModalProps {
 }
 
 /**
- * Market heatmap over the top USDT pairs by quote volume (Binance 24h
- * ticker, CORS-open). Tile area = volume, colour = 24h change. Click a tile
- * to load it in the terminal.
+ * Market heatmap over the top USDT pairs by quote volume. The shared market
+ * data adapter tries Gate first and falls back to OKX, with bounded fetch,
+ * cache, and cancellation. Tile area = volume, colour = 24h change.
  */
 export function HeatmapModal({ open, onClose, onPick }: HeatmapModalProps) {
   const t = useTranslations('tools');
@@ -78,54 +79,30 @@ export function HeatmapModal({ open, onClose, onPick }: HeatmapModalProps) {
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    const fromBinance = fetch('https://api.binance.com/api/v3/ticker/24hr').then((response) =>
-      response.ok ? response.json() : Promise.reject(new Error('http')),
-    );
-    const fromOkx = fetch('https://www.okx.com/api/v5/market/tickers?instType=SPOT').then((response) =>
-      response.ok ? response.json() : Promise.reject(new Error('http')),
-    );
-    fromBinance
-      .catch(() => fromOkx.then((data: unknown) => ({ okx: data })))
-      .then((data: unknown) => {
+    const controller = new AbortController();
+
+    void fetchHeatmap(controller.signal, 64)
+      .then((tiles) => {
         if (!alive) return;
-        const wrapped = data as { okx?: unknown } | Array<Record<string, unknown>>;
-        const okxBody = !Array.isArray(wrapped) ? (wrapped.okx as { data?: unknown } | undefined) : undefined;
-        const okxPayload = okxBody?.data;
-        const parsed: TickerRow[] = Array.isArray(wrapped)
-          ? (wrapped as Array<Record<string, unknown>>)
-              .filter((entry) => typeof entry.symbol === 'string' && (entry.symbol as string).endsWith('USDT'))
-              .filter((entry) => !EXCLUDE.has(entry.symbol as string))
-              .map((entry) => ({
-                symbol: entry.symbol as string,
-                base: (entry.symbol as string).replace(/USDT$/, ''),
-                changePct: Number(entry.priceChangePercent),
-                quoteVolume: Number(entry.quoteVolume),
-              }))
-          : Array.isArray(okxPayload)
-            ? (okxPayload as Array<Record<string, string>>)
-                .filter((entry) => entry.instId?.endsWith('-USDT'))
-                .map((entry) => {
-                  const last = Number(entry.last);
-                  const open = Number(entry.open24h);
-                  const inst = entry.instId ?? '';
-                  return {
-                    symbol: inst.replace('-', '/'),
-                    base: inst.replace('-USDT', ''),
-                    changePct: open > 0 ? ((last - open) / open) * 100 : 0,
-                    quoteVolume: Number(entry.volCcy24h),
-                  };
-                })
-            : [];
-        const rows = parsed
-          .filter((entry) => Number.isFinite(entry.changePct) && entry.quoteVolume > 0)
-          .sort((a, b) => b.quoteVolume - a.quoteVolume)
-          .slice(0, 64);
-        if (rows.length === 0) throw new Error('empty');
-        setRows(rows);
+        const parsed: TickerRow[] = tiles.map((tile) => ({
+          symbol: tile.pair.replace('/', ''),
+          base: tile.pair.split('/')[0] ?? tile.pair,
+          changePct: tile.changePct,
+          quoteVolume: tile.quoteVolumeUsd,
+          source: tile.source,
+        }));
+        if (parsed.length === 0) {
+          setError(true);
+          return;
+        }
+        setError(false);
+        setRows(parsed);
       })
       .catch(() => alive && setError(true));
+
     return () => {
       alive = false;
+      controller.abort();
     };
   }, [open]);
 
@@ -142,7 +119,7 @@ export function HeatmapModal({ open, onClose, onPick }: HeatmapModalProps) {
               <button
                 key={rect.row.symbol}
                 type="button"
-                title={`${rect.row.base}/USDT · ${rect.row.changePct.toFixed(2)}%`}
+                title={`${rect.row.base}/USDT · ${rect.row.changePct == null ? '—' : `${rect.row.changePct.toFixed(2)}%`}`}
                 onClick={() => {
                   if (onPick(`${rect.row.base}/USDT`)) onClose();
                 }}
@@ -158,9 +135,10 @@ export function HeatmapModal({ open, onClose, onPick }: HeatmapModalProps) {
                 {rect.w > 7 && rect.h > 9 && (
                   <>
                     <span className="text-micro-10 font-bold text-fg">{rect.row.base}</span>
-                    <span className={`text-micro-9 ${rect.row.changePct >= 0 ? 'text-bull' : 'text-bear'}`}>
-                      {rect.row.changePct >= 0 ? '+' : ''}
-                      {rect.row.changePct.toFixed(1)}%
+                    <span className={`text-micro-9 ${rect.row.changePct == null ? 'text-faint' : rect.row.changePct >= 0 ? 'text-bull' : 'text-bear'}`}>
+                      {rect.row.changePct == null
+                        ? '—'
+                        : `${rect.row.changePct >= 0 ? '+' : ''}${rect.row.changePct.toFixed(1)}%`}
                     </span>
                   </>
                 )}
@@ -168,8 +146,13 @@ export function HeatmapModal({ open, onClose, onPick }: HeatmapModalProps) {
             ))}
           </div>
         )}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-2xs text-faint">{t('heatmap.click')}</p>
+          {rows?.[0] && (
+            <span className="font-mono text-2xs text-faint">
+              {t('screener.source', { venue: rows[0].source.toUpperCase() })}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => useViralStore.getState().openSupport()}

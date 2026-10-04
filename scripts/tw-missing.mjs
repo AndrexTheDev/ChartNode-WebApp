@@ -54,6 +54,9 @@ const VARIANTS = [
   'disabled',
   'open',
   'checked',
+  'first',
+  'last',
+  'only',
   'group-hover',
   'group-active',
   'group-open',
@@ -84,6 +87,7 @@ const NOISE = new Set([
   'to-market',
   'to-unlock',
   'to-front',
+  'to-use',
 ]);
 
 const missing = [...used]

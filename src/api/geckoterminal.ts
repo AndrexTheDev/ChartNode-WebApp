@@ -7,6 +7,8 @@ import type { Candle } from '@/websockets/types';
 import type { DexPair } from './types';
 
 const BASE = 'https://api.geckoterminal.com/api/v2';
+/** Pin GeckoTerminal's documented API version instead of following an unannounced latest schema. */
+export const GECKO_API_HEADERS = { accept: 'application/json;version=20230203' };
 
 interface GtAttributes {
   name?: string;
@@ -90,11 +92,11 @@ function normalise(pool: GtPool): DexPair | null {
   };
 }
 
-/** Pool search. Free tier: 30 calls/min – cached + deduped in http layer. */
+/** Pool search. Public API: approximately 10 calls/min; responses are cached for one minute upstream. */
 export async function geckoSearchPools(query: string, signal?: AbortSignal): Promise<DexPair[]> {
   const payload = await fetchJson<GtResponse>(
     `${BASE}/search/pools?query=${encodeURIComponent(query)}&page=1`,
-    { source: 'geckoterminal', cacheTtlMs: 20_000, signal },
+    { source: 'geckoterminal', cacheTtlMs: 60_000, retries: 1, headers: GECKO_API_HEADERS, signal },
   );
   return (payload.data ?? []).map(normalise).filter((p): p is DexPair => p !== null);
 }
@@ -110,12 +112,12 @@ export async function geckoPoolsByToken(
     `${BASE}/networks/${network}/tokens/${tokenAddress}/pools?page=1`,
     {
       source: 'geckoterminal',
-      cacheTtlMs: 20_000,
+      // The upstream itself caches every endpoint for one minute. Matching
+      // that TTL avoids duplicate keyless calls without making fresh data older.
+      cacheTtlMs: 60_000,
+      retries: 1,
+      headers: GECKO_API_HEADERS,
       signal,
-      // GeckoTerminal free tier: 30 req/min – L2-Fallback hält das DEX-Chart
-      // bei einem 429-Sturm am Leben (letzte gute Pool-Liste, 6 h).
-      persistKey: `gt:pools:${chain}:${tokenAddress.toLowerCase()}`,
-      staleTtlMs: 6 * 60 * 60 * 1000,
     },
   );
   return (payload.data ?? []).map(normalise).filter((p): p is DexPair => p !== null);
@@ -136,8 +138,9 @@ const OHLCV_TF: Record<string, [string, number]> = {
 
 /**
  * Real candle history for DEX tokens – the top pool of the token on its chain,
- * straight from GeckoTerminal OHLCV (free, 30 req/min). This is what turns a
- * DEX quote card into a full chart.
+ * straight from GeckoTerminal OHLCV. The keyless public API is approximately
+ * 10 calls/minute; the transport applies a lower local budget and caches each
+ * response for the upstream's one-minute cache window.
  */
 export async function fetchDexCandles(
   chain: ChainId,
@@ -157,11 +160,10 @@ export async function fetchDexCandles(
     `${BASE}/networks/${network}/pools/${pool.pairAddress}/ohlcv/${tf[0]}?aggregate=${tf[1]}&limit=300&currency=usd`,
     {
       source: 'geckoterminal',
-      cacheTtlMs: 30_000,
+      cacheTtlMs: 60_000,
+      retries: 1,
+      headers: GECKO_API_HEADERS,
       signal,
-      // Historische DEX-Kerzen: bis zu 12 h alte Kopie schlägt leeres Chart.
-      persistKey: `gt:ohlcv:${network}:${pool.pairAddress.toLowerCase()}:${timeframe}`,
-      staleTtlMs: 12 * 60 * 60 * 1000,
     },
   );
 

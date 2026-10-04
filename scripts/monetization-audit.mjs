@@ -136,7 +136,7 @@ const AUDIT_FN = `((mode) => {
   return out;
 })`;
 
-const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'], protocolTimeout: 60000 });
+const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'], protocolTimeout: 60000 });
 
 async function openPage(vp, url, { spoof = true, seed } = {}) {
   const ctx = await browser.createBrowserContext(); // isolierte Caps/Storage
@@ -150,7 +150,10 @@ async function openPage(vp, url, { spoof = true, seed } = {}) {
   if (spoof) {
     await page.evaluateOnNewDocument((s) => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
-      if (s) { try { localStorage.setItem('nc-visits', s); } catch {} }
+      try {
+        localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
+        if (s) localStorage.setItem('nc-visits', s);
+      } catch {}
     }, seed ?? null);
   }
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });

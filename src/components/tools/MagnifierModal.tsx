@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { fetchJson } from '@/api/http';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/cn';
@@ -38,9 +39,9 @@ interface TapeStats {
 }
 
 /**
- * Bar magnifier (TradingView: Premium). Inspects the raw trade tape inside
- * one candle via Binance aggTrades (CORS-open): prints, taker delta and a
- * cumulative-delta curve for the selected bar.
+ * Bar magnifier (TradingView: Premium). Attempts to inspect the raw trade
+ * tape inside one candle via a browser-readable Binance aggTrades endpoint,
+ * with recent OKX prints as fallback; provider and region access can vary.
  */
 export function MagnifierModal({ symbol, barMs, candles, open, onClose }: MagnifierModalProps) {
   const t = useTranslations('tools');
@@ -56,75 +57,96 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
   useEffect(() => {
     if (!open || !target) return undefined;
     let alive = true;
-    const timer = setTimeout(run, 0);
-    function run() {
+    const controller = new AbortController();
+    const start = target.t;
+    const end = start + barMs;
+    const pair = symbol.replace('/', '').toUpperCase();
+
+    async function run(): Promise<void> {
       setLoading(true);
       setError(false);
-    const pair = symbol.replace('/', '');
-    const start = target!.t;
-    const binance = fetch(
-      `https://api.binance.com/api/v3/aggTrades?symbol=${encodeURIComponent(pair)}&startTime=${start}&endTime=${start + barMs - 1}&limit=1000`,
-    ).then((response) => (response.ok ? response.json() : Promise.reject(new Error('http'))));
-    const okx = fetch(`https://www.okx.com/api/v5/market/trades?instId=${encodeURIComponent(symbol.replace('/', '-'))}&limit=300`).then(
-      (response) => (response.ok ? response.json() : Promise.reject(new Error('http'))),
-    );
-    binance
-      .catch(() =>
-        okx.then((payload: unknown) => {
-          const list = (payload as { data?: Array<Record<string, string>> })?.data ?? [];
-          return list
-            .filter((trade) => Number(trade.ts) >= start && Number(trade.ts) < start + barMs)
-            .map((trade) => ({ p: trade.px, q: trade.sz, T: Number(trade.ts), m: trade.side !== 'buy' }));
-        }),
-      )
-      .then((data: unknown) => {
-        if (!alive) return;
-        if (!Array.isArray(data) || data.length === 0) {
-          setStats(null);
-          return;
+      let failures = 0;
+      let trades: AggTrade[] = [];
+
+      try {
+        trades = await fetchJson<AggTrade[]>(
+          `https://data-api.binance.vision/api/v3/aggTrades?symbol=${encodeURIComponent(pair)}&startTime=${start}&endTime=${end - 1}&limit=1000`,
+          { source: 'binance', cacheTtlMs: 30_000, timeoutMs: 8_000, retries: 1, signal: controller.signal },
+        );
+      } catch {
+        failures += 1;
+      }
+
+      // The public mirror may be reachable where api.binance.com is blocked,
+      // but access still varies by browser and region. OKX is a separate
+      // fallback for recent prints; it is not a substitute for full history.
+      if (trades.length === 0 && !controller.signal.aborted) {
+        try {
+          const payload = await fetchJson<{ data?: Array<Record<string, string>> }>(
+            `https://www.okx.com/api/v5/market/trades?instId=${encodeURIComponent(symbol.replace('/', '-'))}&limit=500`,
+            { source: 'okx', cacheTtlMs: 15_000, timeoutMs: 8_000, retries: 1, signal: controller.signal },
+          );
+          trades = (payload.data ?? [])
+            .filter((trade) => Number(trade.ts) >= start && Number(trade.ts) < end)
+            .map((trade) => ({ p: trade.px ?? '', q: trade.sz ?? '', T: Number(trade.ts), m: trade.side !== 'buy' }));
+        } catch {
+          failures += 1;
         }
-        const trades = data as AggTrade[];
-        let volume = 0;
-        let notional = 0;
-        let buyVol = 0;
-        let buys = 0;
-        let sells = 0;
-        const curve: number[] = [];
-        let running = 0;
-        const prints: TapeStats['large'] = [];
-        for (const trade of trades) {
-          const price = Number(trade.p);
-          const qty = Number(trade.q);
-          const notion = price * qty;
-          const buy = !trade.m;
-          volume += qty;
-          notional += notion;
-          if (buy) {
-            buyVol += qty;
-            buys += 1;
-          } else sells += 1;
-          running += buy ? qty : -qty;
-          curve.push(running);
-          if (notion >= 100_000) prints.push({ price, qty, notional, buy, at: trade.T });
-        }
-        prints.sort((a, b) => b.notional - a.notional);
-        setStats({
-          count: trades.length,
-          volume,
-          notional,
-          delta: 2 * buyVol - volume,
-          buys,
-          sells,
-          large: prints.slice(0, 8),
-          curve,
-        });
-      })
-      .catch(() => alive && setError(true))
-        .finally(() => alive && setLoading(false));
+      }
+
+      if (!alive || controller.signal.aborted) return;
+      const validTrades = trades
+        .filter((trade) => Number.isFinite(Number(trade.p)) && Number(trade.p) > 0 && Number.isFinite(Number(trade.q)) && Number(trade.q) > 0 && trade.T >= start && trade.T < end)
+        .sort((a, b) => a.T - b.T);
+      if (validTrades.length === 0) {
+        setStats(null);
+        if (failures >= 2) setError(true);
+        setLoading(false);
+        return;
+      }
+
+      let volume = 0;
+      let notional = 0;
+      let buyVol = 0;
+      let buys = 0;
+      let sells = 0;
+      const curve: number[] = [];
+      let running = 0;
+      const prints: TapeStats['large'] = [];
+      for (const trade of validTrades) {
+        const price = Number(trade.p);
+        const qty = Number(trade.q);
+        const notion = price * qty;
+        const buy = !trade.m;
+        volume += qty;
+        notional += notion;
+        if (buy) {
+          buyVol += qty;
+          buys += 1;
+        } else sells += 1;
+        running += buy ? qty : -qty;
+        curve.push(running);
+        if (notion >= 100_000) prints.push({ price, qty, notional: notion, buy, at: trade.T });
+      }
+      prints.sort((a, b) => b.notional - a.notional);
+      setStats({
+        count: validTrades.length,
+        volume,
+        notional,
+        delta: 2 * buyVol - volume,
+        buys,
+        sells,
+        large: prints.slice(0, 8),
+        curve,
+      });
+      setLoading(false);
     }
+
+    const timer = window.setTimeout(() => void run().catch(() => alive && setError(true)).finally(() => alive && setLoading(false)), 0);
     return () => {
       alive = false;
-      clearTimeout(timer);
+      window.clearTimeout(timer);
+      controller.abort();
     };
   }, [open, target, barMs, symbol]);
 

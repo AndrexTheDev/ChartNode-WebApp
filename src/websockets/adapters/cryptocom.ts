@@ -19,7 +19,7 @@ const QUOTES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH'];
 let requestId = 0;
 
 /**
- * Crypto.com Exchange market stream (public, no key). Verified live:
+ * Crypto.com Exchange market stream (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"id":1,"method":"subscribe","params":{"channels":["candlestick.1m.BTC_USDT","trade.BTC_USDT"]}}
  * candles   : {"result":{"channel":"candlestick","interval":"1m","instrument_name":"BTC_USDT",
@@ -28,8 +28,8 @@ let requestId = 0;
  *              "data":[{"d":"…","t":1788992950319,"p":"78033.56","q":"0.00002","s":"SELL","i":"BTC_USDT"}]}}
  *
  * The subscribe response already contains candle history, so no REST seed is
- * needed (`seedsViaSocket`) – which is convenient, because `rest.crypto.com`
- * is blocked in several regions while the stream is not.
+ * needed (`seedsViaSocket`). REST and WebSocket reachability can differ by
+ * network or region; neither endpoint is guaranteed to work for every visitor.
  */
 export const cryptocomAdapter: ExchangeAdapter = {
   id: 'cryptocom',

@@ -34,7 +34,7 @@ export function makeReporter(modId, modName) {
 }
 
 export async function launchBrowser() {
-  return puppeteer.launch({ headless: 'new', args: ['--no-sandbox'], protocolTimeout: 120000 });
+  return puppeteer.launch({ headless: true, args: ['--no-sandbox'], protocolTimeout: 120000 });
 }
 
 export async function newPage(browser, { width = 1440, height = 900, mobile = false } = {}) {
@@ -71,24 +71,31 @@ export const gotoSafe = (page, url, timeout = 90000) =>
 
 /** RELEASE-AUDIT.md schreiben: Modulübersicht + alle Fails. */
 export function writeReport(modules) {
-  const totalP = modules.reduce((a, m) => a + m.pass, 0);
-  const totalF = modules.reduce((a, m) => a + m.fail, 0);
+  const totalP = modules.reduce((a, m) => a + (m.pass || 0), 0);
+  const totalF = modules.reduce((a, m) => a + (m.fail || 0), 0);
+  const totalS = modules.reduce((a, m) => a + (m.skip || 0), 0);
+  const overall = totalF ? 'FAIL' : totalS ? 'PARTIAL — SKIPs dokumentiert' : 'PASS';
+  const moduleStatus = (m) => (m.fail ? 'FAIL' : m.skip && m.pass ? 'PARTIAL' : m.skip ? 'SKIP' : 'PASS');
   const lines = [
     '# RELEASE-AUDIT (modular)',
     '',
-    `Stand: ${new Date().toISOString()} · **${totalP} PASS / ${totalF} FAIL**`,
+    `Stand: ${new Date().toISOString()} · **${overall} · ${totalP} PASS / ${totalF} FAIL / ${totalS} SKIP**`,
     '',
-    '| Modul | Bereich | PASS | FAIL |',
-    '|---|---|---:|---:|',
-    ...modules.map((m) => `| ${m.id} | ${m.name} | ${m.pass} | ${m.fail} |`),
+    '| Modul | Bereich | PASS | FAIL | SKIP | Status |',
+    '|---|---|---:|---:|---:|---|',
+    ...modules.map((m) => `| ${m.id} | ${m.name} | ${m.pass || 0} | ${m.fail || 0} | ${m.skip || 0} | ${moduleStatus(m)} |`),
     '',
   ];
   for (const m of modules) {
-    if (!m.fail) continue;
-    lines.push(`## ${m.id} — ${m.name}: Fails`, '');
-    for (const r of m.rows.filter((x) => !x.ok)) lines.push(`- ✘ ${r.name}${r.info ? ' — ' + r.info : ''}`);
+    if (!(m.rows || []).length) continue;
+    lines.push(`## ${m.id} — ${m.name}`, '');
+    for (const r of m.rows) {
+      const status = r.skipped ? 'SKIP' : r.ok ? 'PASS' : 'FAIL';
+      const mark = r.skipped ? '⊘' : r.ok ? '✔' : '✘';
+      lines.push(`- ${mark} **${status}** ${r.name}${r.info ? ' — ' + r.info : ''}`);
+    }
     lines.push('');
   }
   writeFileSync(resolve(ROOT, 'RELEASE-AUDIT.md'), lines.join('\n'));
-  return { totalP, totalF };
+  return { totalP, totalF, totalS };
 }

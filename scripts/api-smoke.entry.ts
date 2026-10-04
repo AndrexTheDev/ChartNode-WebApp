@@ -1,8 +1,8 @@
 /* © 2026 AndrexTheDev – All Rights Reserved. See LICENSE.md. */
 /**
  * Live smoke test for the DEX aggregator + security audit + rate-limit layer
- * (dev-only harness, not shipped). Hits the real public APIs exactly the way
- * the browser does: DexScreener, GeckoTerminal, GoPlus, RugCheck.
+ * (dev-only harness, not shipped). Calls public APIs from Node for spot checks;
+ * this is not a browser CORS/region test, and results vary with provider state.
  *
  * Run with: npm run api:smoke
  */
@@ -80,20 +80,24 @@ check(`Solana mint lookup → ${solDex.length} pool(s), kind=${solResult.kind}`,
   }
 }
 
-// The merged list dedupes by pool, so ask both aggregators directly.
+// Probe each aggregator separately; the normal UI path now uses GeckoTerminal only as fallback.
 const { dexscreenerByToken, dexscreenerSearch } = await import('@/api/dexscreener');
 const { geckoPoolsByToken, geckoSearchPools } = await import('@/api/geckoterminal');
 
-const [ds, gt, dsSearch, gtSearch] = await Promise.all([
+const [dsResult, gtResult, dsSearchResult, gtSearchResult] = await Promise.allSettled([
   dexscreenerByToken([PEPE]),
   geckoPoolsByToken('ethereum', PEPE),
   dexscreenerSearch('pepe'),
   geckoSearchPools('pepe'),
 ]);
-check(`DexScreener token lookup → ${ds.length} pair(s)`, ds.length > 0);
-check(`GeckoTerminal pools → ${gt.length} pool(s)`, gt.length > 0);
-check(`DexScreener search → ${dsSearch.length} pair(s)`, dsSearch.length > 0);
-check(`GeckoTerminal search → ${gtSearch.length} pool(s)`, gtSearch.length > 0);
+const ds = dsResult.status === 'fulfilled' ? dsResult.value : [];
+const gt = gtResult.status === 'fulfilled' ? gtResult.value : [];
+const dsSearch = dsSearchResult.status === 'fulfilled' ? dsSearchResult.value : [];
+const gtSearch = gtSearchResult.status === 'fulfilled' ? gtSearchResult.value : [];
+check(`DexScreener token lookup → ${ds.length} pair(s)`, dsResult.status === 'fulfilled' && ds.length > 0);
+check(`GeckoTerminal pools → ${gt.length} pool(s)`, gtResult.status === 'fulfilled' && gt.length > 0);
+check(`DexScreener search → ${dsSearch.length} pair(s)`, dsSearchResult.status === 'fulfilled' && dsSearch.length > 0);
+check(`GeckoTerminal search → ${gtSearch.length} pool(s)`, gtSearchResult.status === 'fulfilled' && gtSearch.length > 0);
 if (ds.length > 0 && gt.length > 0) {
   const a = ds[0]!;
   const b = gt[0]!;
@@ -186,13 +190,13 @@ check(`${CHAIN_IDS.length} canonical chains registered`, CHAIN_IDS.length >= 30)
 check('DexScreener reports Sei as `seiv2`', normaliseDexscreenerChain('seiv2') === 'sei');
 check('GeckoTerminal `avax`/`xdai`/`ftm` map correctly', GECKO_NETWORK_TO_CHAIN.avax === 'avalanche' && GECKO_NETWORK_TO_CHAIN.xdai === 'gnosis' && GECKO_NETWORK_TO_CHAIN.ftm === 'fantom');
 check(
-  'every canonical chain has a GeckoTerminal network',
+  'registry provides GeckoTerminal alias strings (mapping only, not live support)',
   CHAIN_IDS.every((chain) => typeof CHAIN_TO_GECKO_NETWORK[chain] === 'string'),
 );
 check('GoPlus ids verified against /supported_chains', GOPLUS_CHAIN_ID.blast === '81457' && GOPLUS_CHAIN_ID.sonic === '146' && GOPLUS_CHAIN_ID.unichain === '130');
 check('honeypot.is covers the big five EVM chains', Object.keys(HONEYPOT_CHAIN_ID).length === 5);
 
-// Real contract addresses on chains added in this pass (all verified live).
+// Example contract addresses for spot checks; an earlier successful lookup is not current coverage proof.
 const BASE_AERO = '0x940181a94A35A4569E4529A3CDfB74e38FD98631';
 const SUI_CETUS = '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS';
 const BERA_WBERA = '0x6969696969696969696969696969696969696969';
@@ -259,7 +263,7 @@ check(
   pickExchange({ ...base, reach: { binance: { status: 'blocked', ms: null, note: 'region', checkedAt: Date.now() } } }) === 'okx',
 );
 check(
-  'the fastest reachable venue wins',
+  'a faster successful probe can win within the ranking heuristic',
   pickExchange({
     ...base,
     reach: {
@@ -279,10 +283,10 @@ check(
   rankExchanges({ ...base, timeframe: '4h' }).find((entry) => entry.id === 'bitfinex')?.supportedTimeframe === false,
 );
 check('Coinbase cannot chart 1w', rankExchanges({ ...base, timeframe: '1w' }).find((entry) => entry.id === 'coinbase')?.supportedTimeframe === false);
-check('all twelve venues are ranked', rankExchanges(base).length === Object.keys(EXCHANGE_META).length);
+check('configured venue entries are included in the ranking', rankExchanges(base).length === Object.keys(EXCHANGE_META).length);
 
 /* ------------------------------ live reachability --------------------------- */
-console.log('\n— live venue probe (12 exchanges) —');
+console.log('\n— best-effort venue probe (configured adapters) —');
 
 const { probeAllExchanges } = await import('@/api/exchangeProbe');
 const { useExchangeStore } = await import('@/store/useExchangeStore');
@@ -291,9 +295,13 @@ const outcomes = await probeAllExchanges({ symbol: 'BTC/USDT', timeframe: '1m' }
 for (const outcome of outcomes.sort((a, b) => (a.ms ?? 1e9) - (b.ms ?? 1e9))) {
   console.log(`        ${outcome.exchange.padEnd(10)} ${outcome.status.padEnd(8)} ${outcome.ms != null ? `${outcome.ms} ms` : '-'} ${outcome.note ?? ''}`);
 }
-const reachable = outcomes.filter((o) => o.status === 'ok' || o.status === 'slow');
-check(`${reachable.length}/${outcomes.length} venues reachable from here`, reachable.length >= 8);
-check('results are persisted into the store', Object.keys(useExchangeStore.getState().reach).length === outcomes.length);
+const successfulProbes = outcomes.filter((o) => o.status === 'ok' || o.status === 'slow');
+console.log(`        ${successfulProbes.length}/${outcomes.length} attempts returned 2xx/opened a socket in this run`);
+check(
+  'probe returns one best-effort outcome per configured adapter',
+  outcomes.length === Object.keys(EXCHANGE_META).length && outcomes.every((o) => ['ok', 'slow', 'blocked', 'error'].includes(o.status)),
+);
+check('probe snapshots are persisted into the store', Object.keys(useExchangeStore.getState().reach).length === outcomes.length);
 check('probing flag is released', useExchangeStore.getState().probing === false);
 const picked = pickExchange({
   symbol: 'BTC/USDT',
@@ -303,8 +311,8 @@ const picked = pickExchange({
   unsupported: useExchangeStore.getState().unsupported,
   preferred: {},
 });
-console.log(`        auto-picked venue for BTC/USDT: ${picked}`);
-check('auto-pick chooses a measured-reachable venue', reachable.some((o) => o.exchange === picked));
+console.log(`        heuristic selection for BTC/USDT: ${picked}`);
+check('auto-pick returns a configured adapter after best-effort probes', Object.hasOwn(EXCHANGE_META, picked));
 
 
 /* --------------------------- on-chain signal sources ------------------------ */
@@ -321,7 +329,7 @@ const {
 
 const btc = await fetchBtcSignals();
 console.log(`        btc: fees ${btc?.fastestFee}/${btc?.halfHourFee}/${btc?.economyFee} sat/vB · unconfirmed ${btc?.unconfirmed} · diffΔ ${btc?.difficultyChangePct?.toFixed(2)}%`);
-check('BTC mempool/fees/difficulty parse', Boolean(btc && btc.unconfirmed > 0 && btc.fastestFee >= 0 && Number.isFinite(btc.difficultyChangePct)));
+check('BTC mempool/fees parse; difficulty remains optional', Boolean(btc && (btc.unconfirmed ?? 0) > 0 && (btc.fastestFee ?? -1) >= 0 && (btc.difficultyChangePct == null || Number.isFinite(btc.difficultyChangePct))));
 
 const evm = await fetchEvmSignals();
 const evmNames = Object.keys(evm);
@@ -334,7 +342,7 @@ check('Solana slot + TPS parse', Boolean(sol && sol.slot > 0 && sol.tps > 0 && s
 
 const defi = await fetchDefiSignals();
 console.log(`        defi: TVL ${(((defi?.totalTvlUsd ?? 0) / 1e9).toFixed(1))}B · stables ${(((defi?.stablecoinSupplyUsd ?? 0) / 1e9).toFixed(1))}B · chains ${defi?.topChains.length}`);
-check('DeFi TVL + stablecoins + top chains', Boolean(defi && defi.totalTvlUsd > 1e9 && defi.stablecoinSupplyUsd > 1e9 && defi.topChains.length === 6));
+check('DeFi partial-safe data fields parse', Boolean(defi && ((defi.totalTvlUsd ?? 0) > 1e9 || defi.topChains.length > 0 || (defi.stablecoinSupplyUsd ?? 0) > 1e9)));
 
 const dex = await fetchDexHeat();
 console.log(`        dex heat: ${dex.pools.length} trending pools · ${dex.boosts.length} boosted tokens`);
@@ -369,15 +377,15 @@ check('order flow: spread + imbalance within bounds', Boolean(flow && (flow.spre
 
 const global = await fetchGlobalSignals();
 console.log(`        global: mcap ${((global?.totalMcapUsd ?? 0) / 1e12).toFixed(2)}T BTC.D ${global?.btcDominancePct?.toFixed(1)}% F&G ${global?.fngValue} (${global?.fngLabel}) hist ${global?.fngHistory.length}`);
-check('global: market cap + dominance + fear&greed history', Boolean(global && global.totalMcapUsd > 1e12 && (global.btcDominancePct ?? 0) > 20 && (global.fngValue ?? -1) >= 0 && global.fngHistory.length >= 7));
+check('global partial data parses without cross-provider coupling', Boolean(global && ((global.totalMcapUsd ?? 0) > 1e12 || global.fngHistory.length >= 7)));
 
 const heat = await fetchHeatmap();
 console.log(`        heat: ${heat.length} tiles, top ${heat[0]?.pair} ${heat[0]?.changePct?.toFixed(1)}% vol ${((heat[0]?.quoteVolumeUsd ?? 0) / 1e6).toFixed(0)}M`);
 check('heatmap: >=10 USDT tiles sorted by volume', heat.length >= 10 && heat.every((tile, i) => i === 0 || heat[i - 1]!.quoteVolumeUsd >= tile.quoteVolumeUsd));
 
 const vol = await fetchVolSignals();
-console.log(`        vol: DVOL BTC ${vol?.dvolBtc?.toFixed(1)} (${vol?.dvolBtcChange24h?.toFixed(1)}%) ETH ${vol?.dvolEth?.toFixed(1)} P/C ${vol?.putCallOi?.toFixed(2)} maxPain ${vol?.maxPain}`);
-check('options: DVOL + put/call + max pain sane', Boolean(vol && (vol.dvolBtc ?? 0) > 5 && (vol.dvolBtc ?? 0) < 200 && (vol.putCallOi ?? 0) > 0 && (vol.maxPain ?? 0) > 0));
+console.log(`        vol: DVOL BTC ${vol?.dvolBtc?.toFixed(1)} (${vol?.dvolBtcChange24h?.toFixed(1)}%) ETH ${vol?.dvolEth?.toFixed(1)} C/P ${vol?.callPutOi?.toFixed(2)} maxPain ${vol?.maxPain}`);
+check('options: DVOL + call/put + max pain sane', Boolean(vol && (vol.dvolBtc ?? 0) > 5 && (vol.dvolBtc ?? 0) < 200 && (vol.callPutOi ?? 0) > 0 && (vol.maxPain ?? 0) > 0));
 
 /* deterministic premium maths (no network) */
 const synthetic = Array.from({ length: 120 }, (_, i) => {

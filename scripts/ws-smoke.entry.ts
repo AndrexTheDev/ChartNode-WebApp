@@ -2,15 +2,15 @@
 /**
  * WebSocket adapter smoke test (dev-only harness, not shipped).
  *
- *   1. offline – all twelve adapters parse recorded wire payloads. The fixtures
- *      below were captured from the live servers (see README §6.1), so a schema
- *      change upstream shows up here instead of in a user's empty chart.
- *   2. live – a real ManagedSocket connects to each exchange's public stream and
- *      must deliver trades (+ candles where the venue has a candle channel).
- *      Unreachable endpoints report SKIP, because several venues geo-block
- *      datacenter IPs while serving browsers fine.
+ *   1. offline – recorded fixtures exercise the parsers for the 12 adapter IDs
+ *      currently configured in the app. This validates local decoding against
+ *      saved payloads, not current upstream behavior or market coverage.
+ *   2. live – attempts ManagedSocket connections to configured public streams
+ *      and checks for expected sample events where the endpoint is reachable.
+ *      Network-dependent failures may report SKIP; a PASS is only an observation
+ *      from this test machine and does not guarantee browser or ongoing access.
  *
- * Run with: npm run ws:smoke
+ * Run with: npm run ws:smoke (includes best-effort live probes) or npm run ws:smoke:offline (fixtures only).
  */
 import { createRequire } from 'node:module';
 import { gzipSync } from 'node:zlib';
@@ -474,29 +474,33 @@ const ADAPTER_LIST: ExchangeAdapter[] = [
 /** Venues whose USDT book is thin – probe their deep USD market instead. */
 const PROBE_SYMBOL: Record<string, string> = { coinbase: 'BTC/USD', kraken: 'BTC/USD' };
 
-const probes = new Map<string, Probe>();
-const queue = [...ADAPTER_LIST];
-await Promise.all(
-  Array.from({ length: 4 }, async () => {
-    for (;;) {
-      const adapter = queue.shift();
-      if (!adapter) return;
-      probes.set(adapter.id, await probeAdapter(adapter, PROBE_SYMBOL[adapter.id] ?? 'BTC/USDT', '1m', 14_000));
-    }
-  }),
-);
+if (process.env.WS_SMOKE_OFFLINE === '1') {
+  for (const adapter of ADAPTER_LIST) skip(`${adapter.id.padEnd(10)} live: not run (offline-only suite)`);
+} else {
+  const probes = new Map<string, Probe>();
+  const queue = [...ADAPTER_LIST];
+  await Promise.all(
+    Array.from({ length: 4 }, async () => {
+      for (;;) {
+        const adapter = queue.shift();
+        if (!adapter) return;
+        probes.set(adapter.id, await probeAdapter(adapter, PROBE_SYMBOL[adapter.id] ?? 'BTC/USDT', '1m', 14_000));
+      }
+    }),
+  );
 
-for (const adapter of ADAPTER_LIST) {
-  const probe = probes.get(adapter.id);
-  if (!probe) continue;
-  if (!probe.opened && probe.events.length === 0) {
-    skip(`${adapter.id.padEnd(10)} live: endpoint unreachable from this region (browser clients usually reach it)`);
-    continue;
+  for (const adapter of ADAPTER_LIST) {
+    const probe = probes.get(adapter.id);
+    if (!probe) continue;
+    if (!probe.opened && probe.events.length === 0) {
+      skip(`${adapter.id.padEnd(10)} live: endpoint unreachable from this test region (browser reachability unknown)`);
+      continue;
+    }
+    const trades = probe.events.some((e) => e.type === 'trade');
+    const candles = probe.events.some((e) => e.type === 'candle');
+    const ok = adapter.derivesCandles ? trades : trades && candles;
+    check(`${adapter.id.padEnd(10)} live: ${summarise(adapter, probe)}`, ok);
   }
-  const trades = probe.events.some((e) => e.type === 'trade');
-  const candles = probe.events.some((e) => e.type === 'candle');
-  const ok = adapter.derivesCandles ? trades : trades && candles;
-  check(`${adapter.id.padEnd(10)} live: ${summarise(adapter, probe)}`, ok);
 }
 
 console.log(failures === 0 ? '\n✔ ws smoke OK\n' : `\n✖ ${failures} failure(s)\n`);

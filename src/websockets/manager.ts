@@ -73,6 +73,9 @@ class ExchangeStream {
   private readonly subscribed = new Set<string>();
   private readonly seeded = new Set<string>();
   private readonly seeding = new Set<string>();
+  private readonly seedControllers = new Map<string, AbortController>();
+  private readonly seedRetryTimers = new Map<string, number>();
+  private readonly seedRetryAttempts = new Map<string, number>();
 
   constructor(
     private readonly adapter: ExchangeAdapter,
@@ -82,7 +85,7 @@ class ExchangeStream {
     this.socket = new ManagedSocket({
       id: `${adapter.id}@${dynamic ? 'dynamic' : urlKey.replace(/^wss?:\/\//, '')}`,
       url: dynamic ? undefined : urlKey,
-      resolveUrl: dynamic ? () => (adapter.resolveUrl ? adapter.resolveUrl() : Promise.resolve(adapter.url)) : undefined,
+      resolveUrl: dynamic ? (signal) => (adapter.resolveUrl ? adapter.resolveUrl(signal) : Promise.resolve(adapter.url)) : undefined,
       binary: adapter.binary,
       decode: adapter.decode,
       keepalive: adapter.keepalive,
@@ -141,6 +144,11 @@ class ExchangeStream {
       const id = feedId(existing.ref.key);
       this.derivers.delete(id);
       this.seeded.delete(id);
+      this.seedControllers.get(id)?.abort();
+      this.seedControllers.delete(id);
+      this.seeding.delete(id);
+      this.clearSeedRetry(id);
+      this.seedRetryAttempts.delete(id);
       // Letzter Konsument weg → Slice als "released" markieren: bleibt als
       // Warm-Cache liegen (Zurückwechseln zeigt sofort alte Kerzen) und wird
       // per LRU verdrängt. Ohne diese Grenze wächst `feeds` pro besuchtem
@@ -158,6 +166,11 @@ class ExchangeStream {
     for (const entry of this.channels.values()) {
       if (entry.ref.kind === 'kline') store.markFeedReleased(feedId(entry.ref.key));
     }
+    for (const controller of this.seedControllers.values()) controller.abort();
+    for (const timer of this.seedRetryTimers.values()) window.clearTimeout(timer);
+    this.seedControllers.clear();
+    this.seedRetryTimers.clear();
+    this.seedRetryAttempts.clear();
     this.channels.clear();
     this.derivers.clear();
     this.subscribed.clear();
@@ -210,8 +223,9 @@ class ExchangeStream {
     for (const event of events) {
       if (event.type === 'candle') {
         store.upsertCandle(feedId(event.key), event.candle);
-        // Crypto.com sends its history inside the subscribe response.
-        this.seeded.add(feedId(event.key));
+        // Only the socket-seeded venue can satisfy history from a websocket
+        // message. Other adapters' live ticks must not suppress their REST seed.
+        if (this.adapter.seedsViaSocket) this.seeded.add(feedId(event.key));
       } else {
         whaleTracker.observe(event.trade);
         this.derive(event.trade);
@@ -276,6 +290,23 @@ class ExchangeStream {
     info?: { attempt?: number; note?: string | null },
   ): void {
     const store = useMarketStore.getState();
+    const ownsKline = [...this.channels.values()].some((entry) => entry.ref.kind === 'kline');
+    if (ownsKline && status === 'open') {
+      const current = useExchangeStore.getState().reach[this.adapter.id];
+      if (current?.status !== 'ok' || current.note !== 'ws-open') {
+        // A successful browser socket is stronger evidence than a stale REST
+        // probe: remember it so automatic routing does not avoid a usable venue.
+        useExchangeStore.getState().setReach(this.adapter.id, { status: 'ok', ms: null, note: 'ws-open' });
+      }
+    } else if (ownsKline && status === 'reconnecting' && (info?.attempt ?? 0) >= 4) {
+      const current = useExchangeStore.getState().reach[this.adapter.id];
+      if (current?.status !== 'error' || current.note !== 'ws-reconnect') {
+        // Four failed connection cycles indicate this visitor cannot currently
+        // use this venue. The selection hook can move the chart to a different
+        // CEX; the old stream is then released instead of retrying forever.
+        useExchangeStore.getState().setReach(this.adapter.id, { status: 'error', ms: null, note: 'ws-reconnect' });
+      }
+    }
     for (const entry of this.channels.values()) {
       if (entry.ref.kind !== 'kline') continue;
       store.setFeedStatus(feedId(entry.ref.key), status, info);
@@ -299,76 +330,168 @@ class ExchangeStream {
       const id = feedId(entry.ref.key);
       if (this.seeded.has(id) || this.seeding.has(id)) continue;
       this.seeding.add(id);
-      void this.seed(entry.ref.key);
+      const controller = new AbortController();
+      this.seedControllers.set(id, controller);
+      void this.seed(entry.ref.key, controller);
     }
   }
 
-  private async seed(key: FeedKey): Promise<void> {
+  private async seed(key: FeedKey, controller: AbortController): Promise<void> {
     const id = feedId(key);
+    const signal = controller.signal;
+    const startedAt = Date.now();
     try {
-      const candles = await this.seedWithFallback(key);
-      // Kanal während des Flights freigegeben (Token-/TF-Wechsel)? Dann darf
-      // der Seed weder den Store schreiben (dropFeed lief bereits) noch die
-      // seeded-Menge verunreinigen.
-      if (!this.channels.has(this.adapter.klineChannel(key))) return;
-      this.seeded.add(id);
-      if (candles.length > 0) {
-        useMarketStore.getState().seedCandles(id, candles);
-        const last = candles[candles.length - 1] ?? null;
-        this.derivers.get(id)?.setSeed(last);
+      const candles = await this.seedWithFallback(key, signal);
+      // A released feed must not write into the store, and an empty result is
+      // not a successful seed: keep the last visible candles and retry later.
+      if (signal.aborted || !this.channels.has(this.adapter.klineChannel(key))) return;
+      if (candles.length === 0) {
+        useMarketStore.getState().setFeedStatus(id, this.socket.status, { note: 'seed-pending' });
+        this.scheduleSeedRetry(key);
+        return;
       }
+      this.seeded.add(id);
+      this.clearSeedRetry(id);
+      this.seedRetryAttempts.delete(id);
+      const store = useMarketStore.getState();
+      const current = store.feeds[id];
+      const seedRows = new Map(candles.map((candle) => [candle.t, candle]));
+      // A live tick may arrive while REST history is in flight. Merge it into
+      // the seed (live candle wins for equal timestamps) instead of replacing
+      // fresh stream data with an older snapshot.
+      if (current?.updatedAt != null && current.updatedAt > startedAt) {
+        for (const candle of current.candles) seedRows.set(candle.t, candle);
+      }
+      const combined = [...seedRows.values()].sort((a, b) => a.t - b.t).slice(-500);
+      store.seedCandles(id, combined);
+      const last = combined[combined.length - 1] ?? null;
+      this.derivers.get(id)?.setSeed(last);
     } catch (error) {
+      if (signal.aborted || !this.channels.has(this.adapter.klineChannel(key))) return;
       const exchanges = useExchangeStore.getState();
       let note = 'seed-failed';
       if (error instanceof UnsupportedPairError) {
-        // The pair is not listed here – let the picker choose another venue.
         exchanges.markUnsupported(key.exchange, key.symbol);
         note = 'unsupported';
       } else if (error instanceof FeedBlockedError) {
-        // Whole venue unreachable from this region – remember it for ranking.
         exchanges.setReach(key.exchange, { status: 'blocked', ms: null, note: 'region' });
         note = 'region';
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      } else {
+        this.scheduleSeedRetry(key);
       }
       useMarketStore.getState().setFeedStatus(id, this.socket.status, { note });
     } finally {
-      this.seeding.delete(id);
+      if (this.seedControllers.get(id) === controller) {
+        this.seedControllers.delete(id);
+        this.seeding.delete(id);
+      }
     }
   }
 
+  private scheduleSeedRetry(key: FeedKey): void {
+    const id = feedId(key);
+    if (this.seedRetryTimers.has(id) || !this.channels.has(this.adapter.klineChannel(key))) return;
+    const attempt = (this.seedRetryAttempts.get(id) ?? 0) + 1;
+    this.seedRetryAttempts.set(id, attempt);
+    const delay = Math.min(60_000, 5_000 * 2 ** Math.min(attempt - 1, 4));
+    const timer = window.setTimeout(() => {
+      this.seedRetryTimers.delete(id);
+      if (!this.seeded.has(id) && this.channels.has(this.adapter.klineChannel(key))) this.seedAll();
+    }, delay);
+    this.seedRetryTimers.set(id, timer);
+  }
+
+  private clearSeedRetry(id: string): void {
+    const timer = this.seedRetryTimers.get(id);
+    if (timer !== undefined) window.clearTimeout(timer);
+    this.seedRetryTimers.delete(id);
+  }
+
   /**
-   * History of the chosen venue, or – when the browser cannot read that REST
-   * endpoint (CORS / outage) – history of the nearest CORS-friendly venue.
-   * Live updates always keep flowing over the chosen venue's socket, so a
-   * bybit chart still *is* a bybit chart; only its first candles may come
-   * from a neighbour with identical market data.
+   * Try the selected venue first. If its REST endpoint is CORS-blind, blocked,
+   * or temporarily down, race a small group of configured CORS-readable seed
+   * candidates and cancel the losers as soon as one history response succeeds.
    */
-  private async seedWithFallback(key: FeedKey): Promise<Candle[]> {
-    // CORS-blinde Venues im Browser gar nicht erst anfunken (Konsolen-Lärm +
-    // tote Roundtrips) – direkt die Nachbar-Liste darunter nutzen.
+  private async seedWithFallback(key: FeedKey, signal: AbortSignal): Promise<Candle[]> {
+    if (signal.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
+    let directError: unknown;
+    const staleAgeByVenue = new Map<ExchangeId, number>();
+
     if (restReachableFromBrowser(key.exchange)) {
       try {
-        const candles = await fetchSeed(key);
-        if (candles.length > 0) return candles;
-      } catch (error) {
-        if (error instanceof UnsupportedPairError || error instanceof FeedBlockedError) throw error;
-        // CORS/HTTP trouble from the page – try the neighbour venues below.
-      }
-    }
-    for (const venue of CORS_FRIENDLY_SEEDS) {
-      if (venue === key.exchange) continue;
-      if (!ADAPTERS[venue]?.timeframes.includes(key.timeframe)) continue;
-      try {
-        const candles = await fetchSeed({ ...key, exchange: venue });
+        const candles = await fetchSeed(key, signal, 7_000, (ageMs) => staleAgeByVenue.set(key.exchange, ageMs));
         if (candles.length > 0) {
-          const id = feedId(key);
-          useMarketStore.getState().setFeedStatus(id, this.socket.status, { note: `seed-via:${venue}` });
+          const staleAgeMs = staleAgeByVenue.get(key.exchange);
+          if (staleAgeMs != null) {
+            useMarketStore.getState().setFeedStatus(feedId(key), this.socket.status, {
+              note: `seed-stale:${key.exchange}:${Math.floor(staleAgeMs / 1000)}`,
+            });
+          }
           return candles;
         }
-      } catch {
-        // next venue
+      } catch (error) {
+        directError = error;
+        this.recordSeedFailure(key.exchange, key.symbol, error);
       }
     }
+
+    const candidates = CORS_FRIENDLY_SEEDS.filter(
+      (venue) => venue !== key.exchange && ADAPTERS[venue]?.timeframes.includes(key.timeframe),
+    );
+    const batchSize = 3;
+
+    for (let offset = 0; offset < candidates.length; offset += batchSize) {
+      if (signal.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
+      const batch = candidates.slice(offset, offset + batchSize);
+      const controller = new AbortController();
+      const abortBatch = (): void => controller.abort();
+      signal.addEventListener('abort', abortBatch, { once: true });
+      if (signal.aborted) abortBatch();
+
+      try {
+        const winner = await Promise.any(
+          batch.map(async (venue) => {
+            try {
+              const candles = await fetchSeed(
+                { ...key, exchange: venue },
+                controller.signal,
+                7_000,
+                (ageMs) => staleAgeByVenue.set(venue, ageMs),
+              );
+              if (candles.length === 0) throw new Error('empty seed');
+              return { venue, candles };
+            } catch (error) {
+              this.recordSeedFailure(venue, key.symbol, error);
+              throw error;
+            }
+          }),
+        );
+        controller.abort(); // stop duplicate work as soon as one provider wins
+        const staleAgeMs = staleAgeByVenue.get(winner.venue);
+        const note = staleAgeMs == null
+          ? `seed-via:${winner.venue}`
+          : `seed-stale:${winner.venue}:${Math.floor(staleAgeMs / 1000)}`;
+        useMarketStore.getState().setFeedStatus(feedId(key), this.socket.status, { note });
+        return winner.candles;
+      } catch {
+        controller.abort();
+      } finally {
+        signal.removeEventListener('abort', abortBatch);
+      }
+    }
+
+    if (directError instanceof UnsupportedPairError || directError instanceof FeedBlockedError) throw directError;
     return [];
+  }
+
+  private recordSeedFailure(exchange: ExchangeId, symbol: string, error: unknown): void {
+    if (error instanceof UnsupportedPairError) {
+      useExchangeStore.getState().markUnsupported(exchange, symbol);
+    } else if (error instanceof FeedBlockedError) {
+      useExchangeStore.getState().setReach(exchange, { status: 'blocked', ms: null, note: 'region' });
+    }
   }
 }
 
@@ -474,8 +597,8 @@ class ExchangeConnection {
 
 /**
  * App-wide singleton. Mount <MarketDataProvider/> once and call ensure/release
- * from effects – the manager owns sockets, backoff, seeding, candle derivation
- * and whale routing across all twelve venues.
+ * from effects – the manager owns sockets, backoff, history seeding, candle
+ * derivation and whale routing for the configured venue adapters.
  */
 class CexSocketManager {
   private readonly connections = new Map<ExchangeId, ExchangeConnection>();

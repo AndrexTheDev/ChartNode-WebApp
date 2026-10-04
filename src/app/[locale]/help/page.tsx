@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { breadcrumbLd, definedTermSetLd, faqPageLd } from '@/lib/jsonld';
+import { flattenMetricDocs } from '@/lib/help';
 import { assertLocale } from '@/lib/locale-param';
 import { buildAlternates, buildOpenGraph, buildTwitter, metaDescription, ROBOTS_DEFAULT, absoluteUrl } from '@/lib/seo';
 
@@ -15,7 +16,7 @@ interface HelpBundle {
   topics: { id: string; question: string; answer: string }[];
   scriptTopics: { id: string; question: string; answer: string }[];
   edgeTopics: { id: string; question: string; answer: string }[];
-  metrics: Record<string, { name: string; body: string }>;
+  metrics: Record<string, unknown>;
 }
 
 interface ChartBundle {
@@ -60,7 +61,8 @@ export default async function HelpPage({ params }: PageProps) {
   }));
   // TOC-Zähler: Basis-Themen + generierte Indikatoren/Metriken je Kategorie
   const indicatorCount = Object.keys(chart.indicators ?? {}).length;
-  const metricCount = Object.keys(help.metrics ?? {}).length;
+  const metrics = flattenMetricDocs(help.metrics);
+  const metricCount = metrics.length;
   const toc = [
     ...(['gettingStarted', 'charts', 'data', 'troubleshooting'] as const).map((cat) => ({
       id: cat,
@@ -76,7 +78,7 @@ export default async function HelpPage({ params }: PageProps) {
       term: `${def.name} – ${def.short}`,
       description: def.hint,
     })),
-    ...Object.values(help.metrics).map((def) => ({ term: def.name, description: def.body })),
+    ...metrics.map(([, def]) => ({ term: def.name, description: def.body })),
   ];
 
   return (

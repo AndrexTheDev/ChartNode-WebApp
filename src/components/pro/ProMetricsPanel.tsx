@@ -21,12 +21,12 @@ import { selectActiveToken, useAppStore } from '@/store/useAppStore';
 import { selectProOpen, useProStore, type ProGroup } from '@/store/useProStore';
 
 /**
- * PRO metrics dock – the numbers paid terminals charge for:
+ * PRO metrics dock – best-effort market and options snapshots:
  *
  *   derivatives (funding, premium, OI, long/short, liquidations) · order flow
  *   (spread, book imbalance, live CVD from the tape) · global market (cap,
- *   dominance, Fear & Greed) · exchange heatmap · options intelligence
- *   (DVOL implied vol, put/call OI, max pain).
+ *   dominance, Fear & Greed) · exchange heatmap · options context
+ *   (DVOL implied vol, call/put OI, calculated max pain).
  *
  * Same lifecycle as the on-chain panel: fetches only while open.
  */
@@ -95,6 +95,14 @@ export function ProMetricsPanel() {
           <VolCard />
         </div>
         <p className="mt-3 font-mono text-2xs uppercase tracking-cyber text-faint">{t('sources')}</p>
+        <a
+          href="https://www.coingecko.com/en/api"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-flex font-mono text-2xs text-muted underline decoration-dotted underline-offset-2 hover:text-fg"
+        >
+          Powered by CoinGecko
+        </a>
       </div>
     </aside>
   );
@@ -199,8 +207,9 @@ function useCountdown(deadline: number | null): string {
 
 function DerivCard({ base }: { base: string }) {
   const t = useTranslations('pro');
-  const deriv = useProStore((s) => s.deriv);
-  const hist = useProStore((s) => s.hist);
+  const baseKey = base.toUpperCase();
+  const deriv = useProStore((s) => (s.baseContext.deriv === baseKey ? s.deriv : null));
+  const hist = useProStore((s) => (s.baseContext.hist === baseKey ? s.hist : null));
   const nextFunding = useCountdown(deriv?.nextFundingTime ?? null);
   return (
     <ProCard group="deriv" icon={CandlestickChart} label={`${t('groups.deriv')} · ${base}`}>
@@ -208,6 +217,9 @@ function DerivCard({ base }: { base: string }) {
         <Placeholder text={t('loading')} />
       ) : (
         <>
+          <p className="mb-1 font-mono text-2xs text-faint">
+            {t('providerLabel', { venue: deriv.source === 'mixed' ? 'GATE + OKX' : deriv.source.toUpperCase() })}
+          </p>
           <div className="grid grid-cols-2 gap-1.5">
             <Stat
               label={t('deriv.funding')}
@@ -294,14 +306,16 @@ function DerivCard({ base }: { base: string }) {
 
 function FlowCard({ base }: { base: string }) {
   const t = useTranslations('pro');
-  const flow = useProStore((s) => s.flow);
-  const cvd = useProStore((s) => s.cvd[`${base}/USDT`]);
+  const baseKey = base.toUpperCase();
+  const flow = useProStore((s) => (s.baseContext.flow === baseKey ? s.flow : null));
+  const cvd = useProStore((s) => s.cvd[`${baseKey}/USDT`]);
   return (
     <ProCard group="flow" icon={ArrowLeftRight} label={`${t('groups.flow')} · ${base}`}>
       {!flow ? (
         <Placeholder text={t('loading')} />
       ) : (
         <>
+          <p className="mb-1 font-mono text-2xs text-faint">{t('providerLabel', { venue: flow.source.toUpperCase() })}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <Stat label={t('flow.bid')} value={usd(flow.bestBid)} tone="bull" />
             <Stat label={t('flow.ask')} value={usd(flow.bestAsk)} tone="bear" />
@@ -322,15 +336,15 @@ function FlowCard({ base }: { base: string }) {
           <div className="mt-1.5 grid grid-cols-3 gap-1.5">
             <Stat
               label={t('flow.cvd')}
-              value={cvd ? `${cvd.cvdUsd >= 0 ? '+' : ''}${compact(cvd.cvdUsd)}` : '0'}
+              value={cvd ? `${cvd.cvdUsd >= 0 ? '+' : ''}${compact(cvd.cvdUsd)}` : '—'}
               tone={cvd ? (cvd.cvdUsd >= 0 ? 'bull' : 'bear') : undefined}
             />
             <Stat
               label={t('flow.delta60')}
-              value={cvd ? `${cvd.delta60sUsd >= 0 ? '+' : ''}${compact(cvd.delta60sUsd)}` : '0'}
+              value={cvd ? `${cvd.delta60sUsd >= 0 ? '+' : ''}${compact(cvd.delta60sUsd)}` : '—'}
               tone={cvd ? (cvd.delta60sUsd >= 0 ? 'bull' : 'bear') : undefined}
             />
-            <Stat label={t('flow.trades')} value={cvd ? compact(cvd.trades) : '0'} />
+            <Stat label={t('flow.trades')} value={cvd ? compact(cvd.trades) : '—'} />
           </div>
           {flow.depthBids.length > 1 && flow.depthAsks.length > 1 && <DepthChart bids={flow.depthBids} asks={flow.depthAsks} label={t('flow.depth')} />}
           <p className="mt-1.5 font-mono text-2xs text-faint">{t('flow.cvdHint')}</p>
@@ -386,6 +400,7 @@ function BreadthCard() {
         <Placeholder text={t('loading')} />
       ) : (
         <>
+          <p className="mb-1 font-mono text-2xs text-faint">{t('providerLabel', { venue: breadth.source.toUpperCase() })}</p>
           <div className="grid grid-cols-3 gap-1.5">
             <Stat label={t('breadth.adv')} value={compact(breadth.advancers)} tone="bull" />
             <Stat label={t('breadth.dec')} value={compact(breadth.decliners)} tone="bear" />
@@ -435,6 +450,14 @@ function GlobalCard() {
             <Stat label={t('global.btcD')} value={global.btcDominancePct != null ? `${global.btcDominancePct.toFixed(1)}%` : '—'} />
             <Stat label={t('global.ethD')} value={global.ethDominancePct != null ? `${global.ethDominancePct.toFixed(1)}%` : '—'} />
           </div>
+          <a
+            href="https://www.coingecko.com/en/api"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-flex font-mono text-2xs text-muted underline decoration-dotted underline-offset-2 hover:text-fg"
+          >
+            Powered by CoinGecko
+          </a>
           {global.fngValue != null && (
             <div className="mt-1.5">
               <div className="flex items-center justify-between">
@@ -463,6 +486,14 @@ function GlobalCard() {
                     .join(' ')}
                 />
               </svg>
+              <a
+                href="https://alternative.me/crypto/fear-and-greed-index/"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex font-mono text-2xs text-muted underline decoration-dotted underline-offset-2 hover:text-fg"
+              >
+                {t('global.fngSource')}
+              </a>
             </div>
           )}
         </>
@@ -479,25 +510,31 @@ function HeatCard() {
       {heat.length === 0 ? (
         <Placeholder text={t('loading')} />
       ) : (
-        <div className="grid grid-cols-7 gap-1">
-          {heat.map((tile) => {
-            const intensity = Math.min(1, Math.abs(tile.changePct) / 8);
-            const background =
-              tile.changePct >= 0
-                ? `hsl(var(--nc-bull) / ${0.12 + intensity * 0.6})`
-                : `hsl(var(--nc-bear) / ${0.12 + intensity * 0.6})`;
-            return (
-              <span
-                key={tile.pair}
-                title={`${tile.pair} · ${pct(tile.changePct)} · ${compactUsd(tile.quoteVolumeUsd)}`}
-                className="flex h-9 items-center justify-center border border-line/40 font-mono text-micro-9 font-bold uppercase text-fg"
-                style={{ background }}
-              >
-                {tile.pair.split('/')[0]?.slice(0, 5)}
-              </span>
-            );
-          })}
-        </div>
+        <>
+          <p className="mb-1 font-mono text-2xs text-faint">
+            {t('providerLabel', { venue: heat[0]?.source.toUpperCase() ?? '—' })}
+          </p>
+          <div className="grid grid-cols-7 gap-1">
+            {heat.map((tile) => {
+              const intensity = tile.changePct == null ? 0 : Math.min(1, Math.abs(tile.changePct) / 8);
+              const background = tile.changePct == null
+                ? 'hsl(var(--nc-muted) / 0.16)'
+                : tile.changePct >= 0
+                  ? `hsl(var(--nc-bull) / ${0.12 + intensity * 0.6})`
+                  : `hsl(var(--nc-bear) / ${0.12 + intensity * 0.6})`;
+              return (
+                <span
+                  key={tile.pair}
+                  title={`${tile.pair} · ${pct(tile.changePct)} · ${compactUsd(tile.quoteVolumeUsd)}`}
+                  className="flex h-9 items-center justify-center border border-line/40 font-mono text-micro-9 font-bold uppercase text-fg"
+                  style={{ background }}
+                >
+                  {tile.pair.split('/')[0]?.slice(0, 5)}
+                </span>
+              );
+            })}
+          </div>
+        </>
       )}
     </ProCard>
   );
@@ -512,6 +549,7 @@ function VolCard() {
         <Placeholder text={t('loading')} />
       ) : (
         <>
+          <p className="mb-1 font-mono text-2xs text-faint">{t('providerLabel', { venue: 'DERIBIT' })}</p>
           <div className="grid grid-cols-2 gap-1.5">
             <Stat
               label={t('vol.dvolBtc')}
@@ -525,8 +563,7 @@ function VolCard() {
             />
             <Stat
               label={t('vol.putCall')}
-              value={vol.putCallOi != null ? vol.putCallOi.toFixed(2) : '—'}
-              tone={vol.putCallOi != null ? (vol.putCallOi >= 1 ? 'bull' : 'bear') : undefined}
+              value={vol.callPutOi != null ? vol.callPutOi.toFixed(2) : '—'}
             />
             <Stat label={t('vol.maxPain')} value={vol.maxPain != null ? compactUsd(vol.maxPain) : '—'} />
           </div>

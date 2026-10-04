@@ -16,15 +16,18 @@ const intlMiddleware = createMiddleware(routing);
  *        c. `routing.defaultLocale`
  *      => "automatische Spracherkennung des Systems" with zero JS on the client.
  *   2. Prefixes/validates every other route and keeps deep links intact.
- *   3. Mirrors Cloudflare's `cf-ipcountry` header into a cookie so the client
- *      can adapt exchange selection to the visitor's region – even on fully
- *      prerendered pages, where no request headers exist at render time.
- *   4. Runs on Cloudflare's edge, costs nothing and adds no cold start.
+ *   3. When Cloudflare supplies a valid `cf-ipcountry` header, mirrors it into
+ *      a cookie so the client can adapt exchange selection to the visitor's
+ *      region. Missing or unknown country data is left unset.
+ *   4. Runs for matched requests through the deployment adapter. Cloudflare
+ *      currently reports Node.js middleware support as experimental; request
+ *      quotas, cost and latency depend on its plan, region, traffic and runtime.
  */
 export default function proxy(request: NextRequest) {
   const response = intlMiddleware(request);
 
-  // Cloudflare sets cf-ipcountry on every request (two-letter ISO-3166 alpha-2).
+  // Cloudflare deployments may supply cf-ipcountry (two-letter ISO-3166 alpha-2).
+  // Other hosts, local requests and unknown locations can leave it absent.
   const country = request.headers.get('cf-ipcountry');
   if (country && /^[A-Za-z]{2}$/.test(country) && country.toUpperCase() !== 'XX') {
     const value = country.toUpperCase();

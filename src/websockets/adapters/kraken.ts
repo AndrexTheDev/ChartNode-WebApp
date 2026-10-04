@@ -15,7 +15,7 @@ export const KRAKEN_INTERVAL: Record<Timeframe, number> = {
 };
 
 /**
- * Kraken spot WebSocket v1 (public, no key). Verified live:
+ * Kraken spot WebSocket v1 (public, no key). Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"event":"subscribe","pair":["XBT/USD"],"subscription":{"name":"ohlc","interval":1}}
  * ohlc data : [channelID, [time, etime, open, high, low, close, vwap, volume, count], "ohlc-1", "XBT/USD"]

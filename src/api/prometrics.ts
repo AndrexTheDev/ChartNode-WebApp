@@ -3,15 +3,16 @@
 
 /**
  * PRO metrics – derivatives, order flow, global market, heatmap and options
- * intelligence from free, keyless, CORS-enabled sources. These are the numbers
- * paid terminals sell; every endpoint here was live-verified first.
+ * summaries from keyless public endpoints. Browser/CORS, geographic access,
+ * quotas and provider freshness vary; no source is guaranteed. The UI retains
+ * partial fields and identifies the venue when the data contract supports it.
  *
  *   - api.gateio.ws        → funding, mark/index premium, long-short ratios,
  *                           liquidations per interval, open interest, order book
  *   - www.okx.com          → open interest in USD (cross-check / primary OI)
  *   - api.coingecko.com    → global market cap, volume, BTC/ETH dominance
  *   - api.alternative.me   → Fear & Greed index + history
- *   - www.deribit.com      → DVOL implied-vol index, put/call open interest,
+ *   - www.deribit.com      → DVOL implied-vol index, call/put open interest,
  *                           max pain from the full options chain
  *
  * All parsers are defensive (malformed payload → null, never a throw) and all
@@ -24,8 +25,10 @@ import { fetchJson } from './http';
 
 export interface DerivSignals {
   symbol: string;
+  /** Venue that supplied the usable snapshot; source is never implied to be universal. */
+  source: 'gate' | 'okx' | 'mixed';
   fundingRate: number | null;
-  /** Funding annualised (3×/day), percent. */
+  /** Simple annualised rate using the provider interval; null when unknown, percent. */
   fundingAnnualPct: number | null;
   markPrice: number | null;
   indexPrice: number | null;
@@ -46,6 +49,7 @@ export interface DerivSignals {
 }
 
 export interface FlowSignals {
+  source: 'gate' | 'okx';
   bestBid: number | null;
   bestAsk: number | null;
   spreadAbs: number | null;
@@ -60,7 +64,7 @@ export interface FlowSignals {
 }
 
 export interface GlobalSignals {
-  totalMcapUsd: number;
+  totalMcapUsd: number | null;
   mcapChange24hPct: number | null;
   totalVolumeUsd: number | null;
   btcDominancePct: number | null;
@@ -74,8 +78,10 @@ export interface GlobalSignals {
 
 export interface HeatTile {
   pair: string;
-  changePct: number;
+  /** Provider-reported 24 h change; null stays unknown, not a fabricated 0%. */
+  changePct: number | null;
   quoteVolumeUsd: number;
+  source: 'gate' | 'okx';
 }
 
 export interface SmilePoint {
@@ -97,7 +103,7 @@ export interface VolSignals {
   dvolBtcChange24h: number | null;
   dvolEth: number | null;
   dvolEthChange24h: number | null;
-  putCallOi: number | null;
+  callPutOi: number | null;
   maxPain: number | null;
   underlying: number | null;
   expiries: number | null;
@@ -125,6 +131,8 @@ export function perpSymbol(base: string): { gate: string; okx: string } {
 interface GateContract {
   funding_rate?: string;
   funding_rate_indicative?: string;
+  funding_interval?: number | string;
+  funding_next_apply?: number | string;
   index_price?: string;
   mark_price?: string;
 }
@@ -133,6 +141,7 @@ interface GateStat {
   lsr_account?: number;
   top_lsr_size?: number;
   open_interest?: number;
+  open_interest_usd?: number;
   long_liq_usd?: number;
   short_liq_usd?: number;
   mark_price?: number;
@@ -143,65 +152,139 @@ interface OkxOi {
 }
 interface OkxFunding {
   code?: string;
-  data?: { fundingTime?: string; nextFundingTime?: string }[];
+  data?: { fundingRate?: string; fundingTime?: string; nextFundingTime?: string }[];
+}
+interface OkxMark {
+  code?: string;
+  data?: { markPx?: string }[];
+}
+interface OkxIndex {
+  code?: string;
+  data?: { idxPx?: string }[];
 }
 
 export async function fetchDerivSignals(base: string, signal?: AbortSignal): Promise<DerivSignals | null> {
   const { gate, okx } = perpSymbol(base);
-  try {
-    const [contract, stats, okxOi, okxFundingResp] = await Promise.all([
-      fetchJson<GateContract>(`https://api.gateio.ws/api/v4/futures/usdt/contracts/${gate}`, {
-        source: 'gate',
-        cacheTtlMs: 20_000,
-        signal,
-      }),
-      fetchJson<GateStat[]>(`https://api.gateio.ws/api/v4/futures/usdt/contract_stats?contract=${gate}&interval=5m&limit=1`, {
-        source: 'gate',
-        cacheTtlMs: 20_000,
-        signal,
-      }),
-      fetchJson<OkxOi>(`https://www.okx.com/api/v5/public/open-interest?instId=${okx}`, {
-        source: 'okx',
-        cacheTtlMs: 20_000,
-        signal,
-      }).catch(() => null),
-      fetchJson<OkxFunding>(`https://www.okx.com/api/v5/public/funding-rate?instId=${okx}`, {
-        source: 'okx',
-        cacheTtlMs: 20_000,
-        signal,
-      }).catch(() => null),
-    ]);
-    const okxFunding = okxFundingResp?.data?.[0];
+  const clean = base.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const gateResults = await Promise.allSettled([
+    fetchJson<GateContract>(`https://api.gateio.ws/api/v4/futures/usdt/contracts/${gate}`, {
+      source: 'gate',
+      cacheTtlMs: 20_000,
+      signal,
+    }),
+    fetchJson<GateStat[]>(`https://api.gateio.ws/api/v4/futures/usdt/contract_stats?contract=${gate}&interval=5m&limit=1`, {
+      source: 'gate',
+      cacheTtlMs: 20_000,
+      signal,
+    }),
+    fetchJson<OkxOi>(`https://www.okx.com/api/v5/public/open-interest?instId=${okx}`, {
+      source: 'okx',
+      cacheTtlMs: 20_000,
+      signal,
+    }),
+    fetchJson<OkxFunding>(`https://www.okx.com/api/v5/public/funding-rate?instId=${okx}`, {
+      source: 'okx',
+      cacheTtlMs: 20_000,
+      signal,
+    }),
+  ]);
 
-    const stat = Array.isArray(stats) ? stats[0] : undefined;
-    const mark = num(contract.mark_price) ?? num(stat?.mark_price);
-    const index = num(contract.index_price);
-    const funding = num(contract.funding_rate) ?? num(contract.funding_rate_indicative);
-    if (mark == null && index == null && funding == null && !stat) return null;
+  const contract = gateResults[0]?.status === 'fulfilled' ? gateResults[0].value : null;
+  const stats = gateResults[1]?.status === 'fulfilled' ? gateResults[1].value : null;
+  const okxOi = gateResults[2]?.status === 'fulfilled' ? gateResults[2].value : null;
+  const okxFundingResp = gateResults[3]?.status === 'fulfilled' ? gateResults[3].value : null;
+  const okxFunding = okxFundingResp?.data?.[0];
+  const stat = Array.isArray(stats) ? stats[0] : undefined;
 
-    const gateOiContracts = num(stat?.open_interest);
-    const openInterestUsd =
-      num(okxOi?.data?.[0]?.oiUsd) ?? (gateOiContracts != null && mark != null ? gateOiContracts * mark : null);
+  const gateMark = num(contract?.mark_price) ?? num(stat?.mark_price);
+  const gateIndex = num(contract?.index_price);
+  const gateFunding = num(contract?.funding_rate) ?? num(contract?.funding_rate_indicative);
+  const gateFundingIntervalSec = num(contract?.funding_interval);
+  const gateNextFundingSec = num(contract?.funding_next_apply);
 
-    return {
-      symbol: gate,
-      fundingRate: funding,
-      fundingAnnualPct: funding != null ? funding * 3 * 365 * 100 : null,
-      markPrice: mark,
-      indexPrice: index,
-      premiumPct: mark != null && index != null && index > 0 ? ((mark - index) / index) * 100 : null,
-      openInterestUsd,
-      lsrAccounts: num(stat?.lsr_account),
-      lsrTaker: num(stat?.lsr_taker),
-      topLsr: num(stat?.top_lsr_size),
-      liqLongUsd: num(stat?.long_liq_usd),
-      liqShortUsd: num(stat?.short_liq_usd),
-      fundingTime: num(okxFunding?.fundingTime),
-      nextFundingTime: num(okxFunding?.nextFundingTime),
-    };
-  } catch {
-    return null;
-  }
+  // Gate carries most of the derivatives panel. If that venue is unavailable,
+  // or a particular price field is absent, fill only those gaps from OKX's
+  // public swap endpoints. The L/S and liquidation values remain null rather
+  // than being fabricated from another market statistic.
+  const needOkxMark = gateMark == null;
+  const needOkxIndex = gateIndex == null;
+  const [okxMarkResult, okxIndexResult] = await Promise.all([
+    needOkxMark
+      ? fetchJson<OkxMark>(`https://www.okx.com/api/v5/public/mark-price?instType=SWAP&instId=${okx}`, {
+          source: 'okx', cacheTtlMs: 20_000, signal,
+        }).catch(() => null)
+      : Promise.resolve(null),
+    needOkxIndex
+      ? fetchJson<OkxIndex>(`https://www.okx.com/api/v5/market/index-tickers?instId=${clean}-USDT`, {
+          source: 'okx', cacheTtlMs: 20_000, signal,
+        }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  const okxMark = num(okxMarkResult?.data?.[0]?.markPx);
+  const okxIndex = num(okxIndexResult?.data?.[0]?.idxPx);
+  const mark = gateMark ?? okxMark;
+  const index = gateIndex ?? okxIndex;
+  const okxFundingRate = num(okxFunding?.fundingRate);
+  const funding = gateFunding ?? okxFundingRate;
+  const okxFundingTime = num(okxFunding?.fundingTime);
+  const okxNextFundingTime = num(okxFunding?.nextFundingTime);
+  const gateIntervalMs = gateFundingIntervalSec != null && gateFundingIntervalSec > 0
+    ? gateFundingIntervalSec * 1_000
+    : null;
+  const okxIntervalMs =
+    okxFundingTime != null && okxNextFundingTime != null && okxNextFundingTime > okxFundingTime
+      ? okxNextFundingTime - okxFundingTime
+      : null;
+  // Do not annualise with an assumed 8-hour cycle when the provider does not
+  // publish the interval; OKX intervals can change and Gate exposes seconds.
+  const fundingIntervalMs = gateFunding != null ? gateIntervalMs : okxIntervalMs;
+  const fundingCyclesPerDay = fundingIntervalMs != null ? 86_400_000 / fundingIntervalMs : null;
+  const fundingAnnualPct = funding != null && fundingCyclesPerDay != null
+    ? funding * fundingCyclesPerDay * 365 * 100
+    : null;
+  const gateNextFundingTime = gateNextFundingSec != null && gateNextFundingSec > 0
+    ? gateNextFundingSec * 1_000
+    : null;
+  const nextFundingTime = gateFunding != null
+    ? gateNextFundingTime ?? okxNextFundingTime
+    : okxNextFundingTime ?? gateNextFundingTime;
+  const fundingTime = okxFundingTime ?? (
+    gateNextFundingTime != null && gateIntervalMs != null ? gateNextFundingTime - gateIntervalMs : null
+  );
+  // Gate's open_interest is a contract count, not a coin/USD amount. Only
+  // consume its explicit quote-notional field; OKX's oiUsd is the other source.
+  const openInterestUsd = num(okxOi?.data?.[0]?.oiUsd) ?? num(stat?.open_interest_usd);
+
+  const hasGate = Boolean(
+    (contract && Object.keys(contract).length > 0) || (stat && Object.keys(stat).length > 0),
+  );
+  const hasOkx =
+    openInterestUsd != null ||
+    num(okxFunding?.fundingRate) != null ||
+    num(okxFunding?.fundingTime) != null ||
+    num(okxFunding?.nextFundingTime) != null ||
+    okxMark != null ||
+    okxIndex != null;
+  if (!hasGate && !hasOkx) return null;
+
+  return {
+    symbol: gate,
+    source: hasGate && hasOkx ? 'mixed' : hasGate ? 'gate' : 'okx',
+    fundingRate: funding,
+    fundingAnnualPct,
+    markPrice: mark,
+    indexPrice: index,
+    premiumPct: mark != null && index != null && index > 0 ? ((mark - index) / index) * 100 : null,
+    openInterestUsd,
+    lsrAccounts: num(stat?.lsr_account),
+    lsrTaker: num(stat?.lsr_taker),
+    topLsr: num(stat?.top_lsr_size),
+    liqLongUsd: num(stat?.long_liq_usd),
+    liqShortUsd: num(stat?.short_liq_usd),
+    fundingTime,
+    nextFundingTime,
+  };
 }
 
 /* -------------------------------- order flow ------------------------------- */
@@ -222,6 +305,43 @@ interface GateBook {
   bids?: [string, string][];
   asks?: [string, string][];
 }
+interface OkxBook {
+  code?: string;
+  data?: { bids?: string[][]; asks?: string[][] }[];
+}
+
+function normaliseBook(
+  bidRows: unknown,
+  askRows: unknown,
+  source: FlowSignals['source'],
+): FlowSignals | null {
+  const parseSide = (rows: unknown): (readonly [number | null, number | null])[] =>
+    (Array.isArray(rows) ? rows : []).flatMap((row) =>
+      Array.isArray(row) ? [[num(row[0]), num(row[1])] as const] : [],
+    );
+  const bids = parseSide(bidRows);
+  const asks = parseSide(askRows);
+  const bestBid = bids[0]?.[0] ?? null;
+  const bestAsk = asks[0]?.[0] ?? null;
+  if (bestBid == null || bestAsk == null || bestBid <= 0 || bestAsk <= 0) return null;
+
+  const bidNotional = bids.reduce((sum, [price, amount]) => sum + (price ?? 0) * (amount ?? 0), 0);
+  const askNotional = asks.reduce((sum, [price, amount]) => sum + (price ?? 0) * (amount ?? 0), 0);
+  const mid = (bestBid + bestAsk) / 2;
+  return {
+    source,
+    bestBid,
+    bestAsk,
+    spreadAbs: bestAsk - bestBid,
+    spreadBps: mid > 0 ? ((bestAsk - bestBid) / mid) * 10_000 : null,
+    bidNotional,
+    askNotional,
+    imbalancePct:
+      bidNotional + askNotional > 0 ? ((bidNotional - askNotional) / (bidNotional + askNotional)) * 100 : null,
+    depthBids: cumulative(bids),
+    depthAsks: cumulative(asks),
+  };
+}
 
 export async function fetchFlowSignals(base: string, signal?: AbortSignal): Promise<FlowSignals | null> {
   const clean = base.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -230,28 +350,19 @@ export async function fetchFlowSignals(base: string, signal?: AbortSignal): Prom
       `https://api.gateio.ws/api/v4/spot/order_book?currency_pair=${clean}_USDT&limit=50`,
       { source: 'gate', cacheTtlMs: 8_000, signal },
     );
-    const bids = (book.bids ?? []).map(([price, amount]) => [num(price), num(amount)] as const);
-    const asks = (book.asks ?? []).map(([price, amount]) => [num(price), num(amount)] as const);
-    const bestBid = bids[0]?.[0] ?? null;
-    const bestAsk = asks[0]?.[0] ?? null;
-    if (bestBid == null || bestAsk == null) return null;
+    const parsed = normaliseBook(book.bids, book.asks, 'gate');
+    if (parsed) return parsed;
+  } catch {
+    /* region, pair, or provider failure – try the independent OKX spot book */
+  }
 
-    const bidNotional = bids.reduce((sum, [price, amount]) => sum + (price ?? 0) * (amount ?? 0), 0);
-    const askNotional = asks.reduce((sum, [price, amount]) => sum + (price ?? 0) * (amount ?? 0), 0);
-    const mid = (bestBid + bestAsk) / 2;
-
-    return {
-      bestBid,
-      bestAsk,
-      spreadAbs: bestAsk - bestBid,
-      spreadBps: mid > 0 ? ((bestAsk - bestBid) / mid) * 10_000 : null,
-      bidNotional,
-      askNotional,
-      imbalancePct:
-        bidNotional + askNotional > 0 ? ((bidNotional - askNotional) / (bidNotional + askNotional)) * 100 : null,
-      depthBids: cumulative(bids),
-      depthAsks: cumulative(asks),
-    };
+  try {
+    const payload = await fetchJson<OkxBook>(
+      `https://www.okx.com/api/v5/market/books?instId=${clean}-USDT&sz=50`,
+      { source: 'okx-flow', cacheTtlMs: 8_000, signal },
+    );
+    const book = payload.data?.[0];
+    return normaliseBook(book?.bids, book?.asks, 'okx');
   } catch {
     return null;
   }
@@ -273,42 +384,42 @@ interface FngResponse {
 }
 
 export async function fetchGlobalSignals(signal?: AbortSignal): Promise<GlobalSignals | null> {
-  try {
-    const [global, fng] = await Promise.all([
-      fetchJson<CoinGeckoGlobal>('https://api.coingecko.com/api/v3/global', {
-        source: 'coingecko',
-        cacheTtlMs: 120_000,
-        signal,
-      }),
-      fetchJson<FngResponse>('https://api.alternative.me/fng/?limit=14', {
-        source: 'alternative.me',
-        cacheTtlMs: 120_000,
-        signal,
-      }),
-    ]);
-    const data = global.data;
-    const totalMcapUsd = num(data?.total_market_cap?.usd);
-    if (totalMcapUsd == null) return null;
-    // alternative.me returns newest first
-    const history = (fng.data ?? [])
-      .map((entry) => num(entry.value))
-      .filter((value): value is number => value != null)
-      .reverse();
+  const [globalResult, fngResult] = await Promise.allSettled([
+    fetchJson<CoinGeckoGlobal>('https://api.coingecko.com/api/v3/global', {
+      source: 'coingecko',
+      cacheTtlMs: 120_000,
+      signal,
+    }),
+    fetchJson<FngResponse>('https://api.alternative.me/fng/?limit=14', {
+      source: 'alternative.me',
+      cacheTtlMs: 120_000,
+      signal,
+    }),
+  ]);
+  const global = globalResult.status === 'fulfilled' ? globalResult.value : null;
+  const fng = fngResult.status === 'fulfilled' ? fngResult.value : null;
+  const data = global?.data;
+  const totalMcapUsd = num(data?.total_market_cap?.usd);
+  // alternative.me returns newest first. Keep either side of the panel useful
+  // if the other provider is blocked, rate-limited, or temporarily offline.
+  const history = (fng?.data ?? [])
+    .map((entry) => num(entry.value))
+    .filter((value): value is number => value != null)
+    .reverse();
+  const hasGlobal = totalMcapUsd != null || num(data?.total_volume?.usd) != null;
+  if (!hasGlobal && history.length === 0) return null;
 
-    return {
-      totalMcapUsd,
-      mcapChange24hPct: num(data?.market_cap_change_percentage_24h_usd),
-      totalVolumeUsd: num(data?.total_volume?.usd),
-      btcDominancePct: num(data?.market_cap_percentage?.btc),
-      ethDominancePct: num(data?.market_cap_percentage?.eth),
-      activeCryptos: num(data?.active_cryptocurrencies),
-      fngValue: history.length > 0 ? (history[history.length - 1] ?? null) : null,
-      fngLabel: fng.data?.[0]?.value_classification ?? null,
-      fngHistory: history,
-    };
-  } catch {
-    return null;
-  }
+  return {
+    totalMcapUsd,
+    mcapChange24hPct: num(data?.market_cap_change_percentage_24h_usd),
+    totalVolumeUsd: num(data?.total_volume?.usd),
+    btcDominancePct: num(data?.market_cap_percentage?.btc),
+    ethDominancePct: num(data?.market_cap_percentage?.eth),
+    activeCryptos: num(data?.active_cryptocurrencies),
+    fngValue: history.length > 0 ? (history[history.length - 1] ?? null) : null,
+    fngLabel: fng?.data?.[0]?.value_classification ?? null,
+    fngHistory: history,
+  };
 }
 
 /* --------------------------------- heatmap --------------------------------- */
@@ -318,6 +429,8 @@ interface GateTicker {
   last?: string;
   change_percentage?: string;
   quote_volume?: string;
+  high_24h?: string;
+  low_24h?: string;
 }
 
 interface OkxTicker {
@@ -325,13 +438,27 @@ interface OkxTicker {
   last?: string;
   open24h?: string;
   volCcy24h?: string;
+  high24h?: string;
+  low24h?: string;
+}
+
+interface SpotTickerRow {
+  pair: string;
+  base: string;
+  last: number;
+  changePct: number | null;
+  quoteVolumeUsd: number;
+  high24h: number | null;
+  low24h: number | null;
+  source: 'gate' | 'okx';
 }
 
 /**
- * Spot ticker rows for heatmap/breadth: Gate first, OKX as the regional
- * fallback (some networks block one of the two). 120 s cached per source.
+ * Shared spot ticker snapshot: Gate first, OKX when Gate is blocked, empty, or
+ * rate-limited. The normalized rows feed heatmap, breadth, screener, and
+ * watchlist so fallbacks do not create a second data contract.
  */
-async function spotTickerRows(signal?: AbortSignal): Promise<HeatTile[]> {
+async function spotTickerRows(signal?: AbortSignal): Promise<SpotTickerRow[]> {
   try {
     const tickers = await fetchJson<GateTicker[]>('https://api.gateio.ws/api/v4/spot/tickers', {
       source: 'gate',
@@ -340,39 +467,57 @@ async function spotTickerRows(signal?: AbortSignal): Promise<HeatTile[]> {
     });
     const rows = (Array.isArray(tickers) ? tickers : [])
       .filter((entry) => entry.currency_pair?.endsWith('_USDT'))
-      .map((entry) => ({
-        pair: (entry.currency_pair ?? '').replace('_USDT', '').replace('_', '/'),
-        changePct: num(entry.change_percentage) ?? 0,
-        quoteVolumeUsd: num(entry.quote_volume) ?? 0,
-      }))
-      .filter((entry) => entry.pair && entry.quoteVolumeUsd > 0);
+      .map((entry): SpotTickerRow => {
+        const base = (entry.currency_pair ?? '').split('_')[0] ?? '';
+        return {
+          pair: base ? `${base}/USDT` : '',
+          base,
+          last: num(entry.last) ?? 0,
+          changePct: num(entry.change_percentage),
+          quoteVolumeUsd: num(entry.quote_volume) ?? 0,
+          high24h: num(entry.high_24h),
+          low24h: num(entry.low_24h),
+          source: 'gate',
+        };
+      })
+      .filter((entry) => entry.pair && entry.last > 0 && entry.quoteVolumeUsd > 0);
     if (rows.length > 0) return rows;
   } catch {
     /* region-blocked or rate-limited – fall through to OKX */
   }
+
   const payload = await fetchJson<{ data?: OkxTicker[] }>('https://www.okx.com/api/v5/market/tickers?instType=SPOT', {
-    source: 'okx-heat',
+    source: 'okx-spot-tickers',
     cacheTtlMs: 120_000,
     signal,
   });
-  const tickers = payload?.data ?? [];
-  return (Array.isArray(tickers) ? tickers : [])
+  return (Array.isArray(payload?.data) ? payload.data : [])
     .filter((entry) => entry.instId?.endsWith('-USDT'))
-    .map((entry) => {
+    .map((entry): SpotTickerRow => {
+      const instId = entry.instId ?? '';
+      const base = instId.slice(0, -'-USDT'.length);
       const last = num(entry.last) ?? 0;
-      const open = num(entry.open24h) ?? 0;
+      const open = num(entry.open24h);
       return {
-        pair: (entry.instId ?? '').replace('-USDT', '').replace('-', '/'),
-        changePct: open > 0 ? ((last - open) / open) * 100 : 0,
+        pair: base ? `${base}/USDT` : '',
+        base,
+        last,
+        changePct: open != null && open > 0 ? ((last - open) / open) * 100 : null,
         quoteVolumeUsd: num(entry.volCcy24h) ?? 0,
+        high24h: num(entry.high24h),
+        low24h: num(entry.low24h),
+        source: 'okx',
       };
     })
-    .filter((entry) => entry.pair && entry.quoteVolumeUsd > 0);
+    .filter((entry) => entry.pair && entry.last > 0 && entry.quoteVolumeUsd > 0);
 }
 
-export async function fetchHeatmap(signal?: AbortSignal): Promise<HeatTile[]> {
+export async function fetchHeatmap(signal?: AbortSignal, limit = 28): Promise<HeatTile[]> {
   try {
-    return (await spotTickerRows(signal)).sort((a, b) => b.quoteVolumeUsd - a.quoteVolumeUsd).slice(0, 28);
+    return (await spotTickerRows(signal))
+      .sort((a, b) => b.quoteVolumeUsd - a.quoteVolumeUsd)
+      .slice(0, Math.max(1, Math.min(64, Math.floor(limit))))
+      .map(({ pair, changePct, quoteVolumeUsd, source }) => ({ pair, changePct, quoteVolumeUsd, source }));
   } catch {
     return [];
   }
@@ -446,7 +591,7 @@ export async function fetchVolSignals(signal?: AbortSignal): Promise<VolSignals 
       ).catch(() => null),
     ]);
 
-    let putCallOi: number | null = null;
+    let callPutOi: number | null = null;
     let maxPain: number | null = null;
     let underlying: number | null = null;
     let smile: SmilePoint[] = [];
@@ -473,7 +618,7 @@ export async function fetchVolSignals(signal?: AbortSignal): Promise<VolSignals 
         else bucket.call += oi;
         oiByStrike.set(strike, bucket);
       }
-      putCallOi = putOi > 0 ? callOi / putOi : null;
+      callPutOi = putOi > 0 ? callOi / putOi : null;
 
 
       // Max pain: the strike where the aggregate option payout is minimal.
@@ -550,13 +695,13 @@ export async function fetchVolSignals(signal?: AbortSignal): Promise<VolSignals 
       }
     }
 
-    if (btc.last == null && eth.last == null && putCallOi == null) return null;
+    if (btc.last == null && eth.last == null && callPutOi == null) return null;
     return {
       dvolBtc: btc.last,
       dvolBtcChange24h: btc.change,
       dvolEth: eth.last,
       dvolEthChange24h: eth.change,
-      putCallOi,
+      callPutOi,
       maxPain,
       underlying,
       expiries: entries.length,
@@ -646,7 +791,9 @@ export async function fetchDerivHistory(base: string, signal?: AbortSignal): Pro
 export interface Breadth {
   advancers: number;
   decliners: number;
+  /** Pairs with a provider-reported 24 h change (not all listed pairs). */
   total: number;
+  source: 'gate' | 'okx';
   /** advancers / (advancers + decliners), percent 0..100. */
   advPct: number | null;
   /** Median 24 h change across all quoted USDT pairs, percent. */
@@ -654,13 +801,14 @@ export interface Breadth {
 }
 
 /**
- * Advance/decline breadth across every quoted Gate USDT pair. Shares the
- * 120 s cached tickers response with the heatmap, so it costs no extra calls.
+ * Advance/decline breadth across returned USDT pairs with a known 24 h change.
+ * Shares the 120 s ticker snapshot with the heatmap, so it costs no extra call.
  */
 export async function fetchBreadth(signal?: AbortSignal): Promise<Breadth | null> {
   try {
-    const rows = (await spotTickerRows(signal)).map((entry) => entry.changePct);
-    if (rows.length === 0) return null;
+    const snapshot = await spotTickerRows(signal);
+    const rows = snapshot.map((entry) => entry.changePct).filter((value): value is number => value != null);
+    if (rows.length === 0 || snapshot.length === 0) return null;
     const advancers = rows.filter((value) => value > 0.01).length;
     const decliners = rows.filter((value) => value < -0.01).length;
     const sorted = [...rows].sort((a, b) => a - b);
@@ -670,6 +818,7 @@ export async function fetchBreadth(signal?: AbortSignal): Promise<Breadth | null
       advancers,
       decliners,
       total: rows.length,
+      source: snapshot[0]?.source ?? 'gate',
       advPct: advancers + decliners > 0 ? (advancers / (advancers + decliners)) * 100 : null,
       medianChangePct: median,
     };
@@ -684,54 +833,31 @@ export interface ScreenerRow {
   pair: string;
   base: string;
   last: number;
-  changePct: number;
+  changePct: number | null;
   quoteVolumeUsd: number;
   high24h: number | null;
   low24h: number | null;
+  /** Venue supplying this snapshot; Gate is primary, OKX is a fallback. */
+  source: 'gate' | 'okx';
   /** Position of `last` inside the 24 h range, 0..1. */
   rangePos: number | null;
 }
 
 /**
- * Every quoted Gate USDT pair (~2 000 rows) for the screener – same cached
- * tickers response as heatmap/breadth, so the screener costs zero extra calls.
+ * Normalized USDT spot tickers returned in the provider snapshot – shared with
+ * heatmap/breadth/watchlist. Gate is primary and OKX supplies the same fields
+ * when the primary returns no usable rows or fails; this is not a full-market list.
  */
 export async function fetchScreenerRows(signal?: AbortSignal): Promise<ScreenerRow[]> {
   try {
-    const tickers = await fetchJson<GateTickerFull[]>('https://api.gateio.ws/api/v4/spot/tickers', {
-      source: 'gate',
-      cacheTtlMs: 120_000,
-      signal,
+    return (await spotTickerRows(signal)).map((row) => {
+      const span = row.high24h != null && row.low24h != null ? row.high24h - row.low24h : 0;
+      return {
+        ...row,
+        rangePos: span > 0 && row.low24h != null ? (row.last - row.low24h) / span : null,
+      };
     });
-    return (Array.isArray(tickers) ? tickers : [])
-      .filter((entry) => entry.currency_pair?.endsWith('_USDT'))
-      .map((entry) => {
-        const last = num(entry.last);
-        const high = num(entry.high_24h);
-        const low = num(entry.low_24h);
-        const span = high != null && low != null ? high - low : 0;
-        return {
-          pair: (entry.currency_pair ?? '').replace('_USDT', '').replace('_', '/'),
-          base: (entry.currency_pair ?? '').split('_')[0] ?? '',
-          last: last ?? 0,
-          changePct: num(entry.change_percentage) ?? 0,
-          quoteVolumeUsd: num(entry.quote_volume) ?? 0,
-          high24h: high,
-          low24h: low,
-          rangePos: last != null && span > 0 && low != null ? (last - low) / span : null,
-        };
-      })
-      .filter((row) => row.pair && row.last > 0 && row.quoteVolumeUsd > 0);
   } catch {
     return [];
   }
-}
-
-interface GateTickerFull {
-  currency_pair?: string;
-  last?: string;
-  change_percentage?: string;
-  quote_volume?: string;
-  high_24h?: string;
-  low_24h?: string;
 }

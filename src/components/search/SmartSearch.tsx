@@ -411,6 +411,11 @@ function DexRow({ hit, audit }: { hit: DexHit; audit: SecurityAudit | 'pending' 
           {CHAIN_LABEL[pair.chain as ChainLabelId] ?? pair.chain} · {pair.dex} · {t('liq')}{' '}
           {compactUsd(pair.liquidityUsd)}
         </span>
+        {pair.source === 'geckoterminal' && (
+          <span className="block font-mono text-[10px] leading-3 text-faint">
+            On-chain data provided by GeckoTerminal · Powered by CoinGecko
+          </span>
+        )}
       </span>
 
       <span className="shrink-0 text-right">

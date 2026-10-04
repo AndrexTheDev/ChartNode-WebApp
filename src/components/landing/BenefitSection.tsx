@@ -15,9 +15,9 @@ interface PaidRow {
 }
 
 /**
- * Trader-first benefit block: two compact panels — what costs a subscription
- * elsewhere (with the gate named) and what only NodeChart has. No story-time,
- * no fluff: one screen, every line a reason to open the terminal.
+ * Trader-first feature inventory: two compact panels of available tools and
+ * analysis modules. Provider coverage, source freshness and device performance
+ * can vary; keep each row descriptive rather than making competitor claims.
  */
 export async function BenefitSection({ locale }: BenefitSectionProps) {
   const t = await getTranslations({ locale, namespace: 'benefit' });
@@ -32,7 +32,7 @@ export async function BenefitSection({ locale }: BenefitSectionProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* ---------------- paid elsewhere ---------------- */}
+        {/* ---------------- included features ---------------- */}
         <NeonPanel title={t('paidTitle')} glow="sm">
           <ul className="divide-y divide-line/60">
             {paid.map((row) => (
@@ -50,7 +50,7 @@ export async function BenefitSection({ locale }: BenefitSectionProps) {
           </ul>
         </NeonPanel>
 
-        {/* ---------------- nodechart only ---------------- */}
+        {/* ---------------- analysis modules ---------------- */}
         <NeonPanel title={t('uniqueTitle')} glow="sm">
           <ul className="divide-y divide-line/60">
             {unique.map((row) => (

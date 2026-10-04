@@ -15,7 +15,7 @@ export const BITGET_GRANULARITY: Record<Timeframe, string> = {
 };
 
 /**
- * Bitget WebSocket v2 public spot. Verified live:
+ * Bitget WebSocket v2 public spot. Protocol example; current reachability is not guaranteed:
  *
  * subscribe : {"op":"subscribe","args":[{"instType":"SPOT","channel":"candle1m","instId":"BTCUSDT"}]}
  * candles   : {"action":"snapshot"|"update","arg":{…},"data":[[ts,o,h,l,c,baseVol,quoteVol,usdtVol]]}

@@ -15,8 +15,8 @@
  *      (for the settings modal), its outputs (series to draw) and where it
  *      lives (`overlay` on price, or its own `pane` below).
  *
- * Number of indicator *instances* per chart is unlimited – the store keeps an
- * array, and each instance renders as its own series.
+ * The store does not enforce a fixed indicator-instance cap. Rendering and
+ * memory use still impose practical limits that depend on the visitor's device.
  */
 
 import {

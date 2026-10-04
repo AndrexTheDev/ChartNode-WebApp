@@ -95,13 +95,26 @@ for (const locale of LOCALES) {
   check(`[${locale}] robots meta index,follow`, (metaName(home.body, 'robots') ?? '').includes('index'));
   const types = jsonLdTypes(home.body);
   check(
-    `[${locale}] JSON-LD graph: Organization+WebSite+SoftwareApplication+FAQPage`,
-    ['Organization', 'WebSite', 'SoftwareApplication', 'FAQPage'].every((type) => types.has(type)),
+    `[${locale}] landing JSON-LD graph: Organization+WebSite+SoftwareApplication`,
+    ['Organization', 'WebSite', 'SoftwareApplication'].every((type) => types.has(type)),
     [...types].join(','),
   );
   const h1Count = (home.body.match(/<h1[\s>]/g) ?? []).length;
   check(`[${locale}] exactly one h1 on landing`, h1Count === 1, String(h1Count));
-  check(`[${locale}] visible FAQ section with six entries`, home.body.includes('id="faq"') && (home.body.match(/<details/g) ?? []).length === 6);
+  check(`[${locale}] landing has a crawlable feature section`, home.body.includes('id="features"'));
+  const ldScripts = [...home.body.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
+  const ldNodes = [];
+  for (const script of ldScripts) {
+    try {
+      const parsed = JSON.parse(script[1]);
+      ldNodes.push(...(Array.isArray(parsed['@graph']) ? parsed['@graph'] : [parsed]));
+    } catch {
+      // Malformed JSON-LD is reported by the graph-type check above.
+    }
+  }
+  const app = ldNodes.find((node) => node['@type'] === 'SoftwareApplication');
+  const features = app?.featureList ?? [];
+  check(`[${locale}] SoftwareApplication featureList has visible text`, features.length >= 12 && features.every((feature) => typeof feature === 'string' && feature.trim().length > 0), `n=${features.length}`);
   check(`[${locale}] landing links into terminal + help`, home.body.includes(`/${locale}/terminal`) && home.body.includes(`/${locale}/help`));
 
   const help = await get(`/${locale}/help`);
@@ -119,17 +132,17 @@ for (const locale of LOCALES) {
   check(`[${locale}] legal JSON-LD breadcrumb`, jsonLdTypes(legal.body).has('BreadcrumbList'));
 
   const terminal = await get(`/${locale}/terminal`);
-  check(`[${locale}] terminal stays noindex`, (metaName(terminal.body, 'robots') ?? '').includes('noindex'));
+  check(`[${locale}] base terminal is indexable`, (metaName(terminal.body, 'robots') ?? '').includes('index, follow'));
 }
 
 console.log('\n— SEO audit: crawlers & machine readers —');
 const robots = await get('/robots.txt');
 check('robots.txt allows site + names sitemap', robots.status === 200 && robots.body.includes('Sitemap:') && robots.body.includes('/sitemap.xml'));
-check('robots.txt keeps the workspace out of the index', robots.body.includes('/*/terminal'));
+check('robots.txt allows indexable routes and does not disallow the terminal', robots.body.includes('Allow: /') && !robots.body.includes('Disallow: /*/terminal'));
 
 const sitemap = await get('/sitemap.xml');
 const urlCount = (sitemap.body.match(/<url>/g) ?? []).length;
-check(`sitemap lists all 25 locale×route URLs (${urlCount})`, urlCount === 25);
+check(`sitemap lists all 30 locale×route URLs (${urlCount})`, urlCount === 30);
 check('sitemap carries hreflang alternates + lastmod', sitemap.body.includes('xhtml:link') && sitemap.body.includes('<lastmod>'));
 
 const llms = await get('/llms.txt');

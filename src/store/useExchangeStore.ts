@@ -10,13 +10,13 @@ export type Reachability = 'unknown' | 'probing' | 'ok' | 'slow' | 'blocked' | '
 
 export interface ExchangeReach {
   status: Reachability;
-  /** Round-trip time of the last successful probe. */
+  /** Client-observed HTTP response or WebSocket opening-handshake time; not an RTT/SLA. */
   ms: number | null;
   note: string | null;
   checkedAt: number;
 }
 
-/** Reachability results older than this are treated as "unknown" again. */
+/** Best-effort probe snapshots older than this are treated as "unknown" again. */
 export const REACH_TTL_MS = 6 * 60 * 60 * 1000;
 /** Latency above this still works, but is ranked behind faster venues. */
 export const SLOW_MS = 1200;
@@ -51,12 +51,11 @@ interface ExchangeActions {
 export type ExchangeStore = ExchangeState & ExchangeActions;
 
 /**
- * Region- and availability-aware venue selection state.
+ * Region- and probe-informed venue selection state.
  *
- * NodeChart cannot know in advance which exchange a visitor can reach: public
- * APIs are geo-blocked per country (Binance 451, Bybit 403, …) and those lists
- * change without notice. So the app *measures* it once per session and persists
- * the result for 6 h – the UI then adapts to the visitor instead of failing.
+ * Public endpoints can vary by region and client environment. The app makes a
+ * best-effort browser-side probe and persists that snapshot for up to 6 h as
+ * one ranking hint; it cannot prove ongoing availability or validate live data.
  */
 export const useExchangeStore = create<ExchangeStore>()(
   persist(

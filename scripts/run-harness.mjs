@@ -13,7 +13,9 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const entry = process.argv[2];
+const args = process.argv.slice(2);
+const entry = args.find((arg) => !arg.startsWith('--'));
+if (args.includes('--offline')) process.env.WS_SMOKE_OFFLINE = '1';
 if (!entry) {
   console.error('usage: node scripts/run-harness.mjs <entry.ts>');
   process.exit(2);

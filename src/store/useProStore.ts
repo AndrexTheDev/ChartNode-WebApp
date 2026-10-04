@@ -68,6 +68,8 @@ interface ProState {
   breadth: Breadth | null;
   status: Record<ProGroup, ProGroupStatus>;
   updatedAt: Record<ProGroup, number>;
+  /** Instrument identity attached to the last usable instrument-scoped value. */
+  baseContext: { deriv: string | null; flow: string | null; hist: string | null };
   /** Per-symbol CVD accumulators (symbol like `BTC/USDT`). */
   cvd: Record<string, CvdState>;
 }
@@ -86,7 +88,15 @@ const zeroStamps = (): Record<ProGroup, number> =>
 const idleStatus = (): Record<ProGroup, ProGroupStatus> =>
   Object.fromEntries(PRO_GROUPS.map((group) => [group, 'idle'])) as Record<ProGroup, ProGroupStatus>;
 
-const inFlight = new Set<ProGroup>();
+const inFlight = new Map<string, AbortController>();
+const perBaseUpdatedAt = new Map<string, number>();
+const lastRequestedBaseByGroup = new Map<string, string>();
+const PRO_ERROR_RETRY_MS = 30_000;
+
+function abortProRequests(): void {
+  for (const controller of inFlight.values()) controller.abort();
+  inFlight.clear();
+}
 
 /** Rolling 60 s window of signed notional per symbol. */
 const recentDeltas = new Map<string, { ts: number; usd: number }[]>();
@@ -102,43 +112,74 @@ export const useProStore = create<ProStore>()((set, get) => ({
   breadth: null,
   status: idleStatus(),
   updatedAt: zeroStamps(),
+  baseContext: { deriv: null, flow: null, hist: null },
   cvd: {},
 
-  setOpen: (open) => set({ open }),
-  toggle: () => set((state) => ({ open: !state.open })),
+  setOpen: (open) => {
+    if (!open) abortProRequests();
+    set({ open });
+  },
+  toggle: () => {
+    const open = !get().open;
+    if (!open) abortProRequests();
+    set({ open });
+  },
 
   refresh: async (group, base, force) => {
     const state = get();
-    if (inFlight.has(group)) return;
-    const elapsed = Date.now() - state.updatedAt[group];
-    if (!(force ?? false) && elapsed < PRO_REFRESH_MS[group]) return;
-
-    inFlight.add(group);
+    if (!state.open && !force) return;
+    const baseScoped = group === 'deriv' || group === 'flow' || group === 'hist';
+    const normalizedBase = base.toUpperCase();
+    const flightKey = baseScoped ? `${group}:${normalizedBase}` : group;
+    const elapsed = Date.now() - (baseScoped ? (perBaseUpdatedAt.get(flightKey) ?? 0) : state.updatedAt[group]);
+    const refreshInterval = state.status[group] === 'error'
+      ? Math.min(PRO_REFRESH_MS[group], PRO_ERROR_RETRY_MS)
+      : PRO_REFRESH_MS[group];
+    const baseChanged = baseScoped && lastRequestedBaseByGroup.get(group) !== normalizedBase;
+    if (!(force ?? false) && !baseChanged && elapsed < refreshInterval) return;
+    if (baseScoped) {
+      // Do not let a slow response for the previous symbol overwrite the new
+      // active instrument's panel; cancel its request when the symbol changes.
+      for (const [key, active] of inFlight) {
+        if (key.startsWith(`${group}:`) && key !== flightKey) {
+          active.abort();
+          inFlight.delete(key);
+        }
+      }
+    }
+    if (inFlight.has(flightKey)) return;
+    const controller = new AbortController();
+    inFlight.set(flightKey, controller);
     set((prev) => ({
-      status: { ...prev.status, [group]: prev.updatedAt[group] === 0 ? 'loading' : prev.status[group] },
+      status: { ...prev.status, [group]: baseChanged || prev.updatedAt[group] === 0 ? 'loading' : prev.status[group] },
     }));
     try {
       switch (group) {
         case 'deriv': {
-          const deriv = await fetchDerivSignals(base);
+          const deriv = await fetchDerivSignals(base, controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             deriv: deriv ?? prev.deriv,
+            baseContext: deriv ? { ...prev.baseContext, deriv: normalizedBase } : prev.baseContext,
             status: { ...prev.status, deriv: deriv ? 'ok' : 'error' },
             updatedAt: { ...prev.updatedAt, deriv: Date.now() },
           }));
           break;
         }
         case 'flow': {
-          const flow = await fetchFlowSignals(base);
+          const flow = await fetchFlowSignals(base, controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             flow: flow ?? prev.flow,
+            baseContext: flow ? { ...prev.baseContext, flow: normalizedBase } : prev.baseContext,
             status: { ...prev.status, flow: flow ? 'ok' : 'error' },
             updatedAt: { ...prev.updatedAt, flow: Date.now() },
           }));
           break;
         }
         case 'global': {
-          const global = await fetchGlobalSignals();
+          const global = await fetchGlobalSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             global: global ?? prev.global,
             status: { ...prev.status, global: global ? 'ok' : 'error' },
@@ -147,7 +188,8 @@ export const useProStore = create<ProStore>()((set, get) => ({
           break;
         }
         case 'heat': {
-          const heat = await fetchHeatmap();
+          const heat = await fetchHeatmap(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             heat: heat.length > 0 ? heat : prev.heat,
             status: { ...prev.status, heat: heat.length > 0 ? 'ok' : 'error' },
@@ -156,7 +198,8 @@ export const useProStore = create<ProStore>()((set, get) => ({
           break;
         }
         case 'vol': {
-          const vol = await fetchVolSignals();
+          const vol = await fetchVolSignals(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             vol: vol ?? prev.vol,
             status: { ...prev.status, vol: vol ? 'ok' : 'error' },
@@ -165,16 +208,19 @@ export const useProStore = create<ProStore>()((set, get) => ({
           break;
         }
         case 'hist': {
-          const hist = await fetchDerivHistory(base);
+          const hist = await fetchDerivHistory(base, controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             hist: hist ?? prev.hist,
+            baseContext: hist ? { ...prev.baseContext, hist: normalizedBase } : prev.baseContext,
             status: { ...prev.status, hist: hist ? 'ok' : 'error' },
             updatedAt: { ...prev.updatedAt, hist: Date.now() },
           }));
           break;
         }
         case 'breadth': {
-          const breadth = await fetchBreadth();
+          const breadth = await fetchBreadth(controller.signal);
+          if (controller.signal.aborted) break;
           set((prev) => ({
             breadth: breadth ?? prev.breadth,
             status: { ...prev.status, breadth: breadth ? 'ok' : 'error' },
@@ -183,10 +229,24 @@ export const useProStore = create<ProStore>()((set, get) => ({
           break;
         }
       }
+      if (!controller.signal.aborted && baseScoped) {
+        perBaseUpdatedAt.set(flightKey, Date.now());
+        lastRequestedBaseByGroup.set(group, normalizedBase);
+      }
     } catch {
-      set((prev) => ({ status: { ...prev.status, [group]: 'error' } }));
+      if (!controller.signal.aborted) {
+        const failedAt = Date.now();
+        if (baseScoped) {
+          perBaseUpdatedAt.set(flightKey, failedAt);
+          lastRequestedBaseByGroup.set(group, normalizedBase);
+        }
+        set((prev) => ({
+          status: { ...prev.status, [group]: 'error' },
+          updatedAt: { ...prev.updatedAt, [group]: failedAt },
+        }));
+      }
     } finally {
-      inFlight.delete(group);
+      if (inFlight.get(flightKey) === controller) inFlight.delete(flightKey);
     }
   },
 

@@ -25,6 +25,7 @@ import { CHART_LAYOUTS } from '@/store/presets';
 import { selectActiveToken, selectChartType, selectLayout, selectPanes, selectTimeframe, useAppStore } from '@/store/useAppStore';
 import { selectDexQuote, useMarketStore } from '@/store/useMarketStore';
 import { fetchDexCandles } from '@/api/geckoterminal';
+import { ProviderBudgetError } from '@/api/http';
 import { downloadCsv } from '@/lib/export';
 import { CHAIN_LABEL, type ChainId } from '@/lib/chains';
 import { EXCHANGE_META } from '@/lib/exchanges';
@@ -84,13 +85,25 @@ export function ChartGrid() {
   const visible = useMemo(() => panes.slice(0, preset.panes), [panes, preset.panes]);
 
   return (
-    <div className="relative flex-1">
+    <div className="relative min-w-0 flex-1">
       <div
-        className={cn('grid h-full gap-2 p-2', preset.gridClass)}
-        style={{ minHeight: preset.rows * preset.rowMinHeight }}
+        className={cn('grid min-w-0 gap-2 p-2', preset.gridClass)}
+        style={{
+          minHeight: preset.rows * preset.rowMinHeight,
+          // Keep row tracks content-growable: fixed 1fr rows can clip the
+          // toolbar/plot/footer stack after the mobile header wraps.
+          gridTemplateRows: `repeat(${preset.rows}, minmax(${preset.rowMinHeight}px, auto))`,
+        }}
       >
         {visible.map((pane, index) => (
-          <ChartPane key={pane.id} pane={pane} index={index} hydrated={hydrated} />
+          <ChartPane
+            key={pane.id}
+            pane={pane}
+            index={index}
+            hydrated={hydrated}
+            showSync={preset.panes > 1}
+            showMobileWarning={index === 0}
+          />
         ))}
       </div>
       {replayOn && <ReplayBar />}
@@ -100,7 +113,19 @@ export function ChartGrid() {
 
 /* --------------------------------- pane ----------------------------------- */
 
-function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydrated: boolean }) {
+function ChartPane({
+  pane,
+  index,
+  hydrated,
+  showSync,
+  showMobileWarning,
+}: {
+  pane: Pane;
+  index: number;
+  hydrated: boolean;
+  showSync: boolean;
+  showMobileWarning: boolean;
+}) {
   const t = useTranslations('chart');
   const tf = useTranslations('feed');
 
@@ -170,34 +195,51 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
   const status = feed?.status ?? (isDexQuote ? 'open' : 'idle');
 
   // DEX tokens: pull real OHLCV history (and refresh it) from GeckoTerminal.
-  // Public rate limits on shared IPs can bite – a failed load retries after
-  // 15 s (backoff) instead of waiting for the 60 s refresh tick.
+  // Pause until the local budget window opens when exhausted; retry other
+  // transient failures after a short delay and keep the last chart in memory.
   useEffect(() => {
     if (isCex || !token.chain || !token.contract) return;
     let alive = true;
+    let loading = false;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    const controller = new AbortController();
     const chain = token.chain;
     const contract = token.contract;
-    const scheduleRetry = () => {
+    const scheduleRetry = (delayMs = 15_000) => {
       if (!alive || retry) return;
-      retry = setTimeout(load, 15_000);
+      retry = setTimeout(() => {
+        retry = null;
+        load();
+      }, Math.max(1_000, delayMs));
     };
-    function load() {
-      retry = null;
-      fetchDexCandles(chain as ChainId, contract, timeframe)
-        .then((history) => {
-          if (!alive) return;
-          if (history) useMarketStore.getState().setDexCandles(token.id, history);
-          else scheduleRetry();
-        })
-        .catch(() => scheduleRetry());
+    async function load() {
+      if (!alive || loading || document.visibilityState === 'hidden' || navigator.onLine === false) return;
+      loading = true;
+      try {
+        const history = await fetchDexCandles(chain as ChainId, contract, timeframe, controller.signal);
+        if (!alive) return;
+        if (history) useMarketStore.getState().setDexCandles(token.id, history);
+        else scheduleRetry();
+      } catch (error) {
+        scheduleRetry(error instanceof ProviderBudgetError ? error.retryAfterMs : undefined);
+      } finally {
+        loading = false;
+      }
     }
-    load();
-    const interval = setInterval(load, 60_000);
+    const resume = () => {
+      if (document.visibilityState !== 'hidden' && navigator.onLine !== false) void load();
+    };
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    void load();
+    const interval = window.setInterval(() => void load(), 60_000);
     return () => {
       alive = false;
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
       if (retry) clearTimeout(retry);
-      clearInterval(interval);
+      window.clearInterval(interval);
+      controller.abort();
     };
   }, [isCex, token.chain, token.contract, token.id, timeframe]);
 
@@ -291,7 +333,7 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
           </span>
         }
         actions={
-          <div className="flex items-center gap-1">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1">
             <Dropdown
               items={timeframeItems}
               triggerLabel={t('pane.timeframe')}
@@ -323,11 +365,17 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
             </PaneButton>
           </div>
         }
-        className="min-h-[240px] bg-bg/60"
-        bodyClassName="flex h-full flex-col"
+        className="flex h-full min-h-[420px] min-w-0 flex-col bg-bg/60 sm:min-h-[380px]"
+        bodyClassName="flex min-h-0 min-w-0 flex-1 flex-col"
       >
-        <div className="border-b border-line/60 px-2 py-1.5">
-          <DrawingToolbar paneId={pane.id} drawingCount={drawings.length} onClearDrawings={() => clearDrawings(pane.id)} />
+        <div className="shrink-0 border-b border-line/60 px-2 py-1.5">
+          <DrawingToolbar
+            paneId={pane.id}
+            drawingCount={drawings.length}
+            showSync={showSync}
+            showMobileWarning={showMobileWarning}
+            onClearDrawings={() => clearDrawings(pane.id)}
+          />
         </div>
 
         {/*
@@ -336,25 +384,25 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
           into a growth loop (the canvas pushed the pane to 4500 px in testing).
           An absolutely positioned box has a definite size, so `autoSize` is stable.
         */}
-        <div className="relative min-h-[260px] flex-1">
+        <div className="relative min-h-[260px] min-w-0 flex-1 overflow-hidden">
           {hasData ? (
-            <div className="absolute inset-0">
-            <PriceChart
-              ref={chartHandle}
-              paneId={pane.id}
-              chartId={`${pane.id}-${token.id}`}
-              symbol={token.symbol}
-              ticker={ticker}
-              venue={venue}
-              timeframe={timeframe}
-              candles={candles}
-              patterns={patterns}
-              intervalLabel={customAgg ? `${customAgg}m` : null}
-              chartType={chartType}
-              status={status}
-              compareCandles={isCex ? compareCandles : undefined}
-              compareTicker={isCex && compareCandles && compareCandles.length > 1 ? compareToken?.base : undefined}
-            />
+            <div className="absolute inset-0 min-w-0">
+              <PriceChart
+                ref={chartHandle}
+                paneId={pane.id}
+                chartId={`${pane.id}-${token.id}`}
+                symbol={token.symbol}
+                ticker={ticker}
+                venue={venue}
+                timeframe={timeframe}
+                candles={candles}
+                patterns={patterns}
+                intervalLabel={customAgg ? `${customAgg}m` : null}
+                chartType={chartType}
+                status={status}
+                compareCandles={isCex ? compareCandles : undefined}
+                compareTicker={isCex && compareCandles && compareCandles.length > 1 ? compareToken?.base : undefined}
+              />
             </div>
           ) : (
             <PanePlaceholder
@@ -376,7 +424,7 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
           )}
         </div>
 
-        <p className="flex flex-wrap items-center gap-x-2 border-t border-line/60 px-3 py-1.5 font-mono text-2xs uppercase tracking-cyber text-faint">
+        <p className="flex shrink-0 flex-wrap items-center gap-x-2 border-t border-line/60 px-3 py-1.5 font-mono text-2xs uppercase tracking-cyber text-faint">
           <span>{chartType}</span>
           <span aria-hidden>·</span>
           <span className={cn(hydrated && status === 'open' ? 'text-primary' : undefined)}>
@@ -392,6 +440,28 @@ function ChartPane({ pane, index, hydrated }: { pane: Pane; index: number; hydra
             <>
               <span aria-hidden>·</span>
               <span>{tf('candles', { n: candles.length })}</span>
+            </>
+          )}
+          {!isCex && (
+            <>
+              <span aria-hidden>·</span>
+              <a
+                href="https://www.geckoterminal.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-dotted underline-offset-2 hover:text-fg"
+              >
+                On-chain data provided by GeckoTerminal
+              </a>
+              <span aria-hidden>·</span>
+              <a
+                href="https://www.coingecko.com/en/api"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-dotted underline-offset-2 hover:text-fg"
+              >
+                Powered by CoinGecko
+              </a>
             </>
           )}
         </p>

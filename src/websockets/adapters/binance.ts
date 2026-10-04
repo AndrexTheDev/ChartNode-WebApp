@@ -23,11 +23,11 @@ let subscribeId = 0;
  * kline event : { e:'kline', s:'BTCUSDT', k:{ t, i, o, h, l, c, v, x } }
  * aggTrade    : { e:'aggTrade', s:'BTCUSDT', p, q, m, T }   (m = buyer is maker)
  *
- * We deliberately use **data-stream.binance.vision**, Binance's public
- * market-data mirror: `stream.binance.com` answers HTTP 451 ("service
- * unavailable from a restricted location") for whole countries, while the
- * mirror serves the exact same payload everywhere. Verified live from a
- * region where `api.binance.com` is blocked.
+ * We use **data-stream.binance.vision**, Binance's public market-data mirror.
+ * The main host can return HTTP 451 in some regions; the mirror may be reachable
+ * where that host is blocked, but browser/region availability is not guaranteed.
+ * Payload parsing is exercised with recorded protocol fixtures; endpoint
+ * access is not promised across browsers or regions.
  */
 export const BINANCE_WS = 'wss://data-stream.binance.vision/ws';
 export const BINANCE_WS_PRIMARY = 'wss://stream.binance.com:9443/ws';

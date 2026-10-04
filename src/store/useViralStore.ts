@@ -11,7 +11,7 @@ import type { ThemeId } from './types';
 export type ShareReason = 'chart' | 'theme' | null;
 
 interface ViralState {
-  /** "I have donated" was declared – the permanent SUPPORTER badge (cosmetic). */
+  /** Self-declared donation flag; a cosmetic SUPPORTER badge persisted in browser storage. */
   supporter: boolean;
   /**
    * Self-declared donation (trust-based, no on-chain attribution possible
@@ -22,7 +22,7 @@ interface ViralState {
   lastDonationUsd: number;
   /** Epoch ms of the last "Dismiss" – the wall respawns after 7 days. */
   wallDismissedAt: number | null;
-  /** One X/Telegram share unlocks the premium themes, forever. */
+  /** Using an X/Telegram share action unlocks the premium themes in local state. */
   shareUnlocked: boolean;
   shares: number;
   /** UI state (not persisted): the share modal + why it opened. */
@@ -159,9 +159,9 @@ export const useViralStore = create<ViralState>()(
           ...current,
           supporter,
           // Legacy-Migration: Vor der Grace-Ära bedeutete supporter=true
-          // „für immer ruhig". Bestehende Supporter bekommen ab dem ersten
-          // Rehydrate einmalig 48 h Gnadenfrist (Small-Tier) statt sofort
-          // wieder Aufrufe zu sehen.
+          // eine dauerhaft unterdrückte Soft-Wall. Bestehende Supporter erhalten
+          // ab dem ersten Rehydrate einmalig 48 h Gnadenfrist (Small-Tier) statt
+          // sofort wieder Aufrufe zu sehen.
           lastDonationAt: donationAt ?? (supporter ? Date.now() : current.lastDonationAt),
           lastDonationUsd: donationAt === null && supporter ? 1 : donationUsd,
           wallDismissedAt:

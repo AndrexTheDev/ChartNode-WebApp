@@ -1,11 +1,15 @@
 # 🚀 NodeChart veröffentlichen — Schritt-für-Schritt (idiotensicher)
 
-**Ziel:** Dieses fertige, release-geprüfte Projekt liegt auf GitHub und läuft
-kostenlos ($0) auf deinem Cloudflare-Account unter `nodechart.cc`.
+**Ziel:** Dieses Projekt liegt auf GitHub und wird über Cloudflare unter
+`nodechart.cc` bereitgestellt. Ob Nutzung und Traffic im aktuellen Free-Plan
+bleiben, hängt von Cloudflare-Limits, Funktionen, Bedingungen und tatsächlichem
+Traffic ab; diese Anleitung verspricht keine dauerhaft kostenfreie Bereitstellung.
 **Dauer:** ~15 Minuten. **Vorkenntnisse:** keine nötig — einfach abtippen/anklicken.
 
-> Der Code ist bereits **fertig gebaut, getestet und committet**. Du lädst ihn
-> nur noch hoch und verbindest ihn mit Cloudflare. Nichts am Code ändern!
+> Diese Anleitung beschreibt den Deployment-Ablauf, nicht einen dauerhaft
+> geprüften Releasezustand. Vor jedem Deploy den konkreten Commit bauen und
+> testen (`npm ci`, `npm run build`, `npm run cf:build` sowie passende Smoke-/E2E-Checks).
+> Alte Release-Audit-Zählstände gelten nach Code- oder Dependency-Änderungen nicht automatisch.
 
 ---
 
@@ -13,11 +17,11 @@ kostenlos ($0) auf deinem Cloudflare-Account unter `nodechart.cc`.
 
 | Brauchst du | Woher | Haken |
 | --- | --- | --- |
-| GitHub-Konto | github.com (kostenlos) | ☐ |
-| Cloudflare-Konto | dash.cloudflare.com (kostenlos) | ☐ |
+| GitHub-Konto | github.com (Plan-/Repo-Bedingungen prüfen) | ☐ |
+| Cloudflare-Konto | dash.cloudflare.com (Worker-Plan, Limits und Preise prüfen) | ☐ |
 | Git installiert | Terminal: `git --version` → sonst git-scm.com | ☐ |
-| Lokaler Grün-Lauf | Terminal im Projekt: `npm ci && npm run build && npm start` (2. Terminal) → `npm run verify` → alles ✔ | ☐ |
-| Release-Audit grün | Im Projektordner: `npm run qa:full` → **398 PASS / 0 FAIL** (7 Module, Report: `RELEASE-AUDIT.md`) | ☐ |
+| Build-/Smoke-Checks | Im Projekt: `npm ci`, `npm run build`, `npm run cf:build` und die für den Release relevanten `npm run`-Checks ausführen | ☐ |
+| Release-Audit | Im Projekt: `npm run qa:full`; Ergebnisse für genau diesen Commit prüfen. Keine feste PASS-Zahl voraussetzen. | ☐ |
 | Dieser Ordner (`nodechart/`) auf deinem Rechner | z. B. als Download/Workspace-Kopie | ☐ |
 
 Ein Terminal öffnen und **in den Projektordner wechseln** (alle Befehle unten
@@ -65,7 +69,7 @@ git push -u origin main
 > ❌ Fehler `rejected … non-fast-forward`? → Das Repo war doch nicht leer (README-Häkchen?).
 >    Auf GitHub das Repo löschen (**Settings → ganz unten → Delete this repository**) und Schritt 1 wiederholen.
 
-## 3. Cloudflare: kostenlos hosten (5 Minuten)
+## 3. Cloudflare Worker bereitstellen (5 Minuten)
 
 1. dash.cloudflare.com einloggen → links **Workers & Pages** → **Create** (blauer Button).
 2. Tab/Option **Import a Git repository** / **Connect to Git** → GitHub autorisieren
@@ -89,16 +93,13 @@ git push -u origin main
 5. **Save and Deploy** klicken. Der erste Build läuft ~3–6 Minuten
    (Fortschritt live sichtbar). Cloudflare authentifiziert `wrangler` in seiner
    eigenen CI automatisch — **kein Token nötig**.
-6. Fertig! Deine App liegt jetzt auf einer kostenlosen Worker-URL:
-   `nodechart.DEIN-SUB.workers.dev` → anklicken und testen (siehe Teil 5).
+6. Fertig! Falls für Account und Deployment verfügbar, erreichst du deine App
+   unter einer Worker-URL wie `nodechart.DEIN-SUB.workers.dev` → anklicken und testen
+   (siehe Teil 5). Verfügbarkeit, Quotas und mögliche Kosten hängen von Cloudflares
+   aktuellem Plan, den Bedingungen und deinem Traffic ab.
 
-> 💡 **Werbung läuft ohne jedes Env-Var:** Alle Adsterra-Placements (Popunder,
-> Social Bar, Native Banner 4:1, Sidebar 160×600, Smartlinks) tragen ihren
-> echten nodechart.cc-Code bereits als Default in `src/lib/ads/config.ts`.
-> Env-Vars sind nur **Overrides**, falls du ein Placement austauschen willst
-> (z. B. `NEXT_PUBLIC_ADSTERRA_SIDEBAR_SRC`, `NEXT_PUBLIC_ADSTERRA_NATIVE_BANNER_SRC`,
-> `NEXT_PUBLIC_ADSTERRA_SMARTLINK_URL`, `NEXT_PUBLIC_SMARTLINKS_ENABLED`).
-> Nach Änderung: **Deployments → Retry deployment** (Build-Env wirkt erst beim nächsten Build).
+> 💡 **Adsterra-Defaults und Consent:** Die Konfiguration enthält Publisher-URLs als Defaults bzw. Overrides in `src/lib/ads/config.ts`. Automatische Drittanbieter-Werbeskripte werden erst nach ausdrücklicher Zustimmung geladen; eine Ablehnung lässt Markt-/Chartfunktionen verfügbar. Lokale Smartlink-Dateien und deutlich gekennzeichnete, nutzerinitiierte Partnerlinks sind ein separater Pfad.
+> **Release-Blocker:** Die CMP/TCF-Kompatibilität dieser konkreten Publisher-Integration und das tatsächliche Cookie-/Netzwerkverhalten sind noch nicht verifiziert. Die App-seitige Einwilligungsabfrage allein ist keine Compliance-Bestätigung. Vor Produktionsfreigabe Anbieter-Signal und Browser-Netzwerkverhalten prüfen; bei Env-Änderungen anschließend **Deployments → Retry deployment** (Build-Env wirkt erst beim nächsten Build).
 
 ## 3b. Variante B (empfohlen): Auto-Deploy per GitHub Actions
 
@@ -154,9 +155,10 @@ sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
 | --- | --- |
 | `https://nodechart.cc/de/terminal` | Chart mit Live-Candles, Wasserzeichen `www.NodeChart.cc` |
 | Sprache oben rechts wechseln (5×) | de/en/es/ru/zh vollständig übersetzt |
-| `…/de/terminal?adwall=1` | Spenden-Wall erscheint (Beweis: Monetization lebt) |
+| Erster Besuch auf `/de` | Einwilligungsbanner mit gleichwertigem Erlauben/Ablehnen; vor der Wahl keine Adsterra-Requests |
 | `https://nodechart.cc/sitemap.xml` | 30 URLs (6 Routen × 5 Sprachen), `Cache-Control` mit `s-maxage=3600` |
-| Desktop-Browser (≥1280 px) auf `/de/terminal` | linke Sidebar-Rail mit `GESPONSERT`-Label (füllt sich im echten Netz mit dem 160×600-Banner) |
+| Nach ausdrücklicher Werbe-Zustimmung: Desktop (≥1280 px) auf `/de/terminal` | Sidebar-Rail darf das konfigurierte 160×600-Banner laden; vor Zustimmung/bei Ablehnung kein Adsterra-Request |
+| `?adwall=1` nach Werbe-Zustimmung | QA-/Demo-Wall erscheint; ohne Zustimmung bleibt sie geschlossen |
 | `https://nodechart.cc/de/terminal?ticker=SOL` | Social-Card-Vorschau (Telegram/Web) zeigt `$SOL`-Karte in Link-Sprache |
 | `https://nodechart.cc/xx` und `/de/legal/nope` | 404 (keine Soft-404s) |
 | Browser-Konsole (F12) | 0 Fehler, 0 Warnungen |
@@ -168,15 +170,18 @@ sich selbst** — ohne Cloudflare-Build-Konfiguration im Dashboard.
 | Build-Fehler mit „Node … unsupported“ | Env-Var `NODE_VERSION=22` fehlt (Teil 3, Schritt 4) |
 | Deploy hängt/fehlt nach Push | Workers & Pages → Projekt → **Deployments** → „Retry“; Build-Log lesen |
 | Seite zeigt alten Stand | Cloudflare-Cache: Projekt → Deployments → neuer Push löst automatisch neuen Deploy aus; sonst **Purge cache** unter Caching |
-| Ad-Slots leer | **Normal** ohne Adsterra-Env-Vars (Fail-open-Design) |
+| Ad-Slots leer | Vor Zustimmung oder nach Ablehnung erwartet; nach Zustimmung können fehlende Env-Overrides, Blocker, Provider-Ausfall oder No-Fill die Slots leer lassen |
 | `git push` fragt ständig Passwort | Teil 2, Token-Hinweis; oder einmalig `git config --global credential.helper manager` |
 | Lokales Ausprobieren vor dem Push | `npm ci && npm run build && npm start` → http://localhost:3000 |
 | `npm run qa:full` meldet FAILs | **Nicht pushen.** `RELEASE-AUDIT.md` öffnet die Fail-Liste pro Modul; Modul einzeln erneut: `node scripts/release-audit/run.mjs M3` |
 
 ## 7. Kosten & Recht
 
-* **Kosten: 0,00 €** — Cloudflare Workers Free Tier (100 000 Requests/Tag,
-  statische Assets unbegrenzt frei); GitHub Public Repo kostenlos.
+* **Kosten & Limits:** Es gibt keine garantierte Preis- oder Quota-Zusage für
+  dieses Setup. Cloudflare-Plan, Worker-Aufrufe, Features und Traffic bestimmen,
+  ob Gebühren anfallen; Limits und Bedingungen können sich ändern. Vor Deploy
+  Cloudflares aktuelle Preis-/Planangaben prüfen und Nutzung beobachten. Gleiches
+  gilt für GitHub-Angebote und Repository-Bedingungen.
 * **Lizenz:** All Rights Reserved (`LICENSE.md`) — der Code ist öffentlich
   *einsehbar*, aber jede Nutzung/Kopie/eigene Instanz ohne schriftliche
   Genehmigung untersagt. Eingebaute Fremdbibliotheken bleiben unter ihren

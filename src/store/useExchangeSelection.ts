@@ -8,7 +8,7 @@ import { detectRegion } from '@/lib/region';
 import { ADAPTERS } from '@/websockets/registry';
 import type { ExchangeId } from '@/websockets/types';
 import type { Timeframe } from './types';
-import { useExchangeStore, type ExchangeReach } from './useExchangeStore';
+import { isFresh, useExchangeStore, type ExchangeReach } from './useExchangeStore';
 
 /** Type guard for "is this string one of our twelve venues?". */
 export function isCexExchange(value: string | undefined | null): value is ExchangeId {
@@ -17,8 +17,9 @@ export function isCexExchange(value: string | undefined | null): value is Exchan
 
 /**
  * Region bootstrap: detects the visitor's country (edge cookie → timezone) and
- * measures which venues are reachable from here. Runs once per session – the
- * probe results are persisted for 6 h.
+ * attempts best-effort browser probes to guide venue ranking. Results are
+ * client-, region- and moment-dependent snapshots persisted for up to 6 h, not
+ * proof that a venue will remain available.
  */
 export function useRegionBootstrap(enabled = true): void {
   useEffect(() => {
@@ -65,13 +66,28 @@ export function resolveExchangeSelection(
   const { country, reach, unsupported, preferred } = state;
   if (!isCexExchange(tokenExchange) && !preferred[symbol]) return null;
 
-  const effectivePreferred =
-    isCexExchange(tokenExchange) && !preferred[symbol]
-      ? { ...preferred, [symbol]: tokenExchange as ExchangeId }
-      : preferred;
+  // Keep a token's original venue as the cold-start choice while it is
+  // unmeasured, but do not treat it as a permanent manual preference: fresh
+  // region/socket failures must allow ranked alternatives to take over.
+  const origin = isCexExchange(tokenExchange) ? tokenExchange : null;
+  const originAdapter = origin ? ADAPTERS[origin] : null;
+  const originReach = origin ? reach[origin] : undefined;
+  const originUnavailable =
+    isFresh(originReach) &&
+    (originReach?.status === 'blocked' || originReach?.status === 'error');
+  const originUsable = Boolean(
+    origin &&
+      originAdapter?.timeframes.includes(timeframe) &&
+      !(unsupported[origin] ?? []).includes(symbol) &&
+      !originUnavailable,
+  );
 
-  const exchange = pickExchange({ symbol, timeframe, country, reach, unsupported, preferred: effectivePreferred });
-  const wanted = preferred[symbol] ?? (isCexExchange(tokenExchange) ? tokenExchange : null);
+  const exchange = preferred[symbol]
+    ? pickExchange({ symbol, timeframe, country, reach, unsupported, preferred })
+    : originUsable && origin
+      ? origin
+      : pickExchange({ symbol, timeframe, country, reach, unsupported, preferred });
+  const wanted = preferred[symbol] ?? origin;
   return { exchange, rerouted: Boolean(wanted && wanted !== exchange) };
 }
 
