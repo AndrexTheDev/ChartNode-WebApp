@@ -171,31 +171,27 @@ interface CacheEntry {
 }
 const cache = new Map<string, CacheEntry>();
 
-/** Fetch + score six timeframes in parallel; 60s cache; graceful on failure. */
+/**
+ * Six timeframes in parallel, 60 s cache, graceful on failure.
+ *
+ * Quota-/Latenz-Doktrin: 6 Seeds pro Aufruf sind der breiteste REST-Fan-out der
+ * App. Deshalb (a) blenden CORS- oder regionsblinde Venues sofort aus, statt
+ * sechs Fehlversuche zu verbrennen, (b) werden nur nicht-leere, nutzbare
+ * Ergebnisse gecacht – ein Teilausfall parkt die Matrix nicht für 60 s, und
+ * (c) bleibt Gate der CORS-sichere Fallback, aber nur wenn der Primary wirklich
+ * nichts geliefert hat.
+ */
 export async function fetchRatingMatrix(exchange: ExchangeId, symbol: string): Promise<RatingScore[]> {
   const key = `${exchange}:${symbol}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 60_000) return hit.rows;
-  const results = await Promise.all(
-    RATING_TIMEFRAMES.map(async (timeframe) => {
-      // CORS-blinde Venue im Browser: Primary überspringen → Gate-Fallback unten.
-      if (!restReachableFromBrowser(exchange)) return null;
-      try {
-        const candles = await fetchSeed({ exchange, symbol, timeframe });
-        if (!candles || candles.length < 30) return null;
-        return scoreCandles(candles.slice(-300), timeframe);
-      } catch {
-        return null;
-      }
-    }),
-  );
-  let rows = results.filter((row): row is RatingScore => row != null);
-  if (rows.length === 0 && exchange !== 'gate') {
-    // Regional block on the primary venue – Gate is the CORS-safe fallback.
-    const fallback = await Promise.all(
+
+  const scoreAll = async (venue: ExchangeId): Promise<RatingScore[]> => {
+    if (!restReachableFromBrowser(venue)) return [];
+    const results = await Promise.all(
       RATING_TIMEFRAMES.map(async (timeframe) => {
         try {
-          const candles = await fetchSeed({ exchange: 'gate', symbol, timeframe });
+          const candles = await fetchSeed({ exchange: venue, symbol, timeframe });
           if (!candles || candles.length < 30) return null;
           return scoreCandles(candles.slice(-300), timeframe);
         } catch {
@@ -203,8 +199,15 @@ export async function fetchRatingMatrix(exchange: ExchangeId, symbol: string): P
         }
       }),
     );
-    rows = fallback.filter((row): row is RatingScore => row != null);
+    return results.filter((row): row is RatingScore => row != null);
+  };
+
+  let rows = await scoreAll(exchange);
+  if (rows.length === 0 && exchange !== 'gate') {
+    // Regional block / CORS / pair gap on the primary venue.
+    rows = await scoreAll('gate');
   }
-  if (rows.length > 0) cache.set(key, { at: Date.now(), rows });
+  // Nur eine vollständige, nutzbare Matrix cachen.
+  if (rows.length === RATING_TIMEFRAMES.length) cache.set(key, { at: Date.now(), rows });
   return rows;
 }

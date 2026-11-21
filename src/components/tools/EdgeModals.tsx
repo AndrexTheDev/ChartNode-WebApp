@@ -14,6 +14,7 @@ import { useMarketStore } from '@/store/useMarketStore';
 import { useProStore } from '@/store/useProStore';
 import { useExchangeSelection } from '@/store/useExchangeSelection';
 import { buildLiqMap } from '@/lib/liqradar';
+import { useOnChainStore } from '@/store/useOnChainStore';
 import { analyseLeadLag, pendingReaction } from '@/lib/leadlag';
 import { classifyRegime, regimeHistory, type RegimeId } from '@/lib/regime';
 import { seasonality } from '@/lib/seasonality';
@@ -30,6 +31,10 @@ export function EdgeLiqModal({ candles }: EdgeModalProps) {
   const onClose = () => useChartStore.getState().setEdgeLiqOpen(false);
   const on = useChartStore((s) => s.liqMagnetsOn);
   const toggle = useChartStore((s) => s.toggleLiqMagnets);
+  const ribbonOn = useChartStore((s) => s.fundingRibbonOn);
+  const toggleRibbon = useChartStore((s) => s.toggleFundingRibbon);
+  const book = useOnChainStore((s) => s.liq);
+  const hl = useOnChainStore((s) => s.hl);
 
   const map = useMemo(() => buildLiqMap(candles), [candles]);
 
@@ -41,7 +46,21 @@ export function EdgeLiqModal({ candles }: EdgeModalProps) {
           {t('liqEnable')}
         </label>
 
+        <label className="flex cursor-pointer items-center gap-3 font-mono text-2xs uppercase tracking-cyber text-fg">
+          <input type="checkbox" checked={ribbonOn} onChange={toggleRibbon} className="size-4 accent-[hsl(var(--nc-primary))]" />
+          {t('ribbonEnable')}
+        </label>
+        <p className="border-l border-primary/30 pl-4 text-2xs leading-relaxed text-faint">
+          {hl ? t('ribbonSourceBook') : t('ribbonSourceNone')}
+        </p>
+
         <p className="border-l border-primary/30 pl-4 text-xs leading-relaxed text-muted">{t('liqHow')}</p>
+
+        {book && book.walls.length > 0 && (
+          <p className="font-mono text-2xs uppercase tracking-cyber text-primary">
+            {t('liqMeasured', { coin: book.coin, walls: book.walls.length })}
+          </p>
+        )}
 
         {map ? (
           <div className="flex flex-col gap-4">

@@ -40,6 +40,7 @@ import {
 } from 'technicalindicators';
 import type { Candle } from '@/websockets/types';
 import { runScript } from '@/lib/scripts';
+import { tapePerCandle } from '@/lib/tape';
 
 export type IndicatorKind =
   | 'EMA' | 'SMA' | 'BB' | 'RSI' | 'MACD' | 'ATR' | 'STOCH'
@@ -49,6 +50,8 @@ export type IndicatorKind =
   // wave 2 – pro analytics tier
   | 'ICHIMOKU' | 'VWAP' | 'WILLR' | 'HMA' | 'TEMA' | 'DEMA' | 'GUPPY'
   | 'SQUEEZE' | 'TDSEQ' | 'CMF' | 'EMV' | 'UO'
+  // wave 6 – live order-flow from the trade bus (no extra requests)
+  | 'CVD' | 'DELTADIV'
   // wave 5 – your own code
   | 'CUSTOM';
 
@@ -84,6 +87,18 @@ export interface OutputSpec {
 
 export type IndicatorValues = Record<string, (number | undefined)[]>;
 
+/**
+ * Kontext für Indikatoren, die mehr als Kerzen brauchen – heute nur der
+ * Live-Trade-Bus (CVD/Delta). Alle anderen Indikatoren ignorieren ihn; die
+ * Signatur bleibt abwärtskompatibel, weil Tests `compute()` direkt aufrufen.
+ */
+export interface IndicatorContext {
+  /** Symbol, wie es der Trade-Bus normalisiert (`BTC/USDT`). */
+  symbol: string;
+  /** Länge einer Kerze in ms – nötig, um Tape-Buckets zuzuordnen. */
+  intervalMs: number;
+}
+
 export interface IndicatorDef {
   kind: IndicatorKind;
   placement: Placement;
@@ -95,7 +110,12 @@ export interface IndicatorDef {
   levels?: number[];
   /** Requested pane height in px. */
   paneHeight?: number;
-  compute: (candles: Candle[], params: Record<string, number>, script?: string) => IndicatorValues;
+  compute: (
+    candles: Candle[],
+    params: Record<string, number>,
+    script?: string,
+    context?: IndicatorContext,
+  ) => IndicatorValues;
 }
 
 /* ---------------------------------- palette -------------------------------- */
@@ -1062,6 +1082,70 @@ export const INDICATOR_LIBRARY: Record<IndicatorKind, IndicatorDef> = {
   },
 
   /**
+   * CVD – Cumulative Volume Delta aus dem Live-Trade-Bus.
+   *
+   * Warum das besonders ist: Aggression (Market-Buy vs. Market-Sell) lässt sich
+   * nur aus Ticks ableiten. TradingView bietet das in Premium-Tiers; hier
+   * fällt es aus Streams an, die die App fürs Charting ohnehin offen hat –
+   * also **0 zusätzliche Requests**. Die Linie startet am Anfang des
+   * Tape-Puffers (24 h) und summiert je Kerze (Buy − Sell)-Notional.
+   * Kerzen ohne Trades bleiben Lücken (keine erfundene 0).
+   */
+  CVD: {
+    kind: 'CVD',
+    placement: 'pane',
+    params: [],
+    outputs: [{ key: 'cvd', style: 'line', color: '#00f0ff', width: 2 }],
+    levels: [0],
+    paneHeight: 130,
+    compute: (candles, _params, _script, context) => {
+      if (!context) return { cvd: candles.map(() => undefined) };
+      const times = candles.map((candle) => candle.t);
+      const tape = tapePerCandle(context.symbol, times, context.intervalMs);
+      let running = 0;
+      const cvd = tape.delta.map((delta) => {
+        if (delta == null) return undefined;
+        running += delta;
+        return running;
+      });
+      return { cvd };
+    },
+  },
+
+  /**
+   * Delta-Divergenz – Preis-Momentum vs. aggressiver Flow.
+   *
+   * Vergleicht je Kerze die Preisrichtung mit dem Vorzeichen des Tape-Deltas
+   * derselben Kerze: Preis steigt, Netto-Verkaufsdruck ⇒ −1 (bearish
+   * Absorption), Preis fällt, Netto-Kaufdruck ⇒ +1 (bullish Absorption).
+   * Das ist Orderflow-Absorption, keine Prognose, und rein lokal berechnet.
+   */
+  DELTADIV: {
+    kind: 'DELTADIV',
+    placement: 'pane',
+    params: [],
+    outputs: [{ key: 'div', style: 'histogram', color: '#ff2fb9' }],
+    scale: { min: -1, max: 1 },
+    levels: [0],
+    paneHeight: 90,
+    compute: (candles, _params, _script, context) => {
+      if (!context) return { div: candles.map(() => undefined) };
+      const times = candles.map((candle) => candle.t);
+      const tape = tapePerCandle(context.symbol, times, context.intervalMs);
+      const div = candles.map((candle, index) => {
+        const delta = tape.delta[index];
+        if (delta == null) return undefined;
+        const priceUp = candle.c > candle.o;
+        const priceDown = candle.c < candle.o;
+        if (priceUp && delta < 0) return -1;
+        if (priceDown && delta > 0) return 1;
+        return 0;
+      });
+      return { div };
+    },
+  },
+
+  /**
    * Wave-5 Script Lab entry: the script source travels with the instance
    * (`IndicatorInstance.script`), overlay vs pane via the `overlay` param.
    */
@@ -1089,13 +1173,14 @@ export function computeIndicator(
   candles: Candle[],
   params: Record<string, number>,
   script?: string,
+  context?: IndicatorContext,
 ): IndicatorValues | null {
   const def = INDICATOR_LIBRARY[kind];
   if (!def || candles.length < 2) return null;
 
   let values: IndicatorValues;
   try {
-    values = def.compute(candles, clampParams(def, params), script);
+    values = def.compute(candles, clampParams(def, params), script, context);
   } catch {
     // A malformed parameter must never take the chart down.
     return null;

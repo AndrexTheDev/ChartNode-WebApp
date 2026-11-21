@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/cn';
 import { usd } from '@/lib/format';
+import { readTape } from '@/lib/tape';
 import { useViralStore } from '@/store/useViralStore';
 import type { Candle } from '@/websockets/types';
 
@@ -36,12 +37,27 @@ interface TapeStats {
   sells: number;
   large: Array<{ price: number; qty: number; notional: number; buy: boolean; at: number }>;
   curve: number[];
+  /** Woher die Prints stammen – die UI kennzeichnet Buckets als Aggregat. */
+  origin: 'tape' | 'binance' | 'okx';
 }
 
 /**
- * Bar magnifier (TradingView: Premium). Attempts to inspect the raw trade
- * tape inside one candle via a browser-readable Binance aggTrades endpoint,
- * with recent OKX prints as fallback; provider and region access can vary.
+ * Bar magnifier (TradingView: Premium). Inspects the raw trade tape inside one
+ * candle.
+ *
+ * Reihenfolge bewusst „0-Quota-first“:
+ *   1. **Lokaler Tape-Puffer** (`src/lib/tape.ts`) – Trades, die der Browser
+ *      für dieses Symbol ohnehin über seine offenen WebSockets empfangen hat.
+ *      Kostet null Requests und funktioniert auch dort, wo Binance/OKX per
+ *      Region oder CORS unerreichbar sind. Der Puffer deckt aber nur den
+ *      Zeitraum seit dem Öffnen der Seite ab und hat keine Einzel-Ticketgrößen
+ *      pro Print (Minuten-Buckets).
+ *   2. **Binance aggTrades** (öffentlicher Mirror) für ältere Kerzen oder
+ *      feinere Prints.
+ *   3. **OKX trades** als unabhängiger Netzschnitt, nur wenn oben leer.
+ *
+ * `source` wird in der UI angezeigt, damit klar ist, welche Tiefe die Zahlen
+ * haben – ein Bucket-Aggregat ist keine Tick-Liste.
  */
 export function MagnifierModal({ symbol, barMs, candles, open, onClose }: MagnifierModalProps) {
   const t = useTranslations('tools');
@@ -63,12 +79,40 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
     const pair = symbol.replace('/', '').toUpperCase();
 
     async function run(): Promise<void> {
+      if (!target) return;
+      const barClose = target.c;
       setLoading(true);
       setError(false);
       let failures = 0;
       let trades: AggTrade[] = [];
+      let fromTape = false;
 
-      try {
+      /*
+       * Stufe 1: lokaler Tape-Puffer. Er liefert nur Minuten-Buckets (keine
+       * Einzel-Prints), reicht aber, um Kauf/Verkaufs-Druck, Delta und die
+       * kumulierte Kurve ohne Netzzugriff zu zeigen – und funktioniert in
+       * Netzen, in denen Binance/OKX nicht erreichbar sind.
+       */
+      const buckets = readTape(symbol).filter((bucket) => bucket.t >= start && bucket.t < end);
+      if (buckets.length > 0) {
+        const bucketTrades: AggTrade[] = [];
+        for (const bucket of buckets) {
+          // Der genaue Print-Preis eines Buckets ist nicht gespeichert; der
+          // Kerzenschluss ist die beste verfügbare Näherung für Notional/Qty.
+          if (bucket.buyUsd > 0) {
+            bucketTrades.push({ p: String(barClose), q: String(bucket.buyUsd / barClose), T: bucket.t, m: false });
+          }
+          if (bucket.sellUsd > 0) {
+            bucketTrades.push({ p: String(barClose), q: String(bucket.sellUsd / barClose), T: bucket.t, m: true });
+          }
+        }
+        if (bucketTrades.length > 0) {
+          trades = bucketTrades;
+          fromTape = true;
+        }
+      }
+
+      if (!fromTape) try {
         trades = await fetchJson<AggTrade[]>(
           `https://data-api.binance.vision/api/v3/aggTrades?symbol=${encodeURIComponent(pair)}&startTime=${start}&endTime=${end - 1}&limit=1000`,
           { source: 'binance', cacheTtlMs: 30_000, timeoutMs: 8_000, retries: 1, signal: controller.signal },
@@ -80,7 +124,7 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
       // The public mirror may be reachable where api.binance.com is blocked,
       // but access still varies by browser and region. OKX is a separate
       // fallback for recent prints; it is not a substitute for full history.
-      if (trades.length === 0 && !controller.signal.aborted) {
+      if (!fromTape && trades.length === 0 && !controller.signal.aborted) {
         try {
           const payload = await fetchJson<{ data?: Array<Record<string, string>> }>(
             `https://www.okx.com/api/v5/market/trades?instId=${encodeURIComponent(symbol.replace('/', '-'))}&limit=500`,
@@ -138,6 +182,7 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
         sells,
         large: prints.slice(0, 8),
         curve,
+        origin: fromTape ? 'tape' : failures > 0 ? 'okx' : 'binance',
       });
       setLoading(false);
     }
@@ -191,6 +236,10 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
 
         {stats && (
           <>
+            <p className="flex flex-wrap items-center gap-1.5 font-mono text-micro-9 uppercase tracking-cyber text-faint">
+              <span>{t(`magnifier.origin.${stats.origin}`)}</span>
+              {stats.origin === 'tape' && <span className="text-primary">· {t('magnifier.tapeHint')}</span>}
+            </p>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
               {[
                 [t('magnifier.trades'), String(stats.count)],
@@ -213,6 +262,7 @@ export function MagnifierModal({ symbol, barMs, candles, open, onClose }: Magnif
             )}
             {stats.large.length > 0 && (
               <ul className="flex flex-col gap-1">
+                {/* Tape-Buckets liefern keine Einzel-Prints – die Liste bleibt dann leer. */}
                 {stats.large.map((print) => (
                   <li key={`${print.at}-${print.notional}`} className="flex items-center gap-2 font-mono text-2xs">
                     <span className={cn(print.buy ? 'text-bull' : 'text-bear')}>{print.buy ? 'BUY' : 'SELL'}</span>

@@ -8,6 +8,7 @@ import { ADAPTERS } from './registry';
 import { CORS_FRIENDLY_SEEDS, fetchSeed, restReachableFromBrowser, UnsupportedPairError } from './rest';
 import { ManagedSocket } from './socket';
 import { whaleTracker } from './whale';
+import { recordTapeTrade } from '@/lib/tape';
 import {
   FeedBlockedError,
   feedId,
@@ -51,6 +52,15 @@ function transmit(socket: ManagedSocket, payload: unknown): void {
  * Registering is cheap; the set stays empty when nobody listens.
  */
 export const tradeBus = new Set<(trade: RawTrade) => void>();
+
+/**
+ * Der Tape-Puffer hängt dauerhaft am Bus (auch ohne offenes PRO-Panel), damit
+ * der CVD-Indikator auf dem Chart sofort Daten hat, wenn er aktiviert wird –
+ * sonst wäre jeder Indikator-Start erst einmal 60 s lang leer. Der Puffer ist
+ * fest begrenzt (4 Symbole × 24 h Minuten-Buckets, kein Timer) und macht
+ * keinen einzigen Netzwerkzugriff.
+ */
+tradeBus.add(recordTapeTrade);
 
 type ChannelRef = { kind: 'kline'; key: FeedKey } | { kind: 'trade'; exchangeSymbol: string };
 

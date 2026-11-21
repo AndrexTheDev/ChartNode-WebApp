@@ -19,6 +19,7 @@ import { cn } from '@/lib/cn';
 import { clockTime, compact, compactUsd, pct, usd } from '@/lib/format';
 import { selectActiveToken, useAppStore } from '@/store/useAppStore';
 import { selectProOpen, useProStore, type ProGroup } from '@/store/useProStore';
+import { QuotaBar } from '@/components/signals/QuotaBar';
 
 /**
  * PRO metrics dock – best-effort market and options snapshots:
@@ -93,6 +94,9 @@ export function ProMetricsPanel() {
           <GlobalCard />
           <HeatCard />
           <VolCard />
+        </div>
+        <div className="mt-3 border-t border-line/60 pt-2">
+          <QuotaBar compact />
         </div>
         <p className="mt-3 font-mono text-2xs uppercase tracking-cyber text-faint">{t('sources')}</p>
         <a

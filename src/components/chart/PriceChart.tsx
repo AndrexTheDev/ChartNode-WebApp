@@ -57,6 +57,7 @@ import {
   heikinAshi,
   indicatorTitle,
   lastValue,
+  type IndicatorContext,
   type IndicatorValues,
 } from '@/lib/indicators';
 import {
@@ -103,13 +104,16 @@ import {
   DrawingPrimitive,
   NodeClusterPrimitive,
   VolumeProfilePrimitive,
+  FundingRibbonPrimitive,
   LiqMagnetPrimitive,
+  type FundingRibbonSource,
   WatermarkPrimitive,
   type CrosshairSource,
   type DraftShape,
 } from './primitives';
 import { anchoredVwap, divergences, supportResistance, volumeProfile } from '@/lib/premium';
-import { buildLiqMap } from '@/lib/liqradar';
+import { buildLiqMap, type LiqBucket } from '@/lib/liqradar';
+import { useOnChainStore } from '@/store/useOnChainStore';
 
 type AnySeries = ISeriesApi<SeriesType, Time>;
 
@@ -261,6 +265,7 @@ export function PriceChart({
   const watermarkPrimRef = useRef<WatermarkPrimitive | null>(null);
   const vpPrimRef = useRef<VolumeProfilePrimitive | null>(null);
   const liqPrimRef = useRef<LiqMagnetPrimitive | null>(null);
+  const fundingPrimRef = useRef<FundingRibbonPrimitive | null>(null);
   const nodeClusterPrimRef = useRef<NodeClusterPrimitive | null>(null);
   const avwapRef = useRef<AnySeries | null>(null);
   const compareRef = useRef<AnySeries | null>(null);
@@ -391,6 +396,34 @@ export function PriceChart({
 
   /* ---------------------------- indicator maths ---------------------------- */
 
+  /*
+   * Live-Tape-Indikatoren (CVD, DELTADIV) brauchen Symbol + Kerzenlänge.
+   * Der Kontext wird nur gebaut, wenn tatsächlich ein tape-basierter
+   * Indikator sichtbar ist – so bleibt der Indicator-Pfad für alle anderen
+   * Indikatoren unverändert und ohne zusätzliche Objektallokation.
+   */
+  const tapeContext = useMemo<IndicatorContext | undefined>(() => {
+    const needsTape = indicators.some(
+      (entry) => entry.visible && (entry.kind === 'CVD' || entry.kind === 'DELTADIV'),
+    );
+    if (!needsTape) return undefined;
+    // Kerzenlänge aus dem geladenen Buffer ableiten, nicht aus dem Timeframe-
+    // Label: so stimmt sie auch bei Custom-Aggregation (10m/45m/…) exakt.
+    const tail = analysisCandles.slice(-8);
+    let spacing = 0;
+    if (tail.length >= 2) {
+      const deltas: number[] = [];
+      for (let i = 1; i < tail.length; i += 1) {
+        const delta = (tail[i] as Candle).t - (tail[i - 1] as Candle).t;
+        if (delta > 0) deltas.push(delta);
+      }
+      deltas.sort((a, b) => a - b);
+      spacing = deltas[Math.floor(deltas.length / 2)] ?? 0;
+    }
+    const intervalMs = spacing > 0 ? spacing : (TF_MS[timeframe] ?? 60_000);
+    return { symbol, intervalMs };
+  }, [indicators, analysisCandles, symbol, timeframe]);
+
   const computed = useMemo<ComputedIndicator[]>(() => {
     const counts = new Map<string, number>();
     return indicators
@@ -402,12 +435,12 @@ export function PriceChart({
           id: entry.id,
           kind: entry.kind,
           title: indicatorTitle(entry.kind, entry.params),
-          values: computeIndicator(entry.kind, analysisCandles, entry.params, entry.script),
+          values: computeIndicator(entry.kind, analysisCandles, entry.params, entry.script, tapeContext),
           overlay: entry.kind === 'CUSTOM' && entry.params.overlay === 1,
           colorIndex: index,
         };
       });
-  }, [indicators, analysisCandles]);
+  }, [indicators, analysisCandles, tapeContext]);
 
   /** Changing this string means series have to be created/removed. */
   const structureKey = useMemo(
@@ -489,6 +522,11 @@ export function PriceChart({
     main.attachPrimitive(liqPrim);
     liqPrimRef.current = liqPrim;
 
+    // Wave-8 Funding/OI ribbon – reads the store, never triggers a request.
+    const fundingPrim = new FundingRibbonPrimitive();
+    main.attachPrimitive(fundingPrim);
+    fundingPrimRef.current = fundingPrim;
+
     // NodeCluster – local pivot bands, in-canvas so they remain crisp on resize.
     const nodeClusterPrim = new NodeClusterPrimitive();
     main.attachPrimitive(nodeClusterPrim);
@@ -566,6 +604,7 @@ export function PriceChart({
       watermarkPrimRef.current = null;
       vpPrimRef.current = null;
       liqPrimRef.current = null;
+      fundingPrimRef.current = null;
       nodeClusterPrimRef.current = null;
       avwapRef.current = null;
       compareRef.current = null;
@@ -798,11 +837,103 @@ export function PriceChart({
 
   /* ------------------------- wave-7: liquidation magnets ------------------- */
 
+  /**
+   * Zwei Quellen, bewusst in dieser Reihenfolge:
+   *
+   *   1. **Echtes Orderbuch** (`liq`-Gruppe im OnChain-Store, Hyperliquid
+   *      L2). Gemessene Wände – kein Modell, keine Schätzung.
+   *   2. **Kerzen-Schätzung** (`buildLiqMap`) als Fallback, wenn für das
+   *      Symbol kein Perp-Buch existiert (z. B. reine DEX-Token) oder das
+   *      Panel nicht offen ist.
+   *
+   * Das Buch gewinnt nur, wenn es zum aktuell gezeichneten Symbol passt –
+   * sonst würden Wände eines fremden Assets über den Chart gelegt.
+   */
+  const bookWalls = useOnChainStore((state) => state.liq);
+
+  const libraryWalls = useMemo<LiqBucket[] | null>(() => {
+    if (!liqOn) return null;
+    const book = bookWalls;
+    if (!book || book.walls.length === 0) return null;
+    const last = analysisCandles[analysisCandles.length - 1]?.c;
+    if (!last || last <= 0) return null;
+    // Das Buch muss zum gezeichneten Preis passen (±15 % Toleranz gegen
+    // Symbol-Wechsel während des Ladens).
+    const drift = Math.abs(book.spot - last) / last;
+    if (drift > 0.15) return null;
+    return book.walls
+      .filter((wall) => Math.abs(wall.distancePct) >= 0.15 && Math.abs(wall.distancePct) <= 8)
+      .map((wall) => ({
+        price: wall.price,
+        side: wall.side,
+        intensity: wall.intensity,
+        leverage: 0,
+        distancePct: wall.distancePct,
+      }));
+  }, [bookWalls, liqOn, analysisCandles]);
+
+  /* ------------------ wave-8: funding / OI context ribbon ----------------- */
+
+  /*
+   * Der Ribbon liest ausschließlich den On-Chain-Store. Er erscheint nur,
+   * wenn das Panel bereits Hyperliquid-Daten geladen hat – der Chart selbst
+   * löst **nie** einen Perp-Request aus. Das hält das Versprechen
+   * „Chart öffnen = 0 zusätzliche Quota“ auch bei aktiver Anzeige.
+   */
+  const hlContext = useOnChainStore((state) => state.hl);
+  const fundingRibbonOn = useChartStore((state) => state.fundingRibbonOn);
+  const fundingCoin = useMemo(() => {
+    return (symbol.split('/')[0] ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }, [symbol]);
+
+  const fundingSource = useMemo<FundingRibbonSource | null>(() => {
+    if (!fundingRibbonOn || !hlContext) return null;
+    const market = hlContext.active;
+    const matches = market != null && market.coin.toUpperCase() === fundingCoin;
+    // Aggregat nur, wenn kein passender Markt existiert (z. B. DEX-Only-Token) –
+    // dann ist der Chip mit Σ gekennzeichnet und alle Coins sichtbar.
+    if (!matches && (hlContext.markets.length === 0 || fundingCoin.length === 0)) return null;
+    // `fundingAnnualPct` ist bereits annualisiert (API-Schicht) – hier wird
+    // nur noch der Aggregat-Fall umgerechnet (fundingWeighted ist stündlich).
+    const annualPct = matches
+      ? market.fundingAnnualPct
+      : hlContext.fundingWeighted != null
+        ? hlContext.fundingWeighted * 24 * 365 * 100
+        : null;
+    return {
+      annualPct,
+      openInterestUsd: matches ? market.openInterestUsd ?? null : hlContext.totalOpenInterestUsd,
+      dayVolumeUsd: matches ? market.volume24hUsd : hlContext.totalVolume24hUsd,
+      positiveShare: matches ? null : (hlContext.positiveFundingPct ?? null) != null ? (hlContext.positiveFundingPct as number) / 100 : null,
+      coin: matches ? market.coin : 'PERPS',
+      aggregate: !matches,
+      bull: chartTheme.bull,
+      bear: chartTheme.bear,
+      text: withAlpha(chartTheme.text, 0.88),
+      bg: withAlpha(chartTheme.surface, 0.82),
+    };
+  }, [hlContext, fundingCoin, chartTheme, fundingRibbonOn]);
+
+  useEffect(() => {
+    fundingPrimRef.current?.setSource(fundingSource);
+  }, [fundingSource]);
+
   useEffect(() => {
     const prim = liqPrimRef.current;
     if (!prim) return;
     if (!liqOn) {
       prim.setSource(null);
+      return;
+    }
+    if (libraryWalls && libraryWalls.length > 0) {
+      prim.setSource({
+        buckets: libraryWalls,
+        halfPct: 0.0012,
+        longBase: chartTheme.bull,
+        shortBase: chartTheme.bear,
+        label: withAlpha(chartTheme.text, 0.72),
+        measured: true,
+      });
       return;
     }
     const map = buildLiqMap(analysisCandles);
@@ -816,8 +947,9 @@ export function PriceChart({
       longBase: chartTheme.bull,
       shortBase: chartTheme.bear,
       label: withAlpha(chartTheme.text, 0.72),
+      measured: false,
     });
-  }, [liqOn, analysisCandles, chartTheme]);
+  }, [liqOn, analysisCandles, chartTheme, libraryWalls]);
 
   useEffect(() => {
     const chart = chartRef.current;
