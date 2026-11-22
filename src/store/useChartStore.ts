@@ -110,6 +110,8 @@ interface ChartUiState {
   scriptLabOpen: boolean;
   /** Wave-7 Liq Radar liquidation-magnet bands on the price pane. */
   liqMagnetsOn: boolean;
+  /** Funding/OI ribbon on the price pane (store-read, 0 requests). */
+  fundingRibbonOn: boolean;
   /** Wave-7 Edge Suite modals (session UI state). */
   edgeLiqOpen: boolean;
   edgeLagOpen: boolean;
@@ -176,6 +178,7 @@ interface ChartUiActions {
   setCustomAgg: (minutes: number | null) => void;
   setScriptLabOpen: (open: boolean) => void;
   toggleLiqMagnets: () => void;
+  toggleFundingRibbon: () => void;
   setEdgeLiqOpen: (open: boolean) => void;
   setEdgeLagOpen: (open: boolean) => void;
   setEdgeRegimeOpen: (open: boolean) => void;
@@ -222,6 +225,7 @@ const INITIAL: ChartUiState = {
   customAgg: null,
   scriptLabOpen: false,
   liqMagnetsOn: false,
+  fundingRibbonOn: false,
   edgeLiqOpen: false,
   edgeLagOpen: false,
   edgeRegimeOpen: false,
@@ -405,6 +409,7 @@ export const useChartStore = create<ChartStore>()(
       setCustomAgg: (customAgg) => set({ customAgg }),
       setScriptLabOpen: (scriptLabOpen) => set({ scriptLabOpen }),
       toggleLiqMagnets: () => set((state) => ({ liqMagnetsOn: !state.liqMagnetsOn })),
+      toggleFundingRibbon: () => set((state) => ({ fundingRibbonOn: !state.fundingRibbonOn })),
       setEdgeLiqOpen: (edgeLiqOpen) => set({ edgeLiqOpen }),
       setEdgeLagOpen: (edgeLagOpen) => set({ edgeLagOpen }),
       setEdgeRegimeOpen: (edgeRegimeOpen) => set({ edgeRegimeOpen }),
@@ -434,6 +439,7 @@ export const useChartStore = create<ChartStore>()(
         syncZoom: state.syncZoom,
         volume: state.volume,
         vpOn: state.vpOn,
+        fundingRibbonOn: state.fundingRibbonOn,
         liqMagnetsOn: state.liqMagnetsOn,
         srOn: state.srOn,
         divOn: state.divOn,

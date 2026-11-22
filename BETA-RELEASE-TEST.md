@@ -25,7 +25,7 @@
 | SEO auf dem Produktionsbuild | **TEILWEISE** | `seo-audit.mjs`: 95 PASS / 0 FAIL. `seo-check.mjs`: 578 PASS / 0 FAIL; ein Font-Preload-Hinweis wurde für das LCP-Display-Font ergänzt. |
 | Live-Markt-/Provider-Smoke | **BLOCKED / bewusst SKIP** | Ein früherer Live-Lauf endete mit Exit 1 und 25 providerabhängigen Assertions, weil externe Endpunkte aus der Sandbox TLS `SSL_ERROR_SYSCALL`/HTTP 000 lieferten. Auf Nutzerwunsch in diesem Lauf nicht wiederholt; keine Live-Verfügbarkeit behauptet. |
 | Live-WebSocket-Erreichbarkeit | **SKIP** | `ws:smoke:offline` besteht mit Parser-Fixtures für alle 12 Adapter; 12 Live-Probes wurden diesmal absichtlich nicht gestartet. Eine frühere Ausführung konnte die Endpunkte aus dieser Testumgebung nicht erreichen. Browser-Erreichbarkeit ist unbekannt. |
-| Browser-, Screenshot-, Interaktions-, CWV- und CMP-Abnahme | **BLOCKED** | Puppeteer 25.12.0 findet Chrome 154.0.8037.57 nicht; kein systemweites Chromium/Chrome vorhanden. `fit-check` und `cwv-check` konnten nicht starten. Es wurden keine Screenshot-Ergebnisse erzeugt. |
+| Browser-, Screenshot-, Interaktions-, CWV- und CMP-Abnahme | **DURCHGEFÜHRT (Fixture-Modus)** | Chromium 153.0.8010.0 über `@sparticuz/chromium` plus selbstgebaute NSS/NSPR-Libs. `qa:features`, `qa:interaction` (25/25), `qa:modules` (0 Failures), `qa:i18n` (110/110), `qa:monetization` (78/78), `qa:release` (44/44), `qa:trader` (29/29), `qa:onboarding`, `qa:responsive` (43/43), `qa:edge-visual`, `qa:gui` (109 Shots, 0 Befunde), `qa:gui-verify`, `browser-check` (152 PASS / 0 FAIL / 19 SKIP) und `cwv-check` (LCP 532/396 ms, CLS 0.008/0.000) laufen grün. Alle Läufe mit `?qa=1&fixtures=1` und Netzsperre – Live-Providerdaten sind damit **nicht** abgedeckt. |
 | Dependencies | **TEILWEISE** | `npm audit --omit=dev`: 0 Findings. Vollständiges `npm audit`: 7 High, 0 Critical, im Dev-/Build-/Lint-/CSS-Werkzeugbaum. Keine Major-Upgrades automatisch angewendet. |
 | Release-Entscheidung | **KEINE FREIGABE** | Der Offline-Audit (`RELEASE-AUDIT.md`) ist aktuell: 445 PASS / 0 FAIL / 20 SKIP. Browser-/CMP- und Live-Provider-Gates wurden auf Wunsch nicht ausgeführt; weitere Risiko-Gates bleiben dokumentiert. NodeCluster ist eine NodeChart-Funktion, keine Produktmarke. |
 
@@ -67,14 +67,14 @@ Die Checks wurden gegen einen lokalen **Next-Produktionsserver auf Port 3100** a
 | Prüfung | Ergebnis | Befund |
 |---|---|---|
 | `scripts/seo-audit.mjs` | **95 PASS / 0 FAIL** | Titel/Descriptions, Canonicals, hreflang, OpenGraph/Twitter, Structured Data, Legal-/Help-Routen, robots.txt, Sitemap und `llms.txt` geprüft. |
-| `scripts/seo-check.mjs` | **578 PASS / 0 FAIL** | Für das LCP-Display-Font (Exo 2 Latin) wird über `next/font/local` ein lokaler Preload ausgegeben; in allen fünf Locales ist genau ein Font-Preload-Hinweis vorhanden. Die Preload-Datei antwortet im lokalen Production-Server mit HTTP 200 (`font/woff2`, 40.896 Byte); die Build-Ausgabe enthält 19 WOFF2-Dateien (Grenzwert ≤20). LCP/CWV selbst bleibt mangels Browser BLOCKED. |
+| `scripts/seo-check.mjs` | **578 PASS / 0 FAIL** | Für das LCP-Display-Font (Exo 2 Latin) wird über `next/font/local` ein lokaler Preload ausgegeben; in allen fünf Locales ist genau ein Font-Preload-Hinweis vorhanden. Die Preload-Datei antwortet im lokalen Production-Server mit HTTP 200 (`font/woff2`, 40.896 Byte); die Build-Ausgabe enthält 19 WOFF2-Dateien (Grenzwert ≤20). LCP/CWV live gemessen: `cwv-check` desktop LCP 532 ms / CLS 0.008 / TBT 186 ms, mobile LCP 396 ms / CLS 0.000 / TBT 113 ms — alle Schranken eingehalten. |
 | spanische Terminal-Metabeschreibung | PASS nach Korrektur | War zuvor 172 Zeichen; auf 148 Zeichen gekürzt, bei Erhalt des Provider-/Verfügbarkeitsvorbehalts. |
 | SoftwareApplication-`featureList` | PASS nach Korrektur | Der Produktions-HTML enthielt zuvor 18 `null`-Einträge: das Landing verwendete für `benefit.paid`/`benefit.unique` falsche Übersetzungstypen. Mapping an die sichtbaren `{ feat, gate }`-Zeilen und String-Arrays angepasst; Produktions-HTML enthält jetzt 18 nicht-leere Feature-Strings. |
 | Landing-H1-/OG-Prüfungen | PASS nach Testkorrektur | Veralteter H1-Test verlangte „TradingView + CEX“, obwohl die aktuelle, vorsichtige Copy CEX + DEX nennt. OG-Test verlangte alte deutsche/chinesische Wörter. Assertions wurden an die tatsächliche lokalisierte Copy angepasst, ohne einen Wettbewerbsclaim in die UI einzufügen. |
 | `seo-audit.mjs`-Erwartungen / README | PASS nach Test- und Doku-Abgleich | Älterer Audit verlangte FAQ auf Landing, `noindex` für das Basis-Terminal, Terminal-Disallow in `robots.txt` und 25 Sitemap-URLs. Code/aktueller SEO-Check sehen eine Landing-Featureliste, FAQ im Help-Center, indexierbares Basis-Terminal, `noindex` nur für Query-Varianten und 30 URLs. Veraltete Assertions und README-Aussagen wurden abgeglichen; Produktverhalten wurde dafür nicht verändert. |
 | Wettbewerber-Metadaten | angepasst | „TradingView alternative“ aus den lokalen Keyword-Feldern entfernt; Paketbeschreibung auf eine Provider-/Regions-bewusste Produktbeschreibung umgestellt. Die Produktmarke NodeChart ist konsistent; NodeCluster bezeichnet ausschließlich das Support-/Resistance-Feature. Kein Rebrand oder Domainwechsel erforderlich. |
 
-**Performance-Messung weiterhin offen:** Die fehlenden Font-Preload-Hints wurden behoben. Ohne Chromium wurde dennoch keine LCP-/CLS-/TBT-Messung behauptet; `cwv-check` bleibt BLOCKED.
+**Performance-Messung durchgeführt:** Die fehlenden Font-Preload-Hints wurden behoben. `cwv-check` misst jetzt mit Chromium 153: desktop LCP 532 ms / CLS 0.008 / TBT 186 ms / 32 Requests, mobile LCP 396 ms / CLS 0.000 / TBT 113 ms / 29 Requests, 0 Third-Party-Requests vor `load`, keine externe render-blockierende CSS. Die Schwellen sind Regression-Schranken einer Headless-Sandbox, kein Field-CWV-Nachweis für echte Geräte und Netze.
 
 ### 4. Live-API- und WebSocket-Prüfungen
 
@@ -117,22 +117,98 @@ Das verwendete Record-Schema enthält Version, Wahl und Zeitstempel. Die 180-Tag
 | Lokale Next-Header auf `/de/terminal` | TEILWEISE PASS | `X-Content-Type-Options: nosniff`, `Referrer-Policy` und `Permissions-Policy` vorhanden; `X-Powered-By` fehlt. In der lokalen HTTP-Antwort fehlen CSP und HSTS; `X-Frame-Options`/`frame-ancestors` sind bewusst nicht gesetzt, damit die Arena-Vorschau eingebettet werden kann. Das ist kein Snapshot der echten Cloudflare-Edge-Konfiguration. |
 | Script Lab | **Offen, Disclosure vorhanden** | Formeln/importierter Code laufen im Seitenkontext und sind keine sichere Sandbox. Die UI warnt davor; nur vertrauenswürdigen Code ausführen. Browser-/CSP-/Hostile-import-Abnahme offen. |
 | Public API/Proxy/Rate-Limits | **Offen** | Lokal begrenzte Budgets und Source-Cooldowns sind getestet; sie koordinieren nicht alle Nutzer hinter geteilten Provider-/IP-Limits und ersetzen kein öffentliches Abuse-/Rate-Limit-Hardening. |
-| Cloudflare/Node-Warnung | **Offen** | OpenNext-Build erfolgreich, aber Node-Middleware-Unterstützung experimentell. Ziel-Worker, Kompatibilitätsdatum, Kosten-/Quotas und echte Edge-Header sind nicht deployed/getestet. |
+| Cloudflare/Node-Warnung | **TEILWEISE** | `cf:build` (OpenNext 4.147.0) läuft durch: `Bundling Node.js middleware` → `Worker saved in .open-next/worker.js` → `OpenNext build complete`. Lokal mit `wrangler dev` verifiziert: `/` 302→Locale, `/de`, `/de/terminal`, `/robots.txt`, `/sitemap.xml` alle 200; im Worker-Kontext ebenfalls kein `Disallow` und `robots: index, follow`. Terminal rendert im Workerd: 7 Canvases, BTC/USDT-Legende, Venue stabil auf binance (Hysterese greift). **Offen:** echtes Deployment, Ziel-Kompatibilitätsdatum, Kosten/Quotas und echte Edge-Header — lokal ist nicht Edge. |
+
+## Crawl-/Index-Hygiene (kein Entwurfs- oder Testzustand)
+
+Der Produktionsbuild liefert **keinen** noindex und sperrt Googlebot nicht aus:
+
+| Prüfung | Ergebnis |
+|---|---|
+| `robots.txt` | `User-Agent: *` → `Allow: /`; **kein** `Disallow` (0 Treffer in der Build-Ausgabe). Social-Crawler (Twitterbot, facebookexternalhit, TelegramBot, LinkedInBot, Discordbot, WhatsApp, Slackbot) explizit erlaubt, damit Share-Cards weiter funktionieren. `Host` + `Sitemap` gesetzt. |
+| Landing, Terminal-Basis, Help, Legal (privacy/terms/disclaimer), alle 5 Locales | HTTP 200, `<meta name="robots" content="index, follow">` **und** `<meta name="googlebot" content="index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1">` |
+| `?qa=1`, `?fixtures=1`, `?preview=1`, `?draft=1`, `?test=1` | identisch `index, follow` — der QA-/Fixture-Modus hinterlässt keine Spur im HTML |
+| `X-Robots-Tag` | wird nicht gesetzt |
+| 404-Seiten (`/de/privacy` statt `/de/legal/privacy` usw.) | `noindex` — korrekt, das sind Fehlerseiten |
+| `?ticker=`/`?price=`-Varianten | `noindex, follow` + canonical auf den Basispfad (Duplicate-Content-Doktrin, kein Draft-Zustand) |
+
+Belegt mit `node scripts/seo-check.mjs`: **578 PASS / 0 FAIL** (enthält die Crawl-Hygiene-Checks: robots.txt ohne Terminal-Disallow, Social-Bots erlaubt, Edge-Cache 1 h, kanonisierte Parameter-Varianten).
+
+## Live-Domain nachgeprüft (nodechart.cc)
+
+Ergänzend zum lokalen Build wurde die **echte Produktionsdomain** über einen
+Host mit Internetzugang abgefragt (die Arbeits-Sandbox hat kein ausgehendes
+Netz zu nodechart.cc; `curl` endet dort mit `SSL_ERROR_SYSCALL`).
+
+| Prüfung | Live-Ergebnis |
+|---|---|
+| `robots.txt` | erreichbar, HTTP 200. Cloudflare stellt einen verwalteten Block voran (`# BEGIN Cloudflare Managed content`) mit 24 `Disallow: /`-Einträgen — **ausschließlich KI-/Training-Crawler**. |
+| **Googlebot** | **nicht ausgesperrt.** `User-agent: *` → `Allow: /`, kein `Disallow`. Kein Googlebot-spezifischer Block. Ebenso frei: `googlebot-news`, `bingbot`. |
+| `Google-Extended` | `Disallow: /` — das ist Gemini-**Training**, nicht die Websuche. Eine Sperre dort nimmt NodeChart NICHT aus den Google-Suchergebnissen. |
+| `Sitemap:` | vorhanden, `https://nodechart.cc/sitemap.xml`, erreichbar, 35 URLs, alle 200. |
+| Landing, Terminal, `/cluster`, Legal | 200, für Crawler abrufbar, kein `noindex`. |
+| Live-Terminal | funktioniert mit echten Providerdaten: BTC/USDT 60.795,14 $, Binance 650 ms, 300 Candles, Chart rendert. |
+
+**Wichtige Einordnung:** Die Live-Domain fährt einen **neueren Stand als dieses
+Repository**. Belege: `/de/cluster` existiert live („NodeCluster —
+Token-Holder-Cluster"), die Landing trägt neue Texte („Kern-Charts ohne Abo",
+Pro über verifizierte On-Chain-Unterstützung) und der Sitemap listet 35 URLs
+gegen 30 hier. `git log --all -- '*cluster*'` ist leer — dieser Code liegt in
+keinem Branch dieses Repos. Die Live-Prüfung bezieht sich also auf den
+deployten Stand, nicht auf diesen Branch.
+
+### Entscheidung: dieser Branch ersetzt die Produktion nicht
+
+Geprüft am 2026-11-21 gegen `main` (`55274ba`) und den einzigen weiteren
+Remote-Branch (`arena/01a103d9…`, PR-#1-Quelle):
+
+| | Live `nodechart.cc` | `main` / dieser Branch |
+|---|---|---|
+| Route `/cluster` | vorhanden | **fehlt** |
+| Landing-Headline | „Core charts without subscription" | andere Fassung |
+| Pro-Freischaltung | verifizierte On-Chain-Zahlung | nicht enthalten |
+| Sitemap-Umfang | 35 URLs (7 × 5) | 30 URLs (6 × 5) |
+
+Der Live-Stand stammt damit aus einer Quelle außerhalb dieses Repos (separates
+Projekt, Direkt-Upload oder anderes Repository) — nicht aus `main` und nicht
+aus diesem Branch. **Konsequenz: dieser Branch ist kein Produktions-Release.**
+Er ist ein QA-/Härtungs-Set auf Basis von `main` und darf nur gemerged werden,
+wenn vorher geklärt ist, ob der Live-Stand aus einer anderen Quelle weiterläuft
+— sonst ginge `/cluster` und die Pro-Verifikation beim nächsten Deploy aus
+diesem Repo verloren. Der PR bleibt zur Review offen und wird nicht
+eigenmächtig gemerged.
+
+### Gate für Live-Instanzen
+
+`scripts/live-crawl-check.mjs` prüft eine beliebige erreichbare Instanz
+(Produktion oder Preview) und schließt damit genau die Lücke, die der lokale
+`seo-check` nicht sehen kann: Edge-/Host-Injektion in `robots.txt`,
+vorgeschaltete Content-Signals-Seiten, 404er im Sitemap.
+
+    QA_LIVE_URL=https://nodechart.cc npm run qa:live-crawl
+
+Geprüft wird: kein `Disallow: /` für `*`/`Googlebot` (KI-Blöcke werden nur
+gelistet), `Sitemap:`-Direktive + Erreichbarkeit, alle Sitemap-URLs = 200,
+keine `noindex`-Seite im Sitemap. Gegen den lokalen Build: 8/8 PASS.
 
 ## Screenshot- und Browser-Matrix
 
-**Status der automatisierten Screenshot-Matrix: BLOCKED — keine reproduzierbaren Screenshots durch den QA-Lauf.** Der Nutzer hat einen mobilen Brave-Screenshot als visuelle Referenz beigefügt; er ist kein Screenshot-Artefakt dieses Builds und ersetzt keine Viewport-/Geräteprüfung. Der bekannte Grund bleibt: Chrome 154.0.8037.57 fehlt; `/home/user/.cache/puppeteer` enthält keinen Browser und kein systemweites Chromium/Chrome ist vorhanden. Ein früherer Installationsversuch scheiterte vor TLS-Aufbau (`Client network socket disconnected`). In diesem Durchlauf wurden die nicht ausführbaren Browsermodule ausgelassen. Kein Pixel-, Geräte-, Tastatur-, Cookie- oder Cross-Browser-PASS wird aus Server-/Fixture-Tests abgeleitet.
+**Status der automatisierten Screenshot-Matrix: DURCHGEFÜHRT — 109 Screenshots, 0 automatische Befunde.** Der Browser wurde in dieser Umgebung ohne Paketmanager bereitgestellt: `@sparticuz/chromium@153.0.0` liefert das Binary (`/tmp/chromium`, HeadlessChrome 153.0.8010.0), die fehlenden NSS-/NSPR-Bibliotheken wurden aus den Quellen gebaut (`mozilla/nspr` `NSPR_4_36_BRANCH`, `nss-dev/nss` `NSS_3_101_RTM`) und per `LD_LIBRARY_PATH` eingebunden. Allein der `signtool`-Teil des NSS-Builds scheitert an fehlendem `zlib.h`; die für den Browser relevanten Bibliotheken (`libnss3`, `libnssutil3`, `libsmime3`, `libfreebl3`, `libsoftokn3`, `libnspr4`, `libplc4`, `libplds4`) entstehen vollständig.
+
+Reproduzierbar mit: `PUPPETEER_EXECUTABLE_PATH=/tmp/chromium LD_LIBRARY_PATH=/tmp/chromelibs QA_FIXTURES=on npm run qa:gui`.
+
+Wichtig zur Einordnung: Provider-Netz ist in dieser Sandbox nicht erreichbar, deshalb laufen alle Suiten mit `?qa=1&fixtures=1` (deterministische Kerzen/DEX-/GoPlus-Antworten) und einer Netzsperre für fremde Hosts. Die Prüfungen belegen Layout, Interaktion, Tastaturbedienung, Overflow, Dialog-Fit und Rendering – **nicht** die Qualität echter Livemarktdaten. Ein Brave-/Safari-/Firefox-Lauf und echte Mobilgeräte bleiben offen; kein Cross-Browser-PASS wird abgeleitet.
 
 | Viewport-Profil | Größe | Zielansichten | Screenshot-/Interaktionsstatus |
 |---|---:|---|---|
-| Mini | 320 × 568 | Landing, Consent, Terminal-Controls/Settings | BLOCKED |
-| Telefon | 390 × 844 | Landing, Terminal, Controls-Sheet, Chart-Settings, Dialoge, Consent | BLOCKED |
-| Tablet | 768 × 1024 | Landing, Terminal, Menüs/Controls, Panels | BLOCKED |
-| Tablet portrait | 834 × 1112 | Terminal, Dropdown-Fit, Modals | BLOCKED |
-| Low-height laptop | 1024 × 500 | Terminal, Menüs, Picker/Dropdowns | BLOCKED |
-| Laptop | 1280 × 620 und 1280 × 800 | Terminal, Sidebar/Ads, Controls | BLOCKED |
-| Desktop | 1440 × 900 | Landing, Terminal, jedes Hauptmenü/Tool-Modal, Help/Legal | BLOCKED |
-| Wide desktop | 1920 × 1080 | Terminal, Sidebar, Sponsored-Flächen/Overlaps | BLOCKED |
+| Mini | 320 × 568 | Landing, Consent, Terminal-Controls/Settings | PASS (Fixture-Lauf) |
+| Telefon | 390 × 844 | Landing, Terminal, Controls-Sheet, Chart-Settings, Dialoge, Consent | PASS (Fixture-Lauf) |
+| Tablet | 768 × 1024 | Landing, Terminal, Menüs/Controls, Panels | PASS (Fixture-Lauf) |
+| Tablet portrait | 834 × 1112 | Terminal, Dropdown-Fit, Modals | PASS (Fixture-Lauf) |
+| Low-height laptop | 1024 × 500 | Terminal, Menüs, Picker/Dropdowns | PASS (Fixture-Lauf) |
+| Laptop | 1280 × 620 und 1280 × 800 | Terminal, Sidebar/Ads, Controls | PASS (1280 × 800, Fixture-Lauf) |
+| Desktop | 1440 × 900 | Landing, Terminal, jedes Hauptmenü/Tool-Modal, Help/Legal | PASS (Fixture-Lauf) |
+| Wide desktop | 1920 × 1080 | Terminal, Sidebar, Sponsored-Flächen/Overlaps | PASS (2560/3440 in `qa:i18n`; 1920 nicht separat) |
 
 Für die Freigabe zusätzlich pro Viewport: `en`, `de`, `es`, `ru`, `zh`; Consent `unknown`/`denied`/`granted`/Widerruf; Landing, Terminal mit Controls und Settings, Help, Legal, Modals, Toasts und Sponsored-Platzierungen. Chromium-Automation allein ersetzt keine Firefox-/WebKit- oder physischen Android-/iOS-Tests.
 
@@ -151,17 +227,17 @@ Für die Freigabe zusätzlich pro Viewport: `en`, `de`, `es`, `ru`, `zh`; Consen
 |---|---|---|
 | M1 | Statische Konfiguration, Lizenz-/Secret-Muster, Env, i18n, Typecheck/Lint | **PASS 14/14** |
 | M2 | Routing, SEO, Metadata, Übersetzungen und Copy über alle Locales | **TEILWEISE** — 95 SEO-Audit-PASS; 578 SEO-Check-PASS / 0 FAIL; NodeChart/NodeCluster-Namensrolle geklärt; externe Marketing-Claims bleiben zu reviewen |
-| M3 | Terminal-/Chart-Funktionen, Menüs, Datenquellen, Indikatoren, Persistenz | **TEILWEISE** — Chart-/Module-Smokes PASS; Browser-Interaktionen BLOCKED |
-| M4 | Tastatur, Fokus, ARIA, Kontrast, Viewport-/Layout-Fit | **BLOCKED** — Browser fehlt; statische Checks ersetzen keine Laufzeitabnahme |
+| M3 | Terminal-/Chart-Funktionen, Menüs, Datenquellen, Indikatoren, Persistenz | **PASS (Fixture-Lauf)** — `qa:modules` 0 Failures, `qa:trader` 29/29 (12 Venues, DEX-Preset, CA-Suche, Forensik, Rate-Limit), `qa:release` 44/44 |
+| M4 | Tastatur, Fokus, ARIA, Kontrast, Viewport-/Layout-Fit | **PASS (Fixture-Lauf)** — `qa:interaction` 25/25 (Tastatur/Fokus/Cmd-K), `qa:i18n` 110/110 (Overflow + Dialog-Fit 320–3440 px), `qa:responsive` 43/43 (Touch-Targets ≥44 px mit WCAG-2.5.8-Nachweis), `gui-verify` (47 Checks) |
 | M5/M8 | Ads, Consent, Smartlinks, Spenden-Flow, Disclosure/Overlaps | **TEILWEISE** — Storage-Logik PASS, Guards statisch geprüft; CMP-, Request-, Cookie- und Screenshot-Abnahme BLOCKED |
 | M6/M10 | Runtime, Offline-/Reconnect-, Fehlformat-, Budget- und Resilienztests | **TEILWEISE** — API-/Chart-/Edge-Fixtures PASS; Live-API BLOCKED, 12 WS SKIP, Browser-Offlinetests BLOCKED |
 | M7 | Next-/Cloudflare-Produktionsbuild und Deployment-Konfiguration | **BUILD PASS** mit experimenteller Node-Middleware-Warnung; Deployment/Edge-Prüfung offen |
 | M9 | Security-Header, XSS/Inputs, lokale Daten, API-Routen, Dependencies | **TEILWEISE** — M1/Inputs/Headers/Dependency-Snapshot; CSP/HSTS/Edge, öffentlicher Abuse-Schutz und Browser-Historie offen |
-| Geräte-/Browsermatrix | Screenshots, Chromium/Firefox/WebKit sowie echte Android-/iOS-Geräte | **BLOCKED / nicht abgedeckt** |
+| Geräte-/Browsermatrix | Screenshots, Chromium/Firefox/WebKit sowie echte Android-/iOS-Geräte | **TEILWEISE** — Chromium (Headless) mit 109 Screenshots; Firefox/WebKit und echte Geräte **nicht abgedeckt** |
 
 ## Nächste Schritte bis zur Freigabe
 
-1. Mit verfügbarer Browserumgebung CWV messen; der LCP-Font-Preload ist implementiert und alle statischen SEO-Checks bestehen.
+1. CWV auf echten Geräten/Netzen gegenprüfen (Headless-Sandbox misst Lab-Werte); der LCP-Font-Preload ist implementiert und alle statischen SEO-Checks bestehen.
 2. Browserumgebung bereitstellen und Screenshot-/Fit-/Feature-/Smartlink-/Ad-Slot-/Consent-Matrix einschließlich Request-Interception, Widerruf und Storage-Fehlern ausführen.
 3. Live-API- und WebSocket-Smokes in einer Umgebung mit funktionierendem Provider-Egress wiederholen; Ergebnisse pro Provider und Region ausweisen, keine globale Verfügbarkeit ableiten.
 4. CMP-/Publisher-Signal und Datenschutz-/Cookie-Texte vor optionaler Ad-Delivery klären; das lokale Consent-Modell nicht als Rechts- oder Compliance-Bestätigung bezeichnen.

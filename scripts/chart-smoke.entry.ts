@@ -574,14 +574,42 @@ console.log('\n— wave 2: indicator library coverage —');
 
 {
   const { INDICATOR_KINDS } = await import('@/lib/indicators');
-  check('library exposes 34 indicator kinds (incl. CUSTOM)', INDICATOR_KINDS.length === 34);
+  check('library exposes 36 indicator kinds (incl. CUSTOM + live tape)', INDICATOR_KINDS.length === 36);
 
   const long = syntheticCandles(400);
+
+  /*
+   * CVD/DELTADIV lesen den Trade-Bus statt Kerzen. Für den Serien-Test wird
+   * ein kleiner Tape-Verlauf eingespeist, damit beide echte Werte liefern –
+   * ohne Fixture wären sie korrekterweise komplett leer (keine Ticks).
+   */
+  const { recordTapeTrade, clearTape } = await import('@/lib/tape');
+  clearTape();
+  const lastBar = long[long.length - 1]!;
+  for (let i = 0; i < 30; i += 1) {
+    recordTapeTrade({
+      exchange: 'binance',
+      symbol: 'SMOKE/USDT',
+      price: lastBar.c + (i % 2 === 0 ? 0.5 : -0.5),
+      qty: 2,
+      side: i % 3 === 0 ? 'sell' : 'buy',
+      ts: lastBar.t + 1_000 * i,
+    });
+  }
+  const tapeBarMs = (long[1]?.t ?? 0) - (long[0]?.t ?? 0);
+  const context = { symbol: 'SMOKE/USDT', intervalMs: tapeBarMs };
+
   const missing: string[] = [];
   for (const kind of INDICATOR_KINDS) {
     const def = INDICATOR_LIBRARY[kind];
     // CUSTOM needs a user formula – feed it the identity of the close.
-    const values = computeIndicator(kind, long, defaultParams(def), kind === 'CUSTOM' ? 'c' : undefined);
+    const values = computeIndicator(
+      kind,
+      long,
+      defaultParams(def),
+      kind === 'CUSTOM' ? 'c' : undefined,
+      context,
+    );
     const anyValue =
       values != null &&
       def.outputs.some((output) => {
@@ -591,6 +619,34 @@ console.log('\n— wave 2: indicator library coverage —');
     if (!anyValue) missing.push(kind);
   }
   check(`every kind produces at least one finite series${missing.length > 0 ? ` (missing: ${missing.join(', ')})` : ''}`, missing.length === 0);
+
+  /* ---- live tape: CVD sums deltas, DELTADIV flags absorption --------------- */
+
+  const cvd = computeIndicator('CVD', long, {}, undefined, context)?.cvd ?? [];
+  const cvdValues = cvd.filter((value): value is number => typeof value === 'number');
+  /*
+   * Fixture: 30 Trades à qty 2 auf derselben Kerze. Preise wechseln +0.5/−0.5
+   * ⇒ 15 Trades zu (c+0.5)·2, 15 zu (c−0.5)·2. Verkaufs-Trades sind i%3==0,
+   * also 5 von je 15 pro Seite. Delta = Σbuy − Σsell.
+   */
+  // Erwartungswert direkt aus dem Tape (Summe aller Bucket-Deltas), nicht
+  // hartkodiert – so prüft der Test die Aggregation, nicht die Fixture-Arithmetik.
+  const { tapePerCandle } = await import('@/lib/tape');
+  const tapeRows = tapePerCandle('SMOKE/USDT', long.map((candle) => candle.t), tapeBarMs);
+  const expectedDelta = tapeRows.delta.reduce<number>((sum, delta) => sum + (delta ?? 0), 0);
+  check('CVD has at least one bar with tape', cvdValues.length >= 1);
+  check('CVD is cumulative (strictly derived from deltas)', cvdValues.length === 0 || Number.isFinite(cvdValues[cvdValues.length - 1]!));
+  check(
+    `CVD final value equals summed buy-minus-sell notional (got ${cvdValues[cvdValues.length - 1]?.toFixed(2)}, want ${expectedDelta.toFixed(2)})`,
+    Math.abs((cvdValues[cvdValues.length - 1] ?? 0) - expectedDelta) < 1e-6,
+  );
+
+  const div = computeIndicator('DELTADIV', long, {}, undefined, context)?.div ?? [];
+  check('DELTADIV only reports −1/0/+1 or gaps', div.every((value) => value === undefined || value === -1 || value === 0 || value === 1));
+
+  const noTape = computeIndicator('CVD', long, {}, undefined, { symbol: 'NOTAPE/USDT', intervalMs: tapeBarMs })?.cvd ?? [];
+  check('CVD without tape stays empty instead of drawing a fake zero line', noTape.every((value) => value === undefined));
+  clearTape();
 }
 
 console.log('\n— wave 2: new oscillator maths —');

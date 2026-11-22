@@ -12,6 +12,7 @@
 //
 // Nutzung: node scripts/qa-i18n-layout.mjs   (Server auf :3000 muss laufen)
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const LOCALES = ['de', 'en', 'es', 'ru', 'zh'];
@@ -94,9 +95,14 @@ for (const locale of LOCALES) {
     let bad = await page.evaluate(OVERFLOW_SCAN);
     check(`${locale} landing @ ${vp.name}: kein Overflow`, bad.length === 0, bad.slice(0, 3).map((b) => `${b.what} ${b.detail}`).join(' · '));
 
-    // terminal
-    await page.goto(`${BASE}/${locale}/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('canvas', { timeout: 30000 }).catch(() => {});
+    /*
+     * Terminal pro Locale mit QA-Hook + Fixtures: ohne Kerzen bleibt der Chart
+     * leer, das Overflow-/Fit-Scannen misst dann nur den leeren Rahmen – und
+     * ein während der Navigation detachtes Frame killte früher den Lauf.
+     */
+    await stubExternalNetwork(page, BASE);
+    await page.goto(terminalUrl(BASE, `/${locale}/terminal`), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForCanvas(page);
     await wait(2500);
     bad = await page.evaluate(OVERFLOW_SCAN);
     check(`${locale} terminal @ ${vp.name}: kein Overflow`, bad.length === 0, bad.slice(0, 3).map((b) => `${b.what} ${b.detail}`).join(' · '));

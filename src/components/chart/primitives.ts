@@ -821,6 +821,12 @@ export interface LiqMagnetSource {
   longBase: string;
   shortBase: string;
   label: string;
+  /**
+   * `true` = Wände kommen aus dem echten L2-Orderbuch (gemessen),
+   * `false` = aus Kerzen/Leverage geschätzt. Die UI kennzeichnet Schätzungen,
+   * damit niemand Modell-Grenzen für gemessene Liquidität hält.
+   */
+  measured?: boolean;
 }
 
 /**
@@ -899,8 +905,126 @@ export class LiqMagnetPrimitive implements ISeriesPrimitive<Time> {
         if (yLevel == null || yLevel < 8 || yLevel > height - 8) continue;
         tagged.add(sideKey);
         ctx.fillStyle = source.label;
-        ctx.fillText(`${band.leverage}x ${band.side === 'long' ? 'L' : 'S'} ${band.distancePct >= 0 ? '+' : ''}${band.distancePct.toFixed(1)}%`, 8, yLevel);
+        // Gemessene Buch-Wände tragen kein Leverage-Modell (Leverage = 0),
+        // deshalb wird dort das Notional-freie Format genutzt.
+        const tag = band.leverage > 0
+          ? `${band.leverage}x ${band.side === 'long' ? 'L' : 'S'} ${band.distancePct >= 0 ? '+' : ''}${band.distancePct.toFixed(1)}%`
+          : `${band.side === 'long' ? 'BID' : 'ASK'} ${band.distancePct >= 0 ? '+' : ''}${band.distancePct.toFixed(1)}%`;
+        ctx.fillText(tag, 8, yLevel);
       }
+    });
+  }
+}
+
+/* --------------------- wave-8: funding / OI context ribbon ---------------- */
+
+export interface FundingRibbonSource {
+  /** Annualised funding in percent (already ×24×365 by the API layer). */
+  annualPct: number | null;
+  /** Open interest in USD. */
+  openInterestUsd: number | null;
+  /** 24 h notional volume, for the OI/volume ratio. */
+  dayVolumeUsd: number | null;
+  /** Share of perp markets with positive funding, 0..1. */
+  positiveShare: number | null;
+  /** Coin the values belong to (shown in the chip). */
+  coin: string;
+  /** True when funding is a Hyperliquid aggregate rather than this exact coin. */
+  aggregate: boolean;
+  bull: string;
+  bear: string;
+  text: string;
+  bg: string;
+}
+
+/**
+ * Funding/OI ribbon – Kontext ohne zusätzliche Requests.
+ *
+ * Der PRO/On-Chain-Store hält Funding + OI bereits (ein `metaAndAssetCtxs`-
+ * Call deckt *alle* Perps ab). Diese Leiste malt daraus einen Chip in die
+ * obere rechte Ecke des Preis-Panes: annualisiertes Funding, Open Interest,
+ * OI/Volumen-Verhältnis und den Anteil positiv finanzierter Märkte.
+ *
+ * Sie zeigt **Kontext, kein Signal** – die Farbe markiert nur das Vorzeichen
+ * (positiv = Longs zahlen = gecrowdete Longs), nicht eine Empfehlung. Fehlen
+ * Daten, wird nichts gezeichnet; es gibt keine Null-Platzhalter.
+ */
+export class FundingRibbonPrimitive implements ISeriesPrimitive<Time> {
+  private source: FundingRibbonSource | null = null;
+  private notify: () => void = () => {};
+  private views: readonly IPrimitivePaneView[] = [
+    {
+      zOrder: () => 'top' as PrimitivePaneViewZOrder,
+      renderer: () => ({
+        draw: (target: CanvasRenderingTarget2D) => this.paint(target),
+      }),
+    },
+  ];
+
+  attached(param: SeriesAttachedParameter<Time, SeriesType>): void {
+    this.notify = param.requestUpdate;
+  }
+
+  detached(): void {
+    this.notify = () => {};
+  }
+
+  paneViews(): readonly IPrimitivePaneView[] {
+    return this.views;
+  }
+
+  setSource(source: FundingRibbonSource | null): void {
+    this.source = source;
+    this.notify();
+  }
+
+  private static compact(value: number): string {
+    const abs = Math.abs(value);
+    if (abs >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+    return value.toFixed(0);
+  }
+
+  paint(target: CanvasRenderingTarget2D): void {
+    const source = this.source;
+    if (!source) return;
+    const parts: string[] = [];
+    if (source.annualPct != null) {
+      parts.push(`${source.aggregate ? 'Σ' : source.coin} ${source.annualPct >= 0 ? '+' : ''}${source.annualPct.toFixed(1)}%/a`);
+    }
+    if (source.openInterestUsd != null) parts.push(`OI ${FundingRibbonPrimitive.compact(source.openInterestUsd)}$`);
+    if (source.openInterestUsd != null && source.dayVolumeUsd != null && source.dayVolumeUsd > 0) {
+      parts.push(`OI/V ${(source.openInterestUsd / source.dayVolumeUsd).toFixed(2)}`);
+    }
+    if (source.positiveShare != null) {
+      parts.push(`${(source.positiveShare * 100).toFixed(0)}%+`);
+    }
+    if (parts.length === 0) return;
+
+    const text = parts.join('  ');
+
+    target.useMediaCoordinateSpace((scope) => {
+      const ctx = scope.context;
+      const { width } = scope.mediaSize;
+      ctx.save();
+      ctx.font = '600 10px ui-monospace, monospace';
+      const metrics = ctx.measureText(text);
+      const padX = 6;
+      const height = 16;
+      const boxWidth = metrics.width + padX * 2;
+      const x = Math.max(4, width - boxWidth - 6);
+      const y = 4;
+
+      ctx.fillStyle = source.bg;
+      ctx.fillRect(x, y, boxWidth, height);
+      const tone = source.annualPct == null ? source.text : source.annualPct >= 0 ? source.bull : source.bear;
+      ctx.fillStyle = withAlpha(tone, 0.9);
+      ctx.fillRect(x, y, 2, height);
+      ctx.fillStyle = source.text;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + padX, y + height / 2 + 0.5);
+      ctx.restore();
     });
   }
 }

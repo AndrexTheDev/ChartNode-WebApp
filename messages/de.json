@@ -211,7 +211,9 @@
       "high": "High",
       "low": "Low",
       "range": "Range",
-      "rv": "RV p.a."
+      "rv": "RV p.a.",
+      "window24h": "rollierende 24 h (dünner Tages-Puffer)",
+      "windowDay": "UTC-Tag"
     },
     "types": {
       "candles": "Candles",
@@ -1067,6 +1069,16 @@
         "name": "Eigenes Skript",
         "short": "Script-Lab-Formel",
         "hint": "Führt deine Formel pro Kerze auf dieser Seite aus; lies vor eigenen oder importierten Formeln den Sicherheitshinweis im Script Lab."
+      },
+      "CVD": {
+        "name": "Kumulatives Volumen-Delta",
+        "short": "CVD · Live-Tape",
+        "hint": "Kumuliertes Kauf-minus-Verkauf-Notional je Kerze aus dem Live-Trade-Stream, den der Chart ohnehin empfängt — null Extra-Requests. Lücken bedeuten: keine Ticks für diese Kerze beobachtet."
+      },
+      "DELTADIV": {
+        "name": "Delta-Divergenz",
+        "short": "Flow-Absorption",
+        "hint": "Markiert Kerzen, in denen Preis und aggressiver Flow widersprechen (+1 = Verkäufer absorbiert, −1 = Käufer absorbiert). Gleicher Live-Tape; Kerzen vor dem Öffnen der Seite bleiben leer."
       }
     },
     "params": {
@@ -1201,7 +1213,9 @@
       "solana": "Solana",
       "defi": "DeFi-Kapital",
       "dex": "DEX-Heat",
-      "forensics": "Token-Forensik"
+      "forensics": "Token-Forensik",
+      "hl": "Hyperliquid-Perps",
+      "liq": "Orderbuch-Liquidität"
     },
     "btc": {
       "fast": "Express",
@@ -1246,7 +1260,35 @@
       "mintable": "MINTBAR",
       "honeypot": "HONEYPOT",
       "incomplete": "Einige Provider-Felder fehlen; leere Werte sind unbekannt, nicht null."
-    }
+    },
+    "hl": {
+      "market": "Aktiver Markt · {base}",
+      "notListed": "{base} ist kein Hyperliquid-Perp — der Markt-Kontext zeigt weiter das Aggregat.",
+      "funding": "Funding / 1 h",
+      "annual": "Annualisiert",
+      "premium": "Premium",
+      "oi": "Open Interest",
+      "totalOi": "OI aller Märkte",
+      "posFunding": "Pos. Funding",
+      "hint": "Ein On-Chain-Request liefert alle Perps; fehlende Felder bleiben unbekannt."
+    },
+    "liq": {
+      "support": "Nächste Bid-Wand",
+      "resistance": "Nächste Ask-Wand",
+      "bid": "Bid",
+      "ask": "Ask",
+      "hint": "Kumulierte Orderbuch-Tiefe in ±8 % (Hyperliquid-On-Chain-Buch). Tiefe ist keine Positionsangabe und keine Prognose.",
+      "unavailable": "Keine Buch-Tiefe für {base}"
+    },
+    "derived": {
+      "title": "Signal-Deutung",
+      "mempoolStress": "Mempool-Stress",
+      "stableFlow": "Stablecoin-Flow",
+      "fundingDivergence": "Funding vs. Preis",
+      "hint": "Rein lokal aus bereits geladenen Werten berechnet — null zusätzliche Requests."
+    },
+    "exportJson": "Signal-Snapshot exportieren (JSON, ohne Request)",
+    "exportCsv": "Signal-Snapshot exportieren (CSV, ohne Request)"
   },
   "pro": {
     "button": "PRO",
@@ -1467,7 +1509,13 @@
       "buys": "Käufe",
       "sells": "Verkäufe",
       "delta": "Taker-Delta",
-      "foot": "Trade-Details hängen von der Provider-Abdeckung und der ausgewählten Kerze ab."
+      "foot": "Trade-Details hängen von der Provider-Abdeckung und der ausgewählten Kerze ab.",
+      "origin": {
+        "tape": "Quelle: lokaler Live-Tape (0 Requests)",
+        "binance": "Quelle: Binance aggTrades",
+        "okx": "Quelle: OKX trades"
+      },
+      "tapeHint": "Minuten-Buckets aus bereits empfangenen Trades — keine Einzel-Prints."
     },
     "alerts": {
       "title": "Alert-Manager",
@@ -1638,7 +1686,11 @@
     "clockNowYes": "Historie ({n} Kerzen): {wr} % Trefferquote, im Schnitt {bps} bp je 4er-Block; t ≥ 2 beschreibt diese Stichprobe, keine Prognose.",
     "clockNowNo": "Für die aktuelle Stunde zeigt die geladene Stichprobe kein statistisch auffälliges Muster.",
     "clockLegend": "Grün = positive, rot = negative Durchschnitts-Rendite der nächsten 4 Kerzen; Intensität = t-Wert, heller = nicht signifikant. Nur aus deinen geladenen Kerzen gerechnet.",
-    "clockNeed": "Noch zu wenig Kerzen geladen."
+    "clockNeed": "Noch zu wenig Kerzen geladen.",
+    "ribbonEnable": "Funding-/OI-Leiste im Chart anzeigen",
+    "ribbonSourceBook": "Quelle: bereits geladener Hyperliquid-Perp-Kontext — der Chart löst keinen Request aus.",
+    "ribbonSourceNone": "Noch kein Perp-Kontext geladen. Einmal das On-Chain-Panel öffnen — danach ist die Leiste gratis.",
+    "liqMeasured": "Gemessene Buch-Wände: {coin} · {walls} Level"
   },
   "benefit": {
     "title": "Werkzeuge für deinen Chart-Workflow.",
@@ -1696,5 +1748,10 @@
       "MTF-Technikmatrix & Heatmap; Snapshots hängen von der Quellenabdeckung ab",
       "Kein Konto oder API-Key; die Watchlist wird standardmäßig lokal gespeichert, Marktanfragen gehen an Anbieter"
     ]
+  },
+  "quota": {
+    "title": "Free-Tier-Budget (letzte 60 s)",
+    "idle": "Noch keine getakteten Requests — alle Free-Tier-Kontingente frei.",
+    "hint": "Nur lokale Zähler. Ist ein Budget verbraucht, nutzt die App Cache oder einen zweiten Anbieter, statt einen Upstream zu bombardieren."
   }
 }

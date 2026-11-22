@@ -16,6 +16,13 @@ import {
   type SolanaSignals,
   type TokenForensics,
 } from '@/api/onchain';
+import {
+  fetchHlBook,
+  fetchHlPerpContext,
+  bookToLiqMap,
+  type HlLiqMap,
+  type HlPerpContext,
+} from '@/api/hyperliquid';
 
 /**
  * Live on-chain signal state (memory-only – these are ephemeral readings,
@@ -27,7 +34,12 @@ import {
  * interval, so a hidden panel costs zero requests.
  */
 
-export type SignalGroup = 'btc' | 'evm' | 'solana' | 'defi' | 'dex' | 'forensics';
+/**
+ * `hl`  – Hyperliquid-Perp-Kontext (ein Call für alle Märkte, on-chain).
+ * `liq` – Orderbuch-abgeleitete Liquiditätswände (on-chain gemessen, nicht
+ *         aus Kerzen geschätzt). Beide sind token-/basis-scoped.
+ */
+export type SignalGroup = 'btc' | 'evm' | 'solana' | 'defi' | 'dex' | 'forensics' | 'hl' | 'liq';
 
 export type GroupStatus = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -46,6 +58,8 @@ export const REFRESH_MS: Record<SignalGroup, number> = {
   defi: 300_000,
   dex: 120_000,
   forensics: 600_000,
+  hl: 30_000,
+  liq: 20_000,
 };
 
 interface OnChainState {
@@ -59,6 +73,12 @@ interface OnChainState {
   forensics: TokenForensics | null;
   /** `${chain}:${contract}` the current forensics belong to. */
   forensicsKey: string | null;
+  /** Hyperliquid perp context (all markets, one request) + the active base. */
+  hl: HlPerpContext | null;
+  /** Book-derived liquidity walls for the active base. */
+  liq: HlLiqMap | null;
+  /** Which base the scoped `hl.active` / `liq` values belong to. */
+  instrumentKey: string | null;
   status: Record<SignalGroup, GroupStatus>;
   updatedAt: Record<SignalGroup, number>;
 }
@@ -67,14 +87,17 @@ interface OnChainActions {
   setOpen: (open: boolean) => void;
   toggle: () => void;
   /** Refresh one group when its deadline passed (or immediately with `force`). */
-  refresh: (group: SignalGroup, opts?: { force?: boolean; token?: { chain?: string; contract?: string } }) => Promise<void>;
+  refresh: (
+    group: SignalGroup,
+    opts?: { force?: boolean; token?: { chain?: string; contract?: string; base?: string } },
+  ) => Promise<void>;
   /** Refresh every due group. Called by the panel interval. */
-  tick: (activeToken?: { chain?: string; contract?: string }) => void;
+  tick: (activeToken?: { chain?: string; contract?: string; base?: string }) => void;
 }
 
 export type OnChainStore = OnChainState & OnChainActions;
 
-const GROUPS: SignalGroup[] = ['btc', 'evm', 'solana', 'defi', 'dex', 'forensics'];
+const GROUPS: SignalGroup[] = ['btc', 'evm', 'solana', 'defi', 'dex', 'forensics', 'hl', 'liq'];
 
 const zeroTimestamps = (): Record<SignalGroup, number> =>
   Object.fromEntries(GROUPS.map((group) => [group, 0])) as Record<SignalGroup, number>;
@@ -84,6 +107,16 @@ const idleStatuses = (): Record<SignalGroup, GroupStatus> =>
 
 const inFlight = new Map<string, AbortController>();
 let latestForensicsKey: string | null = null;
+let latestInstrumentKey: string | null = null;
+
+/** Groups whose request is scoped to the active instrument. */
+const INSTRUMENT_SCOPED: ReadonlySet<SignalGroup> = new Set(['forensics', 'hl', 'liq']);
+
+function instrumentKeyOf(token?: { chain?: string; contract?: string; base?: string }): string | null {
+  if (token?.base) return `base:${token.base.toUpperCase()}`;
+  if (token?.chain && token?.contract) return `${token.chain}:${token.contract}`;
+  return null;
+}
 
 function abortOnChainRequests(): void {
   for (const controller of inFlight.values()) controller.abort();
@@ -99,6 +132,9 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
   dex: null,
   forensics: null,
   forensicsKey: null,
+  hl: null,
+  liq: null,
+  instrumentKey: null,
   status: idleStatuses(),
   updatedAt: zeroTimestamps(),
 
@@ -118,17 +154,32 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
     const elapsed = Date.now() - state.updatedAt[group];
     const interval = state.status[group] === 'error' ? Math.min(REFRESH_MS[group], ERROR_RETRY_MS) : REFRESH_MS[group];
     const due = (opts?.force ?? false) || elapsed >= interval;
-    // Forensics are token-scoped; other groups are global snapshots.
+    /*
+     * Three scopes:
+     *   forensics → `${chain}:${contract}` (token contract)
+     *   hl / liq  → `base:<BASE>` (perp symbol; works for CEX + DEX charts)
+     *   everything else → global snapshot
+     * A scope change marks the group stale immediately, so switching the
+     * chart symbol refreshes the scoped cards instead of showing the old coin.
+     */
     const tokenKey = opts?.token?.chain && opts?.token?.contract ? `${opts.token.chain}:${opts.token.contract}` : null;
-    const tokenChanged = group === 'forensics' && tokenKey !== state.forensicsKey;
-    if (!due && !tokenChanged) return;
+    const scopedKey = group === 'forensics' ? tokenKey : instrumentKeyOf(opts?.token);
+    const scopeChanged =
+      INSTRUMENT_SCOPED.has(group) &&
+      (group === 'forensics' ? scopedKey !== state.forensicsKey : scopedKey !== state.instrumentKey);
+    if (!due && !scopeChanged) return;
+    if (INSTRUMENT_SCOPED.has(group) && scopedKey == null && group !== 'forensics') {
+      // Kein Instrument bekannt (z. B. vor dem ersten Chart) → nichts abrufen.
+      return;
+    }
 
-    const flightKey = group === 'forensics' ? `forensics:${tokenKey ?? 'none'}` : group;
-    if (group === 'forensics') {
-      latestForensicsKey = tokenKey;
-      // Changing the inspected token cancels the obsolete request immediately.
+    const flightKey = INSTRUMENT_SCOPED.has(group) ? `${group}:${scopedKey ?? 'none'}` : group;
+    if (group === 'forensics') latestForensicsKey = tokenKey;
+    if (group === 'hl' || group === 'liq') latestInstrumentKey = scopedKey;
+    if (INSTRUMENT_SCOPED.has(group)) {
+      // Changing the inspected instrument cancels that group's obsolete call.
       for (const [key, active] of inFlight) {
-        if (key.startsWith('forensics:') && key !== flightKey) {
+        if (key.startsWith(`${group}:`) && key !== flightKey) {
           active.abort();
           inFlight.delete(key);
         }
@@ -188,6 +239,33 @@ export const useOnChainStore = create<OnChainStore>()((set, get) => ({
             dex: usable ? dex : prev.dex,
             status: { ...prev.status, dex: usable ? 'ok' : 'error' },
             updatedAt: { ...prev.updatedAt, dex: Date.now() },
+          }));
+          break;
+        }
+        case 'hl': {
+          const hl = await fetchHlPerpContext(opts?.token?.base, controller.signal);
+          if (controller.signal.aborted || latestInstrumentKey !== scopedKey) break;
+          set((prev) => ({
+            hl: hl ?? prev.hl,
+            instrumentKey: hl ? scopedKey : prev.instrumentKey,
+            status: { ...prev.status, hl: hl ? 'ok' : 'error' },
+            updatedAt: { ...prev.updatedAt, hl: Date.now() },
+          }));
+          break;
+        }
+        case 'liq': {
+          const base = opts?.token?.base;
+          if (!base) {
+            set((prev) => ({ liq: null, status: { ...prev.status, liq: 'idle' } }));
+            break;
+          }
+          const book = await fetchHlBook(base, controller.signal);
+          const map = book ? bookToLiqMap(book) : null;
+          if (controller.signal.aborted || latestInstrumentKey !== scopedKey) break;
+          set((prev) => ({
+            liq: map ?? (prev.instrumentKey === scopedKey ? prev.liq : null),
+            status: { ...prev.status, liq: map ? 'ok' : 'error' },
+            updatedAt: { ...prev.updatedAt, liq: Date.now() },
           }));
           break;
         }

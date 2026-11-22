@@ -289,14 +289,27 @@ export interface SessionStats {
   rangePosition: number;
   changePct: number;
   candles: number;
+  /** `utc-day` (≥2 candles today) or the `24h` fallback on coarse buffers. */
+  window: 'utc-day' | '24h';
 }
 
-/** Today's (UTC) OHLC plus range position, computed from the candle buffer. */
+/**
+ * Today's (UTC) OHLC plus range position, computed from the candle buffer.
+ *
+ * Fallback: On coarse timeframes (4h/1d/1w) or after a fresh seed, the buffer
+ * may contain only one or zero candles inside the current UTC day – the chip
+ * then used to vanish silently. When fewer than two candles fall into today,
+ * the function falls back to the last 24 h of the buffer and says so via
+ * `window: '24h'`, so the number stays explainable.
+ */
 export function sessionStats(candles: Candle[]): SessionStats | null {
   if (candles.length === 0) return null;
   const lastTime = candles[candles.length - 1]!.t;
   const dayStart = Math.floor(lastTime / 86_400_000) * 86_400_000;
-  const today = candles.filter((candle) => candle.t >= dayStart);
+  const todayCandles = candles.filter((candle) => candle.t >= dayStart);
+  const window: 'utc-day' | '24h' = todayCandles.length >= 2 ? 'utc-day' : '24h';
+  const today =
+    window === 'utc-day' ? todayCandles : candles.filter((candle) => candle.t >= lastTime - 86_400_000);
   if (today.length === 0) return null;
   const open = today[0]!.o;
   const high = today.reduce((max, candle) => Math.max(max, candle.h), -Infinity);
@@ -311,5 +324,6 @@ export function sessionStats(candles: Candle[]): SessionStats | null {
     rangePosition: span > 0 ? (last - low) / span : 0.5,
     changePct: open > 0 ? ((last - open) / open) * 100 : 0,
     candles: today.length,
+    window,
   };
 }

@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import { needsProbe, probeAllExchanges } from '@/api/exchangeProbe';
-import { pickExchange } from '@/lib/exchange-select';
+import { pickExchange, stickTo } from '@/lib/exchange-select';
 import { detectRegion } from '@/lib/region';
 import { ADAPTERS } from '@/websockets/registry';
 import type { ExchangeId } from '@/websockets/types';
@@ -51,6 +51,11 @@ export interface SelectionState {
   reach: Record<string, ExchangeReach>;
   unsupported: Record<string, string[]>;
   preferred: Record<string, ExchangeId>;
+  /**
+   * Venue currently charted for `symbol` (per-pane). See `stickTo` – without
+   * this, the venue hops on every probe cycle and rebuilds the chart.
+   */
+  currentVenue?: Record<string, ExchangeId>;
 }
 
 /**
@@ -82,11 +87,27 @@ export function resolveExchangeSelection(
       !originUnavailable,
   );
 
+  const ranked = { symbol, timeframe, country, reach, unsupported, preferred };
+
+  /*
+   * Hysterese: die zuletzt gecharte Venue bleibt, solange sie den Pair und
+   * Timeframe bedienen kann. Ohne diesen Schritt springt die Auswahl mit jedem
+   * parallelen Probe-Ergebnis weiter und der Chart wird jedes Mal neu
+   * aufgebaut (Drag/Zeichnen brechen dann ab). Ein manueller Pick
+   * (`preferred`) bleibt davon unberührt und gewinnt immer.
+   */
+  /*
+   * Start-Anker: ohne gemerkte Venue ist die Token-Venue (sofern sie den
+   * Timeframe kann und nicht als unlisted gilt) die erste Wahl – nicht das
+   * Ergebnis des ersten Probe-Durchlaufs. Sonst beginnt jeder Cold-Start in
+   * einem anderen Feed, obwohl derselbe Chart gezeigt wird.
+   */
+  const anchor = state.currentVenue?.[symbol] ?? (originUsable ? origin : null);
+  const sticky = stickTo(ranked, anchor);
+
   const exchange = preferred[symbol]
-    ? pickExchange({ symbol, timeframe, country, reach, unsupported, preferred })
-    : originUsable && origin
-      ? origin
-      : pickExchange({ symbol, timeframe, country, reach, unsupported, preferred });
+    ? pickExchange(ranked)
+    : sticky ?? (originUsable && origin ? origin : pickExchange(ranked));
   const wanted = preferred[symbol] ?? origin;
   return { exchange, rerouted: Boolean(wanted && wanted !== exchange) };
 }
@@ -100,11 +121,13 @@ export function useExchangeSelection(
   const reach = useExchangeStore((s) => s.reach);
   const unsupported = useExchangeStore((s) => s.unsupported);
   const preferred = useExchangeStore((s) => s.preferred);
+  const currentVenue = useExchangeStore((s) => s.currentVenue);
 
   return resolveExchangeSelection(symbol, timeframe, tokenExchange, {
     country,
     reach,
     unsupported,
     preferred,
+    currentVenue,
   });
 }

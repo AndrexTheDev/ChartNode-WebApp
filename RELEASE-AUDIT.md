@@ -66,6 +66,54 @@ Stand: 2026-10-04T21:19:53.818Z · **PARTIAL — SKIPs dokumentiert · 445 PASS 
 
 - ⊘ **SKIP** Ausgelassen im Offline-Audit — Chrome/Puppeteer erforderlich für Browser-Resilienz-/Download-Prüfungen.
 
+## Browser-Module (M2–M10) — nachgeholt mit echtem Chromium
+
+Der Offline-Audit (`npm run qa:offline`) überspringt alle browserabhängigen
+Module. In dieser Umgebung wurde Chromium 153.0.8010.0 bereitgestellt
+(`@sparticuz/chromium` plus selbstgebaute NSS-/NSPR-Bibliotheken aus den
+Quellen) und die Suiten wurden tatsächlich ausgeführt — jeweils gegen den
+lokalen Production-Server mit `?qa=1&fixtures=1` und Netzsperre für fremde
+Hosts (in dieser Sandbox gibt es kein Provider-Netz).
+
+| Modul | Suite | Ergebnis |
+|---|---|---|
+| M2 | `qa:onboarding` | ✔ grün (Routing, Metadaten je Locale, Legal, Help, Support) |
+| M3 | `qa:modules`, `qa:trader` | ✔ 0 Failures · 29/29 (12 Venues, DEX, CA-Suche, Forensik, 429-Resilienz) |
+| M4 | `qa:interaction`, `qa:responsive`, `qa:i18n` | ✔ 25/25 · 43/43 · 110/110 (Tastatur, Fokus, Touch-Targets ≥44 px, Overflow 320–3440 px) |
+| M5 | `qa:monetization` | ✔ 78 PASS / 0 FAIL |
+| M6 | `qa:release` | ✔ 44/44 (inkl. Altbrowser-Fallbacks, Clipboard, 5 Locales) |
+| M8 | `qa:gui`, `qa:gui-verify` | ✔ 109 Screenshots / 0 automatische Befunde · alle Fixes bestätigt |
+| M9/M10 | `browser-check` | ✔ **152 PASS / 0 FAIL / 19 SKIP** (Live-Provider-Checks als SKIP ausgewiesen, `QA_LIVE=1` schaltet sie scharf) |
+
+Was das **nicht** belegt: echte Livemarktdaten (Provider-Netz fehlt), echte
+Mobilgeräte sowie Firefox/WebKit. Die Fixtures sind deterministisch und
+ersetzen keinen Provider-Vergleich.
+
+### Nebenbefunde dieses Durchlaufs (behoben)
+
+- **Venue-Flattern**: Die Reachability-Probes laufen parallel; jede `error`-Meldung
+  machte die laufende Venue schlechter als alle noch ungeprüften, sodass die
+  Auswahl im Sekundentakt sprang (binance → okx → coinbase → kraken …). Jeder
+  Wechsel tauscht die Feed-Subscription und damit den Chart-Container: React
+  unmountete den Plot, Pointer-Capture ging verloren, **laufende Drags brachen
+  ab**. Fix: Hysterese (`stickTo` in `exchange-select.ts`) hält die zuletzt
+  gecharte Venue, solange sie Pair und Timeframe bedienen kann; ein
+  fehlgeschlagener Probe ist kein Beweis für einen kaputten Feed.
+- **Custom-Intervall-Fixture-Lücke**: `resolveFixtureFeeds()` las `customAgg`
+  nicht. Nach „∿ 7“ abonnierte `ChartGrid` korrekt den `1m`-Basis-Feed, der
+  bekam aber nie Kerzen – der Chart blieb auf 1h und die Legende zeigte nie
+  „7m“. Fix: Fixture-Resolver löst das Basis-Intervall genauso auf wie der
+  Chart (7 ⇒ 1m + clientseitige Aggregation).
+- **KuCoin-Token im Fixture-Modus**: `/api/kucoin/public-token` antwortete in
+  der Sandbox korrekt mit 503 und `retry-after`; da der Socket im QA-Lauf
+  ohnehin gestubbt ist, wird der Token dort gar nicht mehr angefragt.
+- **Consent-Banner blockierte Dialoge**: Banner lagen auf `z-toast` (110) über
+  dem Modal-Backdrop (70). Auf 390 × 844 waren im Spenden-Modal „Ausblenden“
+  und „Ich habe gespendet“ nicht klickbar, obwohl das Modal vollständig im
+  Viewport lag (`elementFromPoint` traf den Banner). Fix: ambos Banner tragen
+  `data-nc-ambient-banner`, und unter `body.nc-modal-open` rücken sie unter den
+  Backdrop (z-index 65) – dasselbe Muster wie für die Adsterra-Socialbar.
+
 ## M11 — Offline-Smoke-Fixtures (WS/API/Chart/Edge/Module)
 
 - ✔ **PASS** npm run smoke:offline — 410 PASS / 0 FAIL / 12 SKIP in deterministic/offline fixtures

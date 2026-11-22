@@ -38,6 +38,14 @@ export function Modal({
   variant = 'dialog',
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  /**
+   * Immer der aktuelle `onClose` – Effekte lesen ihn hier, damit ein pro Render
+   * neu erzeugter Callback den Fokus-Effekt nicht neu startet (siehe unten).
+   */
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   const restoreRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -51,7 +59,7 @@ export function Modal({
         // expanded sections must not block Escape from closing the dialog.
         if (panelRef.current?.querySelector('[aria-expanded="true"][aria-haspopup][aria-controls]')) return;
         event.stopPropagation();
-        onClose();
+        closeRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panelRef.current) return;
@@ -76,9 +84,32 @@ export function Modal({
     // Ad-Overlays (Adsterra Social Bar mit Eigen-Z-Index) pausieren, solange
     // ein Dialog offen ist – sonst liegt fremdes UI über Modal-Controls.
     document.body.classList.add('nc-modal-open');
+    /*
+     * Initialfokus: **nur** wenn der Dialog nicht schon selbst fokussiert hat.
+     *
+     * Vorher griff der Timer immer und setzte den Fokus auf das erste
+     * `input, button` im Panel. Sobald irgendein State-Update das Modal neu
+     * rendert (z. B. Tippen im Script-Lab-Editor), riss das den Fokus aus dem
+     * `textarea` – jede weitere Taste landete im falschen Control, in
+     * Screenreadern sprang die Leseposition. Jetzt gewinnt der Dialog:
+     * hat er bereits ein fokussierbares Element aktiv, bleibt der Fokus ruhig.
+     */
     const focusTimer = window.setTimeout(() => {
-      panelRef.current?.querySelector<HTMLElement>('input, button')?.focus();
+      const panel = panelRef.current;
+      if (!panel) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && panel.contains(active) && active !== panel) return;
+      panel.querySelector<HTMLElement>('input, button')?.focus();
     }, 0);
+    /*
+     * Der Effekt darf **nicht** an `onClose` hängen. Consumer erzeugen den
+     * Callback pro Render neu (z. B. `handleClose` im Script-Lab), wodurch der
+     * Effekt bei jedem Tastendruck neu lief: Cleanup → `restoreRef.focus()`
+     * (Fokus zurück auf den Menü-Trigger) und der neue Timer fokussierte den
+     * Close-Button. Ergebnis: Tippen im Textarea sprang nach dem ersten
+     * Zeichen aus dem Feld. Der Callback lebt jetzt in einer Ref, der Effekt
+     * hängt nur an `open`/`variant`.
+     */
 
     return () => {
       document.removeEventListener('keydown', onKey, true);
@@ -87,9 +118,10 @@ export function Modal({
       window.clearTimeout(focusTimer);
       restoreRef.current?.focus();
     };
-  }, [open, onClose, variant]);
+  }, [open, variant]);
 
   if (!open) return null;
+
 
   return (
     <div

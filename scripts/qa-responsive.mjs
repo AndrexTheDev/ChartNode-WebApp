@@ -21,6 +21,7 @@
  */
 import fs from 'node:fs';
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:3000';
 const OUT = 'artifacts';
@@ -104,6 +105,9 @@ async function newPage(vp) {
     isMobile: vp.touch,
     hasTouch: vp.touch,
   });
+  // Ohne Netzsperre hängen Provider-Requests bis zum Timeout und die Seite ist
+  // beim Messen unfertig; Fixtures kommen über `terminalUrl()`.
+  await stubExternalNetwork(page, BASE);
   return { page, errors };
 }
 
@@ -202,7 +206,8 @@ for (const vp of VIEWPORTS) {
 console.log('\n— 1b: Mobile Bottom-Verankerung (320 & 768, Touch) —');
 for (const vp of VIEWPORTS.filter((v) => v.touch && v.w <= 768)) {
   const { page } = await newPage(vp);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('canvas', { timeout: 45000 }).catch(() => {});
   await wait(5000);
   await dismissOverlays(page);
@@ -406,7 +411,8 @@ const DPI_CASES = [
 
 for (const vp of DPI_CASES) {
   const { page } = await newPage(vp);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('canvas', { timeout: 45000 }).catch(() => {});
   await wait(6000);
 
@@ -467,8 +473,15 @@ for (const vp of DPI_CASES) {
 console.log('\n— 3b: Wasserzeichen (www.NodeChart.cc) auf Retina —');
 for (const vp of [{ id: 'retina1440', w: 1440, h: 900, dpr: 2 }, { id: 'mobile375', w: 375, h: 812, dpr: 3 }]) {
   const { page } = await newPage(vp);
-  await page.goto(`${BASE}${vp.id === 'mobile375' ? '/de/terminal' : '/de/terminal'}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 45000 }).catch(() => {});
+  /*
+   * Canvas-basierter Pixel-Scan braucht echte Kerzen. In der Sandbox gibt es
+   * kein Provider-Netz, deshalb dieselbe Fixture-URL wie alle anderen Suiten
+   * (`?qa=1&fixtures=1`) – sonst bleibt `canvas` leer und der Scan meldet
+   * fälschlich „kein canvas".
+   */
+  await page.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page, 45_000);
+  await page.waitForSelector('canvas', { timeout: 15000 }).catch(() => {});
   await wait(6000);
   const wm = await page.evaluate(() => {
     const main = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0];

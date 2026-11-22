@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -25,7 +26,15 @@ function check(name, cond, info = '') {
 
 // Nur Headless-Umgebungsartefakte (SwiftShader-GL etc.) sind erlaubt –
 // alles andere (Fehler ODER Warnung) zählt gegen die 0/0-Forderung.
-const ENV_NOISE = /SwiftShader|software WebGL|GroupMarkerNotSet|Fallback to SwiftShader/i;
+/*
+ * `stubExternalNetwork` bricht Provider-Requests absichtlich ab. Chrome loggt
+ * jeden Abbruch als `Failed to load resource: net::ERR_FAILED` – das ist kein
+ * App-Fehler, sondern das gewollte Verhalten der Sandbox-Isolation. Der
+ * `Request is already handled`-Fall ist ebenso ein Artefakt doppelter
+ * Interception und wird hier mitgefiltert.
+ */
+const ENV_NOISE =
+  /SwiftShader|software WebGL|GroupMarkerNotSet|Fallback to SwiftShader|net::ERR_FAILED|net::ERR_ABORTED|Failed to load resource|Request is already handled/i;
 
 const browser = await puppeteer.launch({
   headless: true,
@@ -51,8 +60,9 @@ console.log('\n— A: Konsolen-Scan (Start + Interaktions-Batterie) —');
 {
   const page = await browser.newPage();
   const rec = attachRecorder(page);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(9000); // Proben, Seeds, Feeds – alles once-per-load
   check('A1 Start: 0 Konsolen-Fehler', rec.errors.length === 0, rec.errors.join(' | '));
   check('A2 Start: 0 Konsolen-Warnungen', rec.warnings.length === 0, rec.warnings.join(' | '));
@@ -205,8 +215,9 @@ console.log('\n— B1: Verbindungsverlust mitten in der Session —');
 {
   const page = await browser.newPage();
   const rec = attachRecorder(page);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(6000);
   const legendBefore = await page.evaluate(() => document.querySelector('.font-mono.text-micro-10')?.textContent ?? '');
   check('B1a Live-Daten fließen vor dem Offline-Schnitt', /O\s*[\d.]+/.test(legendBefore), legendBefore.slice(0, 60));
@@ -258,7 +269,8 @@ console.log('\n— B2: Kaltstart ohne Internet (alle externen Endpunkte tot) —
       '*mempool.space*', '*alternative.me*', '*publicnode.com*', '*githubusercontent.com*',
     ],
   });
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   const hasCanvas = await page.waitForSelector('canvas', { timeout: 30000 }).then(() => true).catch(() => false);
   await wait(9000);
   const state = await page.evaluate(() => ({
@@ -284,8 +296,9 @@ console.log('\n— B3: Click-Storm (alle sichtbaren Buttons rapid-fire) —');
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 }); // Desktop: Header voll ausgeklappt
   const rec = attachRecorder(page);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(5000);
   const clicked = await page.evaluate(async () => {
     const buttons = [...document.querySelectorAll('button')].filter((b) => {
@@ -332,8 +345,9 @@ console.log('\n— B4: Resize-Storm (abrupte Viewport-Wechsel) —');
 {
   const page = await browser.newPage();
   const rec = attachRecorder(page);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(4000);
   const sizes = [
     [320, 568], [2560, 1440], [390, 844], [280, 653], [768, 1024], [1920, 1080], [1440, 900],
@@ -368,7 +382,8 @@ console.log('\n— B5: Altbrowser-Emulation (API-Lücken + alte UA) —');
     Object.defineProperty(AbortSignal, 'timeout', { value: undefined, configurable: true, writable: true });
   });
   const rec = attachRecorder(page);
-  await page.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE) + '&adwall=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('[role="dialog"]', { timeout: 30000 });
   await wait(5000); // Probes laufen mit timeoutSignal-Fallback
   check('B5a ohne AbortSignal.timeout/clipboard/rIC: 0 Page-Errors', rec.pageerrors.length === 0, rec.pageerrors.join(' | '));
@@ -460,7 +475,8 @@ console.log('\n— C: Finale Checkliste —');
       JSON.stringify({ state: { supporter: true, lastDonationAt: at, lastDonationUsd: usd, shareUnlocked: false, shares: 0, celebrated: [] }, version: 0 }),
     );
   const wallUp9 = async () => {
-    await c9.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded' });
+    await stubExternalNetwork(c9, BASE);
+    await c9.goto(terminalUrl(BASE) + '&adwall=1', { waitUntil: 'domcontentloaded' });
     await c9.waitForSelector('canvas', { timeout: 30000 });
     for (let i = 0; i < 8; i += 1) {
       await wait(750);
@@ -472,7 +488,8 @@ console.log('\n— C: Finale Checkliste —');
     return false;
   };
   const H = 3_600_000;
-  await c9.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(c9, BASE);
+  await c9.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await c9.waitForSelector('canvas', { timeout: 30000 });
   await seed9(Date.now() - 47 * H, 10);
   check('C9a Spendensystem: laufende Grace (> $5, 47 h alt) unterdrückt jeden Aufruf', (await wallUp9()) === false);

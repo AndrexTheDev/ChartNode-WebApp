@@ -211,7 +211,9 @@
       "high": "Máximo",
       "low": "Mínimo",
       "range": "Rango",
-      "rv": "RV anual"
+      "rv": "RV anual",
+      "window24h": "24 h móviles (búfer diario escaso)",
+      "windowDay": "día UTC"
     },
     "types": {
       "candles": "Velas",
@@ -1067,6 +1069,16 @@
         "name": "Script propio",
         "short": "Fórmula del Script-Lab",
         "hint": "Ejecuta tu fórmula por vela en esta página; lee el aviso de seguridad de Script Lab antes de ejecutar código propio o importado."
+      },
+      "CVD": {
+        "name": "Delta de volumen acumulado",
+        "short": "CVD · cinta en vivo",
+        "hint": "Notional acumulado compra-menos-venta por vela desde el stream de trades que el chart ya recibe: cero peticiones extra. Los huecos indican que no se observaron ticks en esa vela."
+      },
+      "DELTADIV": {
+        "name": "Divergencia de delta",
+        "short": "Absorción de flujo",
+        "hint": "Marca velas donde precio y flujo agresivo no coinciden (+1 = vendedores absorbidos, −1 = compradores absorbidos). Usa la misma cinta en vivo; las velas previas a abrir la página quedan vacías."
       }
     },
     "params": {
@@ -1201,7 +1213,9 @@
       "solana": "Solana",
       "defi": "Capital DeFi",
       "dex": "DEX Heat",
-      "forensics": "Forense del Token"
+      "forensics": "Forense del Token",
+      "hl": "Perps de Hyperliquid",
+      "liq": "Liquidez del libro"
     },
     "btc": {
       "fast": "Exprés",
@@ -1246,7 +1260,35 @@
       "mintable": "ACUÑABLE",
       "honeypot": "HONEYPOT",
       "incomplete": "Faltan campos del proveedor; los valores vacíos son desconocidos, no cero."
-    }
+    },
+    "hl": {
+      "market": "Mercado activo · {base}",
+      "notListed": "{base} no cotiza como perp en Hyperliquid: el contexto muestra el agregado.",
+      "funding": "Funding / 1 h",
+      "annual": "Anualizado",
+      "premium": "Prima",
+      "oi": "Interés abierto",
+      "totalOi": "IA de todos los mercados",
+      "posFunding": "Funding positivo",
+      "hint": "Una sola petición on-chain cubre todos los perps; los campos ausentes quedan desconocidos."
+    },
+    "liq": {
+      "support": "Muro bid más cercano",
+      "resistance": "Muro ask más cercano",
+      "bid": "Bid",
+      "ask": "Ask",
+      "hint": "Profundidad acumulada del libro en ±8 % (libro on-chain de Hyperliquid). La profundidad no es dato de posiciones ni pronóstico.",
+      "unavailable": "Sin profundidad de libro para {base}"
+    },
+    "derived": {
+      "title": "Interpretación de señales",
+      "mempoolStress": "Estrés del mempool",
+      "stableFlow": "Flujo de stablecoins",
+      "fundingDivergence": "Funding vs. precio",
+      "hint": "Calculado localmente con valores ya cargados: cero peticiones extra."
+    },
+    "exportJson": "Exportar snapshot de señales (JSON, sin petición)",
+    "exportCsv": "Exportar snapshot de señales (CSV, sin petición)"
   },
   "pro": {
     "button": "PRO",
@@ -1467,7 +1509,13 @@
       "buys": "Compras",
       "sells": "Ventas",
       "delta": "Delta taker",
-      "foot": "El detalle de operaciones depende de la cobertura del proveedor y de la vela seleccionada."
+      "foot": "El detalle de operaciones depende de la cobertura del proveedor y de la vela seleccionada.",
+      "origin": {
+        "tape": "Fuente: cinta local en vivo (0 peticiones)",
+        "binance": "Fuente: Binance aggTrades",
+        "okx": "Fuente: OKX trades"
+      },
+      "tapeHint": "Cubos de minuto de trades ya recibidos — no son impresiones individuales."
     },
     "alerts": {
       "title": "Gestor de alertas",
@@ -1638,7 +1686,11 @@
     "clockNowYes": "Historial ({n} velas): {wr} % de aciertos, {bps} pbs de media por bloque de 4 velas; t ≥ 2 describe esta muestra, no una previsión.",
     "clockNowNo": "La muestra cargada no muestra un patrón estadísticamente notable para la hora actual.",
     "clockLegend": "Verde = rendimiento medio positivo, rojo = negativo en las próximas 4 velas; intensidad = valor t, tenue = no significativo. Calculado solo con tus velas cargadas.",
-    "clockNeed": "Aún no hay suficientes velas cargadas."
+    "clockNeed": "Aún no hay suficientes velas cargadas.",
+    "ribbonEnable": "Mostrar cinta de funding/OI en el gráfico",
+    "ribbonSourceBook": "Fuente: contexto perp de Hyperliquid ya en memoria — el gráfico no añade peticiones.",
+    "ribbonSourceNone": "Aún sin contexto perp. Abre una vez el panel on-chain — después la cinta es gratis.",
+    "liqMeasured": "Muros medidos del libro: {coin} · {walls} niveles"
   },
   "benefit": {
     "title": "Herramientas para analizar gráficos.",
@@ -1696,5 +1748,10 @@
       "Matriz técnica MTF y mapa de mercado; las instantáneas dependen de las fuentes",
       "Sin cuenta ni API key; la watchlist se guarda localmente por defecto y las consultas de mercado van a proveedores"
     ]
+  },
+  "quota": {
+    "title": "Presupuesto free-tier (últimos 60 s)",
+    "idle": "Aún sin peticiones medidas: todos los free-tiers libres.",
+    "hint": "Solo contadores locales. Si un presupuesto se agota, la app usa caché u otro proveedor en lugar de saturar un upstream."
   }
 }

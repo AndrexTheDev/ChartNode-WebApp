@@ -211,7 +211,9 @@
       "high": "High",
       "low": "Low",
       "range": "Range",
-      "rv": "RV p.a."
+      "rv": "RV p.a.",
+      "window24h": "rolling 24 h (sparse day buffer)",
+      "windowDay": "UTC day"
     },
     "types": {
       "candles": "Candles",
@@ -1067,6 +1069,16 @@
         "name": "Custom script",
         "short": "Script-Lab formula",
         "hint": "Runs your own per-bar formula in this page; see the Script Lab security warning before running custom or imported code."
+      },
+      "CVD": {
+        "name": "Cumulative Volume Delta",
+        "short": "CVD · live tape",
+        "hint": "Cumulative buy-minus-sell notional per candle, built from the live trade stream this chart already receives — zero extra requests. Gaps mean no ticks were observed for that candle."
+      },
+      "DELTADIV": {
+        "name": "Delta divergence",
+        "short": "Flow absorption",
+        "hint": "Flags bars where price and aggressive flow disagree (+1 = sellers absorbed, −1 = buyers absorbed). Reads the same live tape; historical bars before the page opened stay blank."
       }
     },
     "params": {
@@ -1201,7 +1213,9 @@
       "solana": "Solana",
       "defi": "DeFi Capital",
       "dex": "DEX Heat",
-      "forensics": "Token Forensics"
+      "forensics": "Token Forensics",
+      "hl": "Hyperliquid Perps",
+      "liq": "Book Liquidity"
     },
     "btc": {
       "fast": "Express",
@@ -1246,7 +1260,35 @@
       "mintable": "MINTABLE",
       "honeypot": "HONEYPOT",
       "incomplete": "Some provider fields are unavailable; blanks mean unknown, not zero."
-    }
+    },
+    "hl": {
+      "market": "Active market · {base}",
+      "notListed": "{base} is not listed as a Hyperliquid perp — market context still shows the aggregate.",
+      "funding": "Funding / 1 h",
+      "annual": "Annualised",
+      "premium": "Premium",
+      "oi": "Open Interest",
+      "totalOi": "All-markets OI",
+      "posFunding": "Pos. funding",
+      "hint": "One on-chain request covers every perp; missing fields stay unknown."
+    },
+    "liq": {
+      "support": "Nearest bid wall",
+      "resistance": "Nearest ask wall",
+      "bid": "Bid",
+      "ask": "Ask",
+      "hint": "Cumulative order-book depth in ±8 % (Hyperliquid on-chain book). Depth is not exchange position data or a forecast.",
+      "unavailable": "No book depth for {base}"
+    },
+    "derived": {
+      "title": "Signal interpretation",
+      "mempoolStress": "Mempool stress",
+      "stableFlow": "Stablecoin flow",
+      "fundingDivergence": "Funding vs price",
+      "hint": "Computed locally from readings already on this panel — zero extra requests."
+    },
+    "exportJson": "Export signal snapshot (JSON, no request)",
+    "exportCsv": "Export signal snapshot (CSV, no request)"
   },
   "pro": {
     "button": "PRO",
@@ -1467,7 +1509,13 @@
       "buys": "Buys",
       "sells": "Sells",
       "delta": "Taker delta",
-      "foot": "Trade details depend on provider coverage and the selected candle."
+      "foot": "Trade details depend on provider coverage and the selected candle.",
+      "origin": {
+        "tape": "Source: local live tape (0 requests)",
+        "binance": "Source: Binance aggTrades",
+        "okx": "Source: OKX trades"
+      },
+      "tapeHint": "Minute buckets from trades this page already received — not individual prints."
     },
     "alerts": {
       "title": "Alert manager",
@@ -1638,7 +1686,11 @@
     "clockNowYes": "History ({n} candles): {wr} % win rate, {bps} bps average per 4-candle block; t ≥ 2 describes this sample, not a forecast.",
     "clockNowNo": "No statistically notable pattern in the loaded sample for the current hour.",
     "clockLegend": "Green = positive, red = negative average return of the next 4 candles; intensity = t-value, faded = not significant. Computed only from your loaded candles.",
-    "clockNeed": "Not enough candles loaded yet."
+    "clockNeed": "Not enough candles loaded yet.",
+    "ribbonEnable": "Show funding/OI ribbon on the chart",
+    "ribbonSourceBook": "Source: Hyperliquid perp context already in memory — the chart adds no request.",
+    "ribbonSourceNone": "No perp context loaded yet. Open the on-chain panel once — afterwards the ribbon is free.",
+    "liqMeasured": "Measured book walls: {coin} · {walls} levels"
   },
   "benefit": {
     "title": "Tools for your chart workflow.",
@@ -1696,5 +1748,10 @@
       "MTF technicals matrix & market heatmap; snapshots depend on source coverage",
       "No account or API key; the watchlist is stored locally by default, while market requests go to providers"
     ]
+  },
+  "quota": {
+    "title": "Free-tier budget (last 60 s)",
+    "idle": "No metered requests yet — you are inside every free tier.",
+    "hint": "Local counters only. When a budget is spent, the app falls back to cache or a second provider instead of hammering one upstream."
   }
 }

@@ -1,0 +1,119 @@
+From 8440b94e4d66db585276697cace8ecf9507316f1 Mon Sep 17 00:00:00 2001
+From: AndrexTheDev <320233229+AndrexTheDev@users.noreply.github.com>
+Date: Sun, 22 Nov 2026 15:51:34 +0000
+Subject: [PATCH] qa(check:live): prueft die Live-robots.txt auf verdeckte
+ Aussperrung
+
+`check:live` prueft robots.txt bisher nur auf `Allow: /` und die
+Sitemap-Zeile. Das haette eine der wenigen Stellen nicht bemerkt, an der die
+Produktion anders aussehen kann als der Code: Cloudflare stellt der
+ausgelieferten Datei einen verwalteten Block voran
+("# BEGIN Cloudflare Managed content"), der in keinem lokalen Build auftaucht.
+
+Gegen die echte nodechart.cc geprueft: dort stehen rund zwei Dutzend
+`Disallow: /`-Zeilen, ausschliesslich fuer KI-/Trainings-Crawler. Googlebot
+ist frei. Fuer sich genommen also alles in Ordnung - aber die frueheren Checks
+haetten auch eine Googlebot-Sperre durchgelassen, weil `Allow: /` irgendwo in
+der Datei steht.
+
+Neu:
+  - robots.txt wird nach RFC 9309 in (agents, rules)-Gruppen zerlegt, statt
+    nach Zeichenketten zu suchen
+  - kein `Disallow: /` fuer `*`, `googlebot` und `bingbot` (spezifische Gruppe
+    schlaegt `*`)
+  - zusaetzlich explizit googlebot-news und googlebot-image
+  - KI-/Training-Crawler werden nur als Hinweis ausgegeben, nicht als Fehler -
+    `Google-Extended` betrifft Gemini-Training, nicht die Websuche
+
+Gegengetestet mit drei Fixtures:
+  live (Cloudflare-Block + KI-Regeln)  -> alle gruen, 4 KI-Crawler als Hinweis
+  bad  (User-agent * / Disallow: /)    -> FAIL fuer * und googlebot
+  sneaky (nur Googlebot gesperrt)      -> FAIL, genau der Fall, den der alte
+                                          Check durchgelassen haette
+---
+ scripts/live-check.mjs | 69 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 69 insertions(+)
+
+diff --git a/scripts/live-check.mjs b/scripts/live-check.mjs
+index 372e7fc..b6de1e7 100644
+--- a/scripts/live-check.mjs
++++ b/scripts/live-check.mjs
+@@ -148,6 +148,75 @@ check('Sitemap ist 1 h am Edge gecacht', (sm.headers.get('cache-control') ?? '')
+ const robots = await get('/robots.txt', { accept: 'text/plain' });
+ check('robots.txt erlaubt Crawler', /Allow: \//.test(robots.body));
+ check('robots.txt verweist auf die Sitemap', robots.body.includes(`${CANONICAL}/sitemap.xml`), robots.body.split('\n').filter((l) => l.startsWith('Sitemap')).join(' '));
++
++/*
++ * Crawl-Hygiene der Live-Datei.
++ *
++ * Cloudflare stellt der ausgelieferten robots.txt einen verwalteten Block
++ * voran ("# BEGIN Cloudflare Managed content"). Der enthaelt rund zwei Dutzend
++ * `Disallow: /`-Zeilen fuer KI-/Trainings-Crawler. Fuer sich genommen ist das
++ * eine bewusste Content-Signal-Entscheidung und kein Fehler - aber er kommt
++ * vom Host, nicht aus dem Repo, taucht in keinem lokalen Build auf und ist
++ * damit die eine Stelle, an der die Produktion unbemerkt anders aussehen kann
++ * als der Code. Deshalb wird er hier explizit ausgewertet statt nur
++ * "Allow: / ist vorhanden" zu pruefen: die frueheren Checks haetten eine
++ * Aussperrung von Googlebot nicht bemerkt.
++ */
++function robotsGroups(text) {
++  const groups = [];
++  let agents = [];
++  let rules = [];
++  for (const raw of text.split(/\r?\n/)) {
++    const line = raw.trim();
++    if (!line || line.startsWith('#')) continue;
++    const i = line.indexOf(':');
++    if (i < 0) continue;
++    const key = line.slice(0, i).trim().toLowerCase();
++    const value = line.slice(i + 1).trim();
++    if (key === 'user-agent') {
++      if (rules.length) {
++        groups.push({ agents, rules });
++        agents = [];
++        rules = [];
++      }
++      agents.push(value.toLowerCase());
++    } else {
++      rules.push({ key, value });
++    }
++  }
++  if (agents.length || rules.length) groups.push({ agents, rules });
++  return groups;
++}
++
++/** Regeln fuer einen Crawler: spezifische Gruppe schlaegt `*`. */
++function robotsRulesFor(groups, crawler) {
++  const exact = groups.filter((g) => g.agents.includes(crawler));
++  const chosen = exact.length ? exact : groups.filter((g) => g.agents.includes('*'));
++  return chosen.flatMap((g) => g.rules);
++}
++
++const groups = robotsGroups(robots.body);
++for (const crawler of ['*', 'googlebot', 'bingbot']) {
++  const blocked = robotsRulesFor(groups, crawler).some((r) => r.key === 'disallow' && r.value === '/');
++  check(`robots.txt sperrt ${crawler === '*' ? 'keinen Crawler' : crawler} vollstaendig aus`, !blocked);
++}
++
++/* Verdeckte Sperren der Suchmaschine waeren der schlimmste Fall: sichtbar
++   erlaubt, aber per Google-spezifischer Gruppe ausgeschlossen. */
++const googleBlocked = ['googlebot', 'googlebot-news', 'googlebot-image'].filter((c) =>
++  robotsRulesFor(groups, c).some((r) => r.key === 'disallow' && r.value === '/'),
++);
++check('keine Googlebot-Gruppe schliesst die Suche aus', googleBlocked.length === 0, googleBlocked.join(', '));
++
++/* KI-Blöcke sind erlaubt - aber sichtbar machen, damit niemand sie fuer einen
++   Unfall haelt. google-Extended betrifft Gemini-Training, nicht die Suche. */
++const aiBlocked = groups
++  .filter((g) => g.rules.some((r) => r.key === 'disallow' && r.value === '/'))
++  .flatMap((g) => g.agents)
++  .filter((a) => a !== '*');
++if (aiBlocked.length) {
++  console.log(`        Hinweis: ${aiBlocked.length} KI-/Training-Crawler geblockt (${aiBlocked.slice(0, 6).join(', ')}${aiBlocked.length > 6 ? ', …' : ''})`);
++}
+ const llms = await get('/llms.txt', { accept: 'text/plain' });
+ check('llms.txt für AI-Antwortmaschinen erreichbar', llms.status === 200 && llms.body.length > 200, `${llms.status}, ${llms.body.length} Zeichen`);
+ 
+-- 
+2.39.5
+

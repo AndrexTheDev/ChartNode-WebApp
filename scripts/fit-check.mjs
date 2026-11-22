@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, stubExternalNetwork, waitForCanvas } from './qa-helpers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -99,20 +100,42 @@ const controlsFit = (page) =>
 for (const [name, width, height] of VPS) {
   const page = await browser.newPage();
   await page.setViewport({ width, height, isMobile: width < 500, hasTouch: width < 500 });
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  /*
+   * Ohne Netzsperre hängen Provider-Requests bis zum Timeout (Seite unfertig);
+   * ohne Fixtures bleibt der Chart in der Sandbox leer und
+   * `waitForSelector('canvas')` stirbt. Beides gehört zusammen – dieselbe
+   * Kombination wie in allen QA-Suiten.
+   */
+  await stubExternalNetwork(page, BASE);
+  await page.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page, 45_000);
   await wait(4000);
   const compact = width < 1280;
+  /*
+   * `aria-controls` + Popover entstehen erst im Render NACH dem Klick
+   * (gemessen: direkt nach `click()` ist das Attribut `null`, 500 ms später
+   * gesetzt). Ein synchroner Read im selben `evaluate()` kann das nie sehen –
+   * deshalb klicken und danach getrennt prüfen.
+   */
+  const tfTriggerFound = await page.evaluate(() => {
+    const trigger = [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
+      .find((button) => !button.hasAttribute('data-mobile-controls-trigger')
+        && button.getBoundingClientRect().width > 0);
+    if (!trigger) return false;
+    trigger.click();
+    return true;
+  });
+  await wait(450);
   const customTimeframe = await page.evaluate(() => {
     const trigger = [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
       .find((button) => !button.hasAttribute('data-mobile-controls-trigger')
         && button.getBoundingClientRect().width > 0);
     if (!trigger) return { found: false, linked: false, id: '' };
-    trigger.click();
     const id = trigger.getAttribute('aria-controls') ?? '';
     const popover = id ? document.getElementById(id) : null;
     return { found: true, linked: Boolean(id && popover?.getAttribute('role') === 'dialog'), id };
   });
+  if (!tfTriggerFound) customTimeframe.found = false;
   check(`${name}: custom timeframe popover has an associated dialog id`, customTimeframe.found && customTimeframe.linked);
   await wait(120);
   await page.keyboard.press('Escape');

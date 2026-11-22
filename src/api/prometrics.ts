@@ -163,6 +163,19 @@ interface OkxIndex {
   data?: { idxPx?: string }[];
 }
 
+/**
+ * Derivate-Snapshot mit **Gate-first**-Doktrin.
+ *
+ * Vorher: 4 Calls immer parallel (Gate contract + Gate stats + OKX OI + OKX
+ * funding). Damit wurde jede PRO-Panel-Öffnung auf OKX-Seite bezahlt, obwohl
+ * Gate für die meisten Felder allein reicht – und bei einem Gate-Ausfall
+ * wurden OKX-Calls verbrannt, deren Ergebnis niemand brauchte.
+ *
+ * Jetzt: Gate zuerst, OKX nur, wenn ein konkretes Feld fehlt. Fallen beide
+ * Gate-Calls aus, fragt der Code OKX als vollständigen Ersatz. Es werden nie
+ * mehr als zwei OKX-Calls pro Snapshot ausgelöst, und der In-Flight-Dedupe
+ * im Transport verhindert Doppelabrufe bei zwei offenen Panels.
+ */
 export async function fetchDerivSignals(base: string, signal?: AbortSignal): Promise<DerivSignals | null> {
   const { gate, okx } = perpSymbol(base);
   const clean = base.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -177,24 +190,35 @@ export async function fetchDerivSignals(base: string, signal?: AbortSignal): Pro
       cacheTtlMs: 20_000,
       signal,
     }),
-    fetchJson<OkxOi>(`https://www.okx.com/api/v5/public/open-interest?instId=${okx}`, {
-      source: 'okx',
-      cacheTtlMs: 20_000,
-      signal,
-    }),
-    fetchJson<OkxFunding>(`https://www.okx.com/api/v5/public/funding-rate?instId=${okx}`, {
-      source: 'okx',
-      cacheTtlMs: 20_000,
-      signal,
-    }),
   ]);
 
   const contract = gateResults[0]?.status === 'fulfilled' ? gateResults[0].value : null;
   const stats = gateResults[1]?.status === 'fulfilled' ? gateResults[1].value : null;
-  const okxOi = gateResults[2]?.status === 'fulfilled' ? gateResults[2].value : null;
-  const okxFundingResp = gateResults[3]?.status === 'fulfilled' ? gateResults[3].value : null;
+  const statForGate = Array.isArray(stats) ? stats[0] : undefined;
+
+  // Only fields that Gate cannot supply trigger an OKX call at all.
+  const gateHasOi = num(statForGate?.open_interest_usd) != null;
+  const gateHasFunding = num(contract?.funding_rate) != null || num(contract?.funding_rate_indicative) != null;
+  const gateEmpty = !contract && !stats;
+
+  const [okxOi, okxFundingResp] = await Promise.all([
+    !gateHasOi
+      ? fetchJson<OkxOi>(`https://www.okx.com/api/v5/public/open-interest?instId=${okx}`, {
+          source: 'okx',
+          cacheTtlMs: 20_000,
+          signal,
+        }).catch(() => null)
+      : Promise.resolve(null),
+    !gateHasFunding || gateEmpty
+      ? fetchJson<OkxFunding>(`https://www.okx.com/api/v5/public/funding-rate?instId=${okx}`, {
+          source: 'okx',
+          cacheTtlMs: 20_000,
+          signal,
+        }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const okxFunding = okxFundingResp?.data?.[0];
-  const stat = Array.isArray(stats) ? stats[0] : undefined;
+  const stat = statForGate;
 
   const gateMark = num(contract?.mark_price) ?? num(stat?.mark_price);
   const gateIndex = num(contract?.index_price);
@@ -383,16 +407,25 @@ interface FngResponse {
   data?: { value?: string; value_classification?: string }[];
 }
 
+/**
+ * Global + Sentiment.
+ *
+ * Quota-Doktrin: CoinGecko-keyless ist die knappste Quelle der App
+ * (Burst-limit ~10–30/min, kein SLA) → 5-min-TTL für globale Marktdaten
+ * (sie ändern sich nicht schneller); Fear & Greed aktualisiert upstream nur
+ * alle ~5 min, die 14-Punkt-Historie braucht daher ebenfalls keinen
+ * 2-Minuten-Refetch. Beide Caches sind vom Provider-Refresh entkoppelt.
+ */
 export async function fetchGlobalSignals(signal?: AbortSignal): Promise<GlobalSignals | null> {
   const [globalResult, fngResult] = await Promise.allSettled([
     fetchJson<CoinGeckoGlobal>('https://api.coingecko.com/api/v3/global', {
       source: 'coingecko',
-      cacheTtlMs: 120_000,
+      cacheTtlMs: 300_000,
       signal,
     }),
     fetchJson<FngResponse>('https://api.alternative.me/fng/?limit=14', {
       source: 'alternative.me',
-      cacheTtlMs: 120_000,
+      cacheTtlMs: 300_000,
       signal,
     }),
   ]);

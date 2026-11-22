@@ -211,7 +211,9 @@
       "high": "最高",
       "low": "最低",
       "range": "区间",
-      "rv": "年化波动"
+      "rv": "年化波动",
+      "window24h": "滚动 24 小时（当日缓冲稀疏）",
+      "windowDay": "UTC 当日"
     },
     "types": {
       "candles": "K线",
@@ -1067,6 +1069,16 @@
         "name": "自定义脚本",
         "short": "Script-Lab 公式",
         "hint": "公式会在此页面逐根K线执行；运行自定义或导入代码前，请先阅读脚本实验室的安全提示。"
+      },
+      "CVD": {
+        "name": "累计成交量差",
+        "short": "CVD · 实时逐笔",
+        "hint": "按 K 线累计“买入减卖出”名义额，数据来自图表本就接收的实时成交流 — 零额外请求。空缺表示该 K 线未观测到逐笔数据。"
+      },
+      "DELTADIV": {
+        "name": "Delta 背离",
+        "short": "流吸收",
+        "hint": "标记价格与主动成交流方向相反的 K 线（+1 = 卖方被吸收，−1 = 买方被吸收）。使用同一实时逐笔流；打开页面前的历史 K 线保持空白。"
       }
     },
     "params": {
@@ -1201,7 +1213,9 @@
       "solana": "Solana",
       "defi": "DeFi 资金",
       "dex": "DEX 热度",
-      "forensics": "代币取证"
+      "forensics": "代币取证",
+      "hl": "Hyperliquid 永续",
+      "liq": "盘口流动性"
     },
     "btc": {
       "fast": "特快",
@@ -1246,7 +1260,35 @@
       "mintable": "可增发",
       "honeypot": "HONEYPOT",
       "incomplete": "部分来源字段不可用；空白表示未知，并非零。"
-    }
+    },
+    "hl": {
+      "market": "当前市场 · {base}",
+      "notListed": "{base} 不是 Hyperliquid 永续合约 — 仍显示全市场汇总。",
+      "funding": "资金费率 / 1 小时",
+      "annual": "年化",
+      "premium": "溢价",
+      "oi": "未平仓量",
+      "totalOi": "全市场未平仓",
+      "posFunding": "正资金费率占比",
+      "hint": "一次链上请求覆盖所有永续合约；缺失字段保持“未知”。"
+    },
+    "liq": {
+      "support": "最近买单墙",
+      "resistance": "最近卖单墙",
+      "bid": "买",
+      "ask": "卖",
+      "hint": "±8% 范围内累计盘口深度（Hyperliquid 链上盘口）。深度不是持仓数据，也不是预测。",
+      "unavailable": "{base} 无盘口深度"
+    },
+    "derived": {
+      "title": "信号解读",
+      "mempoolStress": "内存池压力",
+      "stableFlow": "稳定币流动",
+      "fundingDivergence": "资金费率与价格",
+      "hint": "仅基于面板已加载的数据本地计算 — 不产生额外请求。"
+    },
+    "exportJson": "导出信号快照（JSON，无请求）",
+    "exportCsv": "导出信号快照（CSV，无请求）"
   },
   "pro": {
     "button": "PRO",
@@ -1467,7 +1509,13 @@
       "buys": "买",
       "sells": "卖",
       "delta": "主动买卖差",
-      "foot": "成交明细取决于服务商覆盖范围和所选K线。"
+      "foot": "成交明细取决于服务商覆盖范围和所选K线。",
+      "origin": {
+        "tape": "来源：本地实时逐笔（0 请求）",
+        "binance": "来源：Binance aggTrades",
+        "okx": "来源：OKX trades"
+      },
+      "tapeHint": "来自本页已接收成交的分钟聚合 — 并非单笔明细。"
     },
     "alerts": {
       "title": "警报管理器",
@@ -1638,7 +1686,11 @@
     "clockNowYes": "历史样本（{n} 根 K 线）：胜率 {wr}%，每四根平均 {bps} bps；t ≥ 2 描述该样本，并非预测。",
     "clockNowNo": "当前小时的已加载样本中没有统计上显著的模式。",
     "clockLegend": "绿色 = 未来 4 根K线平均收益为正，红色为负；深浅 = t 值，浅色 = 不显著。仅基于已加载的K线计算。",
-    "clockNeed": "加载的K线还太少。"
+    "clockNeed": "加载的K线还太少。",
+    "ribbonEnable": "在图表上显示资金费率/OI 条",
+    "ribbonSourceBook": "来源：已加载的 Hyperliquid 永续上下文 — 图表不新增请求。",
+    "ribbonSourceNone": "尚未加载永续上下文。先打开一次链上面板，之后该条免费。",
+    "liqMeasured": "实测盘口墙：{coin} · {walls} 档"
   },
   "benefit": {
     "title": "为图表分析准备的工具。",
@@ -1696,5 +1748,10 @@
       "多周期技术矩阵与市场热力图；快照取决于数据源覆盖",
       "无需账号或 API Key；自选列表默认保存在本地，行情请求会发送给服务商"
     ]
+  },
+  "quota": {
+    "title": "免费额度预算（最近 60 秒）",
+    "idle": "尚无计费请求 — 所有免费额度可用。",
+    "hint": "仅为本地计数器。额度用尽时，应用改用缓存或第二数据源，而不是持续冲击单一上游。"
   }
 }

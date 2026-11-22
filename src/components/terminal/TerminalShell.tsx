@@ -59,6 +59,8 @@ import { compactUsd, pct, usd } from '@/lib/format';
 import { realizedVolPct, sessionStats } from '@/lib/premium';
 import { CHART_LAYOUTS, CHART_TYPES, LAYOUT_IDS } from '@/store/presets';
 import { selectDexQuote, useMarketStore } from '@/store/useMarketStore';
+import { useExchangeStore } from '@/store/useExchangeStore';
+import { qaFixturesRequested } from '@/lib/qa-fixtures';
 import {
   selectActiveToken,
   selectChartType,
@@ -97,7 +99,7 @@ import { useHydrated } from '@/store/useHydrated';
 import { useViralStore } from '@/store/useViralStore';
 import { selectOnChainOpen, useOnChainStore } from '@/store/useOnChainStore';
 import { selectProOpen, useProStore } from '@/store/useProStore';
-import { isCexExchange, useExchangeSelection } from '@/store/useExchangeSelection';
+import { isCexExchange, resolveExchangeSelection, useExchangeSelection } from '@/store/useExchangeSelection';
 import { selectWhaleEnabled, useWhaleStore } from '@/store/useWhaleStore';
 import { feedId, type FeedStatus } from '@/websockets/types';
 import type { ChartLayoutId, ChartType } from '@/store/types';
@@ -146,9 +148,24 @@ export function TerminalShell() {
   const hydrated = useHydrated();
   const openShare = useViralStore((s) => s.openShare);
   const onChainOpen = useOnChainStore(selectOnChainOpen);
-  const toggleOnChain = useOnChainStore((s) => s.toggle);
+  /**
+   * Die beiden Analyse-Drawer sind beide `fixed right-0` – gleichzeitig offen
+   * überlagern sie sich vollständig und die untere Schicht ist unsichtbar,
+   * feuert aber weiter Requests. Deshalb schließen sie sich gegenseitig aus:
+   * EIN Drawer rechts, EIN Request-Kreislauf. Öffnen des einen = Schließen des
+   * anderen (spart auch dessen Polling-Budget).
+   */
+  const openOnChainPanel = () => {
+    const next = !useOnChainStore.getState().open;
+    if (next) useProStore.getState().setOpen(false);
+    useOnChainStore.getState().setOpen(next);
+  };
+  const openProPanel = () => {
+    const next = !useProStore.getState().open;
+    if (next) useOnChainStore.getState().setOpen(false);
+    useProStore.getState().setOpen(next);
+  };
   const proOpen = useProStore(selectProOpen);
-  const togglePro = useProStore((s) => s.toggle);
 
   // Shared links carry `?ticker=SOL` – open exactly the chart that was posted.
   // Read from `location.search` at mount (no useSearchParams → no Suspense
@@ -206,7 +223,14 @@ export function TerminalShell() {
   const [magnifierOpen, setMagnifierOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  // QA-Hook: ?qa=1 exponiert die Stores für automatisierte Feature-Tests.
+  /*
+   * QA-Hook: ?qa=1 exponiert die Stores für automatisierte Feature-Tests.
+   *
+   * `useMarketStore` gehört dazu, weil Chart-Tests ohne Provider-Netz (CI,
+   * Sandbox, Offline-Läufe) Kerzen deterministisch seeden müssen – `feeds`
+   * ist der einzige Weg, an dem der Chart Daten liest. Ohne dieses Handle
+   * bliebe `waitForSelector('canvas')` in jeder netzlosen Umgebung hängen.
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !window.location.search.includes('qa=1')) return;
     (window as unknown as Record<string, unknown>).__NC__ = {
@@ -215,9 +239,32 @@ export function TerminalShell() {
       useWhaleStore,
       useProStore,
       useViralStore,
+      useMarketStore,
+      /**
+       * Nur die reine Auswahlfunktion (kein Hook!) – Tests leiten daraus die
+       * feedId ab, ohne in die React-Hook-Regeln zu laufen.
+       */
+      resolveExchangeSelection,
+      useExchangeStore,
     };
   }, []);
   const [patternsOpen, setPatternsOpen] = useState(false);
+
+  /*
+   * QA-Fixtures: nur mit ?qa=1&fixtures=1. Sie seeden deterministische Kerzen
+   * in den Market-Store, damit die Browser-Suiten ohne Provider-Netz ein
+   * echtes Canvas bekommen (CI, Sandbox, regionaler Block). Ohne das Flag
+   * wird nichts installiert – Produktionsverhalten bleibt unberührt.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.location.search.includes('qa=1') || !qaFixturesRequested()) return;
+    let cleanup: (() => void) | undefined;
+    void import('@/lib/qa-fixtures').then((mod) => {
+      cleanup = mod.installQaFixtures();
+    });
+    return () => cleanup?.();
+  }, []);
   const scriptLabOpen = useChartStore((state) => state.scriptLabOpen);
   const setScriptLabOpen = useChartStore((state) => state.setScriptLabOpen);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
@@ -610,7 +657,7 @@ export function TerminalShell() {
             <div role="group" aria-label={tn('layouts')} className="ml-auto flex items-center gap-1">
               <button
                 type="button"
-                onClick={toggleOnChain}
+                onClick={openOnChainPanel}
                 aria-pressed={onChainOpen}
                 aria-label={toc('button')}
                 title={toc('button')}
@@ -627,7 +674,7 @@ export function TerminalShell() {
               </button>
               <button
                 type="button"
-                onClick={togglePro}
+                onClick={openProPanel}
                 aria-pressed={proOpen}
                 aria-label={tp('button')}
                 title={tp('button')}
@@ -742,9 +789,10 @@ export function TerminalShell() {
             {session && (
               <span
                 className="nc-chip ml-auto hidden shrink-0 lg:inline-flex"
-                title={`${t('session.open')} ${usd(session.open)} · ${t('session.high')} ${usd(session.high)} · ${t('session.low')} ${usd(session.low)}`}
+                title={`${t('session.open')} ${usd(session.open)} · ${t('session.high')} ${usd(session.high)} · ${t('session.low')} ${usd(session.low)} · ${session.window === '24h' ? t('session.window24h') : t('session.windowDay')}`}
               >
                 <span className="text-faint">{t('session.title')}</span>
+                {session.window === '24h' && <span className="text-warning">24h</span>}
                 <span className={session.changePct >= 0 ? 'text-bull' : 'text-bear'}>
                   {pct(session.changePct, 2)}
                 </span>
@@ -845,10 +893,10 @@ export function TerminalShell() {
             </p>
           )}
           <div className="grid grid-cols-2 gap-2">
-            <ControlButton toggle active={onChainOpen} label={toc('button')} onClick={() => { closeMobileControls(); toggleOnChain(); }}>
+            <ControlButton toggle active={onChainOpen} label={toc('button')} onClick={() => { closeMobileControls(); openOnChainPanel(); }}>
               <Radar className="size-4 shrink-0" aria-hidden />
             </ControlButton>
-            <ControlButton toggle active={proOpen} label={tp('button')} onClick={() => { closeMobileControls(); togglePro(); }}>
+            <ControlButton toggle active={proOpen} label={tp('button')} onClick={() => { closeMobileControls(); openProPanel(); }}>
               <Gauge className="size-4 shrink-0" aria-hidden />
             </ControlButton>
             <ControlButton toggle active={mobileWatchOpen} label={t('watch')} onClick={() => setMobileWatchOpen((value) => !value)}>
@@ -894,7 +942,7 @@ export function TerminalShell() {
       </div>
 
       {/* live on-chain signals (right dock, fetched only while open) */}
-      <OnChainPanel />
+      <OnChainPanel candles={sessionCandles} />
 
       {/* PRO metrics dock (derivatives / flow / global / heat / options) */}
       <ProMetricsPanel />

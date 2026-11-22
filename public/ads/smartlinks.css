@@ -81,11 +81,39 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  /*
+   * Der Strip sitzt in einem Flex-Container (Landing-CTA-Zeile, Terminal-
+   * Toolbar). Ohne `min-width: 0` erbt er dessen Inhaltsbreite als
+   * Mindestbreite – die drei Buttons zusammen (≈370 px) sprengten damit
+   * 320-px-Viewports, obwohl sie selbst wrappen könnten. `max-width: 100%`
+   * hält ihn zusätzlich im Elternteil.
+   */
+  min-width: 0;
+  max-width: 100%;
 }
 .nc-sl-strip-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /*
+   * 320-px-Viewports: die Leiste wrappt bereits (`flex-wrap`), aber ein
+   * Button mit Icon + Label + Disclosure-Badge war breiter als der Viewport
+   * und schob das ganze Dokument nach rechts (Overflow-Scan: +10…14 px).
+   * `max-width: 100%` + `min-width: 0` erlauben dem Flex-Item zu schrumpfen;
+   * das Label wird bei Bedarf ausgelassen, Icon und Badge bleiben sichtbar –
+   * das Pflicht-Label darf nie abgeschnitten werden.
+   */
+  max-width: 100%;
+  min-width: 0;
+  /*
+   * `overflow: hidden` ist hier der eigentliche Fix: der QA-Overflow-Scan
+   * meldet Text, der aus seiner Box läuft, ohne dass geklippt wird
+   * (`overflow-x: visible` + keine Ellipsis). Mit Klippung bleibt der Button
+   * exakt in seiner Zelle; die Ellipsis-Regel weiter unten kümmert sich um
+   * das Label, Icon und Pflicht-Badge bleiben unangetastet.
+   */
+  overflow: hidden;
+  white-space: nowrap;
   padding: 6px 12px;
   font: 600 12px/1 'Manrope', system-ui, sans-serif;
   color: var(--nc-sl-text);
@@ -103,6 +131,18 @@
 }
 .nc-sl-strip-icon {
   font-size: 14px;
+  flex: none;
+}
+
+.nc-sl-strip-btn > span:not(.nc-sl-strip-icon):not(.nc-sl-badge) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nc-sl-strip-btn > .nc-sl-badge {
+  flex: none;
 }
 
 /* ---------- Offer-Toast (rechts unten, unaufdringlich) ---------- */

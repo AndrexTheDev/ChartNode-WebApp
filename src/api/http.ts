@@ -3,6 +3,7 @@
 
 import { beginCooldown, COOLDOWN_MS } from './rateLimit';
 import { readPersisted, writePersisted } from './persistCache';
+import { quotaPolicyFor, usageFromStamps, type QuotaUsage } from './quota';
 
 export class HttpError extends Error {
   constructor(
@@ -54,20 +55,21 @@ const sourceCooldowns = new Map<string, SourceCooldown>();
 interface RequestBudgetStamp {
   id: string;
   at: number;
+  /** Weight-Kosten (Hyperliquid) – 1 wenn nicht Weight-basiert. */
+  weight?: number;
 }
 
 /**
- * Keyless DEX endpoints have small IP-wide pools. Keep a safety margin below
- * GeckoTerminal's approximate 10 requests/minute and coordinate same-origin
- * tabs best-effort through localStorage. These timestamps are usage metadata,
- * not provider response data; storage failures fall back to this tab's memory.
+ * Free-Tier-Budgets liegen zentral in `./quota.ts` (Single Source of Truth,
+ * auch für die UI-Anzeige). Keyless-Endpoints haben kleine, IP-weite Pools;
+ * die lokalen Budgets bleiben bewusst unter den dokumentierten Limits und
+ * koordinieren parallel offene Tabs best-effort über `localStorage`. Die
+ * Stamps sind reine Nutzungs-Metadaten, keine Provider-Antwortdaten;
+ * Storage-Fehler degradieren auf den In-Memory-Zähler dieses Tabs.
  */
-const SOURCE_REQUEST_BUDGETS: Record<string, { maxRequests: number; windowMs: number }> = {
-  geckoterminal: { maxRequests: 8, windowMs: 60_000 },
-};
 const requestBudgetBySource = new Map<string, RequestBudgetStamp[]>();
 const REQUEST_BUDGET_STORAGE_PREFIX = 'nodechart:api-budget:v1:';
-const REQUEST_BUDGET_MAX_SOURCES = 16;
+const REQUEST_BUDGET_MAX_SOURCES = 24;
 let requestBudgetSequence = 0;
 
 /**
@@ -83,6 +85,22 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 /** Long Retry-After values use stale data / fail fast rather than freezing UI. */
 const MAX_AUTOMATIC_WAIT_MS = 10_000;
 const MAX_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * QA-/Fixture-Modus: Budgetzählung aussetzen.
+ *
+ * Bewusst hier und nicht in `quota.ts`: die Policy-Tabelle bleibt die
+ * Produktionswahrheit, nur die Buchführung wird im Testmodus übersprungen.
+ * Ohne `?fixtures=1` (echte Nutzer) ändert sich nichts.
+ */
+function qaBudgetBypass(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).get('fixtures') === '1';
+  } catch {
+    return false;
+  }
+}
 
 function pruneMaps(now: number): void {
   for (const [key, entry] of cache) if (entry.expiresAt <= now) cache.delete(key);
@@ -116,8 +134,9 @@ function pruneMaps(now: number): void {
   }
 
   for (const [source, stamps] of requestBudgetBySource) {
-    const policy = SOURCE_REQUEST_BUDGETS[source];
-    const recent = policy ? stamps.filter((stamp) => stamp.at > now - policy.windowMs) : [];
+    const { policy } = quotaPolicyFor(source);
+    const windowMs = policy.windowMs;
+    const recent = windowMs == null ? [] : stamps.filter((stamp) => stamp.at > now - windowMs);
     if (recent.length === 0) requestBudgetBySource.delete(source);
     else requestBudgetBySource.set(source, recent);
   }
@@ -360,18 +379,36 @@ function readRequestBudget(source: string): RequestBudgetStamp[] {
   }
 }
 
+/**
+ * Zählt einen Request gegen das lokale Free-Tier-Budget und wirft bei
+ * Erschöpfung `ProviderBudgetError` – noch bevor ein Netzwerkpaket rausgeht.
+ * Weight-Provider (Hyperliquid) wiegen jeden Call mit `weightPerCall`.
+ */
 function reserveSourceRequest(source: string): void {
-  const policy = SOURCE_REQUEST_BUDGETS[source];
-  if (!policy) return;
+  /*
+   * Im Fixture-Modus (`?qa=1&fixtures=1`) kommt die Antwort aus der Sandbox,
+   * nicht vom Provider – das Free-Tier-Budget darf den Lauf dann nicht
+   * drosseln. Sonst sättigt ein langer QA-Lauf mit mehreren Panes das
+   * GeckoTerminal-Fenster (8/min) und der DEX-Chart bleibt leer, obwohl die
+   * Fixture-Antwort sofort bereitsteht. Der Schalter ist an dieselbe
+   * URL-Flag-Bedingung gebunden wie die Fixtures selbst.
+   */
+  if (qaBudgetBypass()) return;
+  const { policy } = quotaPolicyFor(source);
+  const windowMs = policy.windowMs;
+  const maxRequests = policy.maxRequests;
+  if (windowMs == null || maxRequests == null) return;
 
+  const cost = policy.weightPerCall ?? 1;
   const now = Date.now();
   const stampsById = new Map<string, RequestBudgetStamp>();
   for (const stamp of [...readRequestBudget(source), ...(requestBudgetBySource.get(source) ?? [])]) {
-    if (stamp.at > now - policy.windowMs && stamp.at <= now + 5_000) stampsById.set(stamp.id, stamp);
+    if (stamp.at > now - windowMs && stamp.at <= now + 5_000) stampsById.set(stamp.id, stamp);
   }
   const recent = [...stampsById.values()].sort((a, b) => a.at - b.at);
-  if (recent.length >= policy.maxRequests) {
-    const retryAfterMs = Math.max(250, (recent[0]?.at ?? now) + policy.windowMs - now);
+  const used = recent.reduce((sum, stamp) => sum + (stamp.weight ?? cost), 0);
+  if (used + cost > maxRequests) {
+    const retryAfterMs = Math.max(250, (recent[0]?.at ?? now) + windowMs - now);
     throw new ProviderBudgetError(source, retryAfterMs);
   }
 
@@ -379,6 +416,7 @@ function reserveSourceRequest(source: string): void {
   recent.push({
     id: `${now}:${requestBudgetSequence}:${Math.random().toString(36).slice(2, 8)}`,
     at: now,
+    weight: cost,
   });
   requestBudgetBySource.set(source, recent);
 
@@ -594,4 +632,34 @@ async function abortableCooldown(source: string, ms: number, signal?: AbortSigna
       },
     );
   });
+}
+
+/* --------------------------- Free-Tier-Transparenz --------------------------- */
+
+/**
+ * Aktueller Verbrauch der lokal budgetierten Quellen – nur Zähler und
+ * Zeitfenster, keine Provider-Daten. Die UI zeigt daraus die Free-Tier-Leiste
+ * („3/8 GeckoTerminal-Calls in dieser Minute"), damit sichtbar ist, wann die
+ * App auf Cache/Fallback umschaltet, statt still zu drosseln.
+ */
+export function quotaSnapshot(): QuotaUsage[] {
+  const now = Date.now();
+  const out: QuotaUsage[] = [];
+
+  for (const [key, localStamps] of requestBudgetBySource) {
+    const { policy } = quotaPolicyFor(key);
+    if (policy.maxRequests == null) continue;
+    const windowMs = policy.windowMs ?? 0;
+    // In-Memory + optional same-origin Stamps, per id dedupliziert.
+    const byId = new Map<string, { at: number; weight?: number }>();
+    for (const stamp of [...readRequestBudget(key), ...localStamps]) {
+      if (stamp.at > now - windowMs && stamp.at <= now + 5_000) {
+        byId.set(stamp.id, { at: stamp.at, weight: stamp.weight });
+      }
+    }
+    if (byId.size === 0) continue;
+    out.push(usageFromStamps(key, policy, [...byId.values()], now));
+  }
+
+  return out.sort((a, b) => (a.max ?? 0) - (b.max ?? 0));
 }

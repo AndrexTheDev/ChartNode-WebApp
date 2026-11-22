@@ -24,6 +24,12 @@ export interface SelectionInput {
   reach: Record<string, ExchangeReach>;
   unsupported: Record<string, string[]>;
   preferred: Record<string, ExchangeId>;
+  /**
+   * Venue that is currently charted for this symbol. Enables stickiness so a
+   * still-usable venue is not dropped just because a *different* venue finished
+   * its probe first – see `stickTo`.
+   */
+  current?: ExchangeId | null;
 }
 
 const LATENCY_CAP_MS = 1500;
@@ -84,6 +90,37 @@ export function rankExchanges(input: SelectionInput): RankedExchange[] {
   });
 
   return ranked;
+}
+
+/**
+ * Hysterese gegen Venue-Flattern.
+ *
+ * Beobachtet: die Reachability-Probes laufen parallel, und sobald eine davon
+ * `error` meldet, war die laufende Venue in der Rangliste plötzlich schlechter
+ * als alle noch ungeprüften. Die Auswahl sprang dadurch im Sekundentakt
+ * (binance → okx → coinbase → kraken → gate …). Jeder Wechsel tauscht die
+ * Feed-Subscription und damit den Chart-Container: React unmountet den Plot,
+ * die Pointer-Capture geht verloren und laufende Drags (Zeichnen, Verschieben)
+ * brechen ab.
+ *
+ * Wichtig für die Bewertung: ein fehlgeschlagener Probe ist **kein** Beweis,
+ * dass die Venue nicht funktioniert – Probe-Endpunkte können regional oder per
+ * CORS blockiert sein, während der eigentliche Datenfeed normal läuft. Die
+ * verlässliche Quelle ist der Feed-Manager selbst: er meldet über
+ * `markUnsupported()` (Store-Feld `unsupported`), wenn eine Venue das Pair
+ * nachweislich nicht listet, und der Socket-Status zeigt Ausfälle im Betrieb.
+ *
+ * Regel: Die zuletzt gecharte Venue bleibt, solange sie den Symbol/Timeframe
+ * bedienen kann und `unsupported` sie nicht widerlegt. Erst der Nachweis, dass
+ * sie das Pair nicht hat, lässt die nächste gerankte Venue übernehmen.
+ */
+export function stickTo(input: SelectionInput, current: ExchangeId | null | undefined): ExchangeId | null {
+  if (!current) return null;
+  const adapter = ADAPTERS[current];
+  if (!adapter) return null;
+  if (!adapter.timeframes.includes(input.timeframe)) return null;
+  if ((input.unsupported[current] ?? []).includes(input.symbol)) return null;
+  return current;
 }
 
 /** The venue to use right now: manual choice first, otherwise the best match. */

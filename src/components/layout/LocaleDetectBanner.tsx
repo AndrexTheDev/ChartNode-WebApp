@@ -79,9 +79,19 @@ export function LocaleDetectBanner() {
   }
 
   return (
+    /*
+     * Schwebe-Hinweis statt In-flow-Zeile: Der Vorschlag entsteht erst aus
+     * `navigator.languages` (nur im Browser verfügbar), wird also nach der
+     * Hydration eingefügt. In-flow schob er den Seiteninhalt nach unten und
+     * trug zum Landing-CLS bei. Als Bottom-Overlay über dem Consent-Hinweis
+     * (`bottom-*` über dessen Höhe) schiebt er nichts mehr, bleibt per
+     * `role="status"` angekündigt und ist `pointer-events-none`, damit die
+     * Seite darunter bedienbar bleibt – nur die Karte selbst fängt Klicks.
+     */
     <div
       role="status"
-      className="container flex justify-center px-4 pt-3"
+      data-nc-ambient-banner=""
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-toast flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
       <div className="nc-clip pointer-events-auto flex w-full max-w-lg animate-fade-up flex-col gap-3 border border-primary/45 bg-elevated/95 p-4 shadow-neon-lg backdrop-blur-md sm:flex-row sm:items-center">
         <span className="flex size-9 shrink-0 items-center justify-center border border-primary/40 bg-primary/10 text-primary">

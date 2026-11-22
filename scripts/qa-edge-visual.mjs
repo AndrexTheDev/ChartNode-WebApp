@@ -14,6 +14,9 @@
  * Usage: node scripts/qa-edge-visual.mjs [step]   (default step: liq)
  */
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork, ensureArtifacts } from './qa-helpers.mjs';
+
+ensureArtifacts();
 
 const BASE = process.env.BASE ?? 'http://127.0.0.1:3000';
 const step = process.argv[2] ?? 'liq';
@@ -159,8 +162,9 @@ async function lagFlow(browser) {
   const SOL = 'SOL[._-]?USDT';
   const BTC = 'BTC[._-]?USDT';
 
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   check('live candles arrive', await waitForCandles(page));
   await wait(1500);
   const baseSockets = created.length;
@@ -283,8 +287,9 @@ async function regimeFlow(browser) {
   console.log('\n— QA step 3: Regime Compass (Darstellung + Tool-Aktionen) —');
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   check('live candles arrive', await waitForCandles(page));
 
   await page.evaluate(() => document.querySelector('[data-menu-trigger="edge"]')?.click());
@@ -414,8 +419,9 @@ async function clockFlow(browser) {
   console.log('\n— QA step 4: Clock Edge (Heatmaps, Jetzt-Ring, Legende) —');
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   check('live candles arrive', await waitForCandles(page));
 
   await page.evaluate(() => document.querySelector('[data-menu-trigger="edge"]')?.click());
@@ -489,8 +495,9 @@ async function menuFlow(browser) {
   console.log('\n— QA step 5: Edge-Menü & Toolbar-Integration —');
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   check('live candles arrive', await waitForCandles(page));
 
   const triggerState = () =>
@@ -631,8 +638,9 @@ async function primitiveFlow(browser) {
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
   const boot = async () => {
-    await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('canvas', { timeout: 30000 });
+    await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForCanvas(page);
     await waitForCandles(page);
     await wait(1200);
   };
@@ -812,7 +820,7 @@ async function i18nFlow(browser) {
     });
     page.on('pageerror', (err) => intlErrors.push(`pageerror: ${err.message.slice(0, 100)}`));
     await page.goto(`${BASE}/${locale}/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('canvas', { timeout: 30000 });
+    await waitForCanvas(page);
     await waitForCandles(page);
 
     const dialogText = () =>
@@ -888,7 +896,8 @@ async function mobileFlow(browser) {
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await wait(2500);
   const gateText = await page.evaluate(() => document.body.innerText);
   check('mobile gate warns before the terminal', /trotzdem aktivieren/i.test(gateText));
@@ -982,7 +991,8 @@ async function mobileFlow(browser) {
     };
   });
   dead.on('pageerror', (err) => check(`no pageerror on dead feeds (${err.message.slice(0, 80)})`, false));
-  await dead.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(dead, BASE);
+ dead.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   // Total outage: zero candles -> ChartGrid renders the PanePlaceholder BY
   // DESIGN (no chart below 2 candles), so wait for the menu, not a canvas.
   await dead.waitForSelector('[data-menu-trigger="edge"]', { timeout: 30000 });
@@ -1067,8 +1077,9 @@ try {
   console.log('\n— QA step 1: Liq Radar (Darstellung + Funktion) —');
   const page = await browser.newPage();
   page.on('pageerror', (err) => check(`no pageerror (${err.message.slice(0, 80)})`, false));
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   check('live candles arrive', await waitForCandles(page));
 
   const hostAttr = () => page.evaluate(() => document.querySelector('[data-liq-radar]')?.getAttribute('data-liq-radar') ?? null);
@@ -1103,10 +1114,17 @@ try {
     'intensity bar width matches the printed intensity',
     await page.evaluate(() => {
       const dlg = [...document.querySelectorAll('[role="dialog"]')].pop();
+      /*
+       * Die Leiste ist ZWEISTUFIG: der äußere Span ist der Track
+       * (`bg-line/60`), der innere trägt die Füllung und damit `style.width`.
+       * `span[aria-hidden] > span` traf deshalb den Track (ohne Inline-Breite)
+       * und der Vergleich schlug immer fehl. Hier gezielt das Element mit
+       * gesetzter Breite nehmen – unabhängig von der Verschachtelungstiefe.
+       */
       return [...(dlg?.querySelectorAll('li') ?? [])].every((li) => {
-        const bar = li.querySelector('span[aria-hidden] > span');
+        const bar = [...li.querySelectorAll('span')].find((s) => s.style.width !== '');
         const printed = li.innerText.trim().split(/\s+/).pop();
-        return bar ? bar.style.width === `${printed}%` : false;
+        return bar ? bar.style.width === printed : false;
       });
     }),
   );
@@ -1124,7 +1142,7 @@ try {
 
   // 4. persistence across reload
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await waitForCandles(page);
   check('liqMagnetsOn survives a reload (persisted)', (await hostAttr()) === 'on');
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('nc-chart-v1') ?? '{}')?.state?.liqMagnetsOn);
@@ -1135,7 +1153,7 @@ try {
     localStorage.setItem('nc-chart-v1', JSON.stringify({ state: { liqMagnetsOn: 'ja', panes: 'evil', indicators: 42 }, version: 0 }));
   });
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await waitForCandles(page);
   check('corrupted liqMagnetsOn sanitizes back to off', (await hostAttr()) === 'off');
   check('sanitized boot still opens the modal', await openLiqModal(page));

@@ -62,6 +62,8 @@ export function MarketDataProvider() {
   const unsupported = useExchangeStore((s) => s.unsupported);
   const preferred = useExchangeStore((s) => s.preferred);
   const country = useExchangeStore((s) => s.country);
+  // Hysterese-Eingabe (siehe `stickTo`): die zuletzt gechartete Venue je Symbol.
+  const currentVenue = useExchangeStore((s) => s.currentVenue);
 
   /* --------------------------- CEX kline feeds (grid) ------------------------- */
   const panes = useAppStore(selectPanes);
@@ -80,7 +82,7 @@ export function MarketDataProvider() {
    * exactly that set – the active token is always included for the toolbar.
    */
   const wantedFeeds = useMemo(() => {
-    const state = { country, reach, unsupported, preferred };
+    const state = { country, reach, unsupported, preferred, currentVenue };
     const wanted: { exchange: ExchangeId; symbol: string; timeframe: Timeframe }[] = [];
     // Wave-4 custom intervals: subscribe the native base timeframe and let
     // ChartGrid aggregate – the manager only knows native intervals.
@@ -115,7 +117,7 @@ export function MarketDataProvider() {
       push(token, withAgg(tf));
     }
     return wanted;
-  }, [activeToken, timeframe, panes, layout, syncTimeframe, paneTimeframes, compareId, country, reach, unsupported, preferred, customAgg, lagOpen, lagLeaderId]);
+  }, [activeToken, timeframe, panes, layout, syncTimeframe, paneTimeframes, compareId, country, reach, unsupported, preferred, currentVenue, customAgg, lagOpen, lagLeaderId]);
 
   const wantedSignature = wantedFeeds.map((key) => `${key.exchange}|${key.symbol}|${key.timeframe}`).join(',');
 
