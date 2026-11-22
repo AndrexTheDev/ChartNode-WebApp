@@ -157,6 +157,27 @@ gegen 30 hier. `git log --all -- '*cluster*'` ist leer — dieser Code liegt in
 keinem Branch dieses Repos. Die Live-Prüfung bezieht sich also auf den
 deployten Stand, nicht auf diesen Branch.
 
+### Entscheidung: dieser Branch ersetzt die Produktion nicht
+
+Geprüft am 2026-11-21 gegen `main` (`55274ba`) und den einzigen weiteren
+Remote-Branch (`arena/01a103d9…`, PR-#1-Quelle):
+
+| | Live `nodechart.cc` | `main` / dieser Branch |
+|---|---|---|
+| Route `/cluster` | vorhanden | **fehlt** |
+| Landing-Headline | „Core charts without subscription" | andere Fassung |
+| Pro-Freischaltung | verifizierte On-Chain-Zahlung | nicht enthalten |
+| Sitemap-Umfang | 35 URLs (7 × 5) | 30 URLs (6 × 5) |
+
+Der Live-Stand stammt damit aus einer Quelle außerhalb dieses Repos (separates
+Projekt, Direkt-Upload oder anderes Repository) — nicht aus `main` und nicht
+aus diesem Branch. **Konsequenz: dieser Branch ist kein Produktions-Release.**
+Er ist ein QA-/Härtungs-Set auf Basis von `main` und darf nur gemerged werden,
+wenn vorher geklärt ist, ob der Live-Stand aus einer anderen Quelle weiterläuft
+— sonst ginge `/cluster` und die Pro-Verifikation beim nächsten Deploy aus
+diesem Repo verloren. Der PR bleibt zur Review offen und wird nicht
+eigenmächtig gemerged.
+
 ### Gate für Live-Instanzen
 
 `scripts/live-crawl-check.mjs` prüft eine beliebige erreichbare Instanz
