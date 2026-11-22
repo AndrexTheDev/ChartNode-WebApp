@@ -181,6 +181,9 @@ npm run dev            # http://localhost:3000  (Turbopack)
 | `npm run qa:monetization` / `qa:release` / `qa:trader` / `qa:onboarding` | ads/consent, release battery, 12-venue + DEX/on-chain, routing/metadata |
 | `npm run qa:edge-visual` / `qa:gui` / `qa:gui-verify` | Edge-modal visuals, screenshot matrix (109 shots), regression fixes |
 | `QA_ONLY=1b npm run qa:trader` | run a single section of a suite (faster iteration; all sections run without the variable) |
+| `npm run setup:chromium` | provision Chromium + NSS/NSPR for the browser suites in environments without a package manager |
+| `node scripts/browser-check.mjs` | 152 structural/interaction checks incl. screenshots; provider-dependent checks report SKIP unless `QA_LIVE=1` |
+| `node scripts/fit-check.mjs` · `node scripts/cwv-check.mjs` | dropdown/menu fit across viewports · landing LCP/CLS/TBT |
 | `npm run cf:build` | `opennextjs-cloudflare build` → `.open-next/` |
 | `npm run cf:preview` | build + `wrangler dev` (local Cloudflare runtime) |
 | `npm run cf:deploy` | build + `wrangler deploy` |

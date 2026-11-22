@@ -36,6 +36,18 @@ interface ExchangeState {
   /** True while a probe run is in flight. */
   probing: boolean;
   lastProbeAt: number | null;
+  /**
+   * Zuletzt tatsächlich gechartete Venue je Symbol (runtime-only).
+   *
+   * Nötig, weil die Reachability-Probes sequenziell laufen: während `binance`
+   * schon als `error` gemessen ist, gilt `kraken` noch als „unknown" und
+   * rangiert damit besser. Ohne diese Erinnerung springt die Auswahl bei jedem
+   * Probe-Durchlauf eine Venue weiter (binance → kraken → gate → bitget …) und
+   * der Chart wird jedes Mal neu aufgebaut – mitten in Drags bricht dadurch die
+   * Pointer-Capture ab. Die Hysterese in `stickTo()` hält die Venue fest,
+   * solange sie funktioniert.
+   */
+  currentVenue: Record<string, ExchangeId>;
 }
 
 interface ExchangeActions {
@@ -46,6 +58,8 @@ interface ExchangeActions {
   clearUnsupported: (exchange: ExchangeId, symbol: string) => void;
   setPreferred: (symbol: string, exchange: ExchangeId | null) => void;
   resetProbes: () => void;
+  /** Merkt sich die Venue, die für `symbol` tatsächlich gechartet wird. */
+  noteVenue: (symbol: string, exchange: ExchangeId) => void;
 }
 
 export type ExchangeStore = ExchangeState & ExchangeActions;
@@ -67,6 +81,7 @@ export const useExchangeStore = create<ExchangeStore>()(
       preferred: {},
       probing: false,
       lastProbeAt: null,
+      currentVenue: {},
 
       setRegion: (country, countrySource) => set({ country, countrySource }),
 
@@ -101,6 +116,13 @@ export const useExchangeStore = create<ExchangeStore>()(
         }),
 
       resetProbes: () => set({ reach: {}, lastProbeAt: null }),
+
+      noteVenue: (symbol, exchange) =>
+        set((state) =>
+          state.currentVenue[symbol] === exchange
+            ? state
+            : { currentVenue: { ...state.currentVenue, [symbol]: exchange } },
+        ),
     }),
     {
       name: 'nodechart.exchanges.v1',
@@ -123,6 +145,9 @@ export const useExchangeStore = create<ExchangeStore>()(
 export const selectCountry = (s: ExchangeStore) => s.country;
 export const selectProbing = (s: ExchangeStore) => s.probing;
 export const selectPreferred = (s: ExchangeStore) => s.preferred;
+
+export const selectCurrentVenue = (symbol: string) => (s: ExchangeStore): ExchangeId | undefined =>
+  s.currentVenue[symbol];
 
 export function selectReach(exchange: ExchangeId) {
   return (s: ExchangeStore): ExchangeReach => s.reach[exchange] ?? EMPTY_REACH;

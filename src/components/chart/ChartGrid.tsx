@@ -38,6 +38,7 @@ import {
   useChartStore,
 } from '@/store/useChartStore';
 import { isCexExchange, useExchangeSelection } from '@/store/useExchangeSelection';
+import { useExchangeStore } from '@/store/useExchangeStore';
 import { useHydrated } from '@/store/useHydrated';
 import { feedId } from '@/websockets/types';
 import { aggregateCandles, baseForCustomInterval } from '@/lib/charttypes';
@@ -161,6 +162,17 @@ function ChartPane({
   const id = selection
     ? feedId({ exchange: selection.exchange, symbol: token.symbol, timeframe: feedTimeframe })
     : null;
+
+  /*
+   * Merken, welche Venue dieser Pane tatsächlich chartet. Der Resolver gewichtet
+   * Reachability-Messungen unterschiedlich, je nachdem ob eine Venue schon
+   * geprüft ist – ohne diese Rückmeldung springt die Auswahl mit jedem
+   * Probe-Durchlauf weiter und der Chart wird neu aufgebaut (siehe `stickTo`).
+   */
+  const noteVenue = useExchangeStore((s) => s.noteVenue);
+  useEffect(() => {
+    if (selection) noteVenue(token.symbol, selection.exchange);
+  }, [noteVenue, token.symbol, selection]);
   const feed = useMarketStore((s) => (id ? s.feeds[id] : undefined));
   const dexQuote = useMarketStore(selectDexQuote);
 

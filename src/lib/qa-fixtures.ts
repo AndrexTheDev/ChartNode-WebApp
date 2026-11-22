@@ -5,6 +5,7 @@ import { useChartStore } from '@/store/useChartStore';
 import { useExchangeStore } from '@/store/useExchangeStore';
 import { resolveExchangeSelection } from '@/store/useExchangeSelection';
 import { useMarketStore } from '@/store/useMarketStore';
+import { baseForCustomInterval } from '@/lib/charttypes';
 import type { Timeframe } from '@/store/types';
 import type { Candle } from '@/websockets/types';
 
@@ -91,6 +92,18 @@ export function resolveFixtureFeeds(): Array<{ id: string; timeframe: Timeframe 
    */
   const syncTimeframe = chart.syncTimeframe;
   const globalTimeframe = app.timeframe;
+  /*
+   * Custom-Intervall (z. B. „∿ 7“): ChartGrid abonniert dafür **nicht** den
+   * gewählten Timeframe, sondern den größten nativen Basis-Timeframe, den es
+   * teilt (7 ⇒ 1m), und aggregiert clientseitig. Ohne diese Zeile seedete das
+   * Fixture den 1h-Feed weiter, der 1m-Feed blieb leer, der Chart zeigte
+   * unverändert 1h und die Legende nie „7m“ – der QA-Test maß also gegen ein
+   * Fixture-Loch, nicht gegen einen App-Fehler.
+   */
+  const customAgg = chart.customAgg;
+  const aggPlan = customAgg ? baseForCustomInterval(customAgg) : null;
+  const resolveFeedTf = (tf: Timeframe): Timeframe => (aggPlan ? aggPlan.timeframe : tf);
+
   const out = new Map<string, Timeframe>();
   for (const pane of app.panes) {
     // Pane-Token: explizit gewähltes Pane-Token gewinnt, sonst der aktive Token
@@ -98,14 +111,14 @@ export function resolveFixtureFeeds(): Array<{ id: string; timeframe: Timeframe 
     const token = pane.tokenId ? (TOKEN_INDEX[pane.tokenId] ?? app.activeToken) : app.activeToken;
     if (!token) continue;
     const paneTf = chart.paneTimeframe?.[pane.id] ?? null;
-    const timeframe: Timeframe = syncTimeframe ? globalTimeframe : (paneTf ?? globalTimeframe);
+    const timeframe = resolveFeedTf(syncTimeframe ? globalTimeframe : (paneTf ?? globalTimeframe));
     const selection = resolveExchangeSelection(token.symbol, timeframe, token.exchange, selectionState);
     if (!selection) continue;
     out.set(`${selection.exchange}:${token.symbol}:${timeframe}`, timeframe);
   }
   // Pane-1/Global immer mitnehmen, selbst wenn die Selektion oben scheitert.
   if (out.size === 0) {
-    const timeframe: Timeframe = globalTimeframe ?? '1h';
+    const timeframe = resolveFeedTf(globalTimeframe ?? '1h');
     const selection = resolveExchangeSelection(app.activeToken.symbol, timeframe, app.activeToken.exchange, selectionState);
     if (selection) out.set(`${selection.exchange}:${app.activeToken.symbol}:${timeframe}`, timeframe);
   }

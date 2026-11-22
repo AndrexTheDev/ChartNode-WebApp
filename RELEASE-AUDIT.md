@@ -83,11 +83,30 @@ Hosts (in dieser Sandbox gibt es kein Provider-Netz).
 | M5 | `qa:monetization` | ✔ 78 PASS / 0 FAIL |
 | M6 | `qa:release` | ✔ 44/44 (inkl. Altbrowser-Fallbacks, Clipboard, 5 Locales) |
 | M8 | `qa:gui`, `qa:gui-verify` | ✔ 109 Screenshots / 0 automatische Befunde · alle Fixes bestätigt |
-| M9/M10 | `browser-check` | siehe Laufzeit-Log; XSS-/Resilienz-Matrix mit echtem Browser |
+| M9/M10 | `browser-check` | ✔ **152 PASS / 0 FAIL / 19 SKIP** (Live-Provider-Checks als SKIP ausgewiesen, `QA_LIVE=1` schaltet sie scharf) |
 
 Was das **nicht** belegt: echte Livemarktdaten (Provider-Netz fehlt), echte
 Mobilgeräte sowie Firefox/WebKit. Die Fixtures sind deterministisch und
 ersetzen keinen Provider-Vergleich.
+
+### Nebenbefunde dieses Durchlaufs (behoben)
+
+- **Venue-Flattern**: Die Reachability-Probes laufen parallel; jede `error`-Meldung
+  machte die laufende Venue schlechter als alle noch ungeprüften, sodass die
+  Auswahl im Sekundentakt sprang (binance → okx → coinbase → kraken …). Jeder
+  Wechsel tauscht die Feed-Subscription und damit den Chart-Container: React
+  unmountete den Plot, Pointer-Capture ging verloren, **laufende Drags brachen
+  ab**. Fix: Hysterese (`stickTo` in `exchange-select.ts`) hält die zuletzt
+  gecharte Venue, solange sie Pair und Timeframe bedienen kann; ein
+  fehlgeschlagener Probe ist kein Beweis für einen kaputten Feed.
+- **Custom-Intervall-Fixture-Lücke**: `resolveFixtureFeeds()` las `customAgg`
+  nicht. Nach „∿ 7“ abonnierte `ChartGrid` korrekt den `1m`-Basis-Feed, der
+  bekam aber nie Kerzen – der Chart blieb auf 1h und die Legende zeigte nie
+  „7m“. Fix: Fixture-Resolver löst das Basis-Intervall genauso auf wie der
+  Chart (7 ⇒ 1m + clientseitige Aggregation).
+- **KuCoin-Token im Fixture-Modus**: `/api/kucoin/public-token` antwortete in
+  der Sandbox korrekt mit 503 und `retry-after`; da der Socket im QA-Lauf
+  ohnehin gestubbt ist, wird der Token dort gar nicht mehr angefragt.
 
 ## M11 — Offline-Smoke-Fixtures (WS/API/Chart/Edge/Module)
 
