@@ -6,6 +6,7 @@
 //
 // Nutzung: node scripts/qa-features.mjs
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -24,10 +25,21 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message.slice(0, 120)));
-await page.goto(`${BASE}/de/terminal?qa=1`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-await page.waitForSelector('canvas', { timeout: 30000 });
+console.log(`  … Fixture-Modus: ${fixtureMode()}`);
+await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+/*
+ * Canvas kann in netzlosen Umgebungen fehlen (keine Provider-Kerzen). Dann ist
+ * das ein **Skip mit Begründung**, kein stiller Timeout: der Rest der Suite
+ * prüft weiter, was ohne Chart prüfbar ist (Menüs, Stores, Panels), und der
+ * Lauf endet mit einer klaren Aussage statt einem Stacktrace.
+ */
+const canvasReady = await waitForCanvas(page);
 await wait(4500);
 check('S0 QA-Hook exponiert Stores', await page.evaluate(() => !!window.__NC__));
+if (!canvasReady) {
+  console.log('  SKIP  Chart-Canvas – keine Kerzen. Mit QA_FIXTURES=on (oder ?fixtures=1) erzwingbar.');
+}
 
 /** stabiler State-Fingerprint (nur Primitive, keine Live-Preise/Candles) */
 const snap = () =>
@@ -172,8 +184,11 @@ console.log('\n— S5: Menü-Sweep (jedes Item mit Effekt-Nachweis) —');
       check(`S5 ${id}/${items[i] ?? i} bewirkt etwas`, changed.length > 0, changed.join(','));
       // Reset: Navigation rückgängig, Dialog zu, Toggle zurück, Layout normal
       if (after.url !== before.url) {
-        await page.goto(`${BASE}/de/terminal?qa=1`, { waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('canvas', { timeout: 30000 });
+        // Helper-URL verwenden, damit Fixtures (falls aktiv) erneut greifen –
+        // ein hartkodiertes `?qa=1` würde sie nach jedem Reload verlieren.
+        await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+        await waitForCanvas(page);
         await wait(3000);
       }
       if (after.dialogs > before.dialogs) { await page.keyboard.press('Escape'); await wait(350); }

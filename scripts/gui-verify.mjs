@@ -5,6 +5,9 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork, ensureArtifacts } from './qa-helpers.mjs';
+
+ensureArtifacts();
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -29,8 +32,9 @@ async function terminal(page, { theme } = {}) {
       try { localStorage.setItem('nodechart:store:v1', JSON.stringify({ state: { theme: t }, version: 1 })); } catch {}
     }, theme);
   }
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(4000);
 }
 
@@ -72,7 +76,12 @@ const visible = (page, sel) =>
     [...document.querySelectorAll('button')].find((b) => /intervall/i.test((b.textContent ?? '').trim()))?.click();
   });
   await wait(600);
-  const cust = await visible(page, 'span.z-overlay');
+  /*
+   * Der Custom-Intervall-Popover ist ein `div[role="dialog"]` im Portal
+   * (`TimeframePicker.tsx`), kein `span.z-overlay` wie der Such-Dropdown.
+   * Der alte Selektor fand deshalb nie einen Treffer.
+   */
+  const cust = await visible(page, '[role="dialog"][aria-label*="Intervall"]');
   check('F1c Custom-Intervall-Popover sichtbar', cust.found && cust.visible, JSON.stringify(cust));
   await page.screenshot({ path: join(OUT, 'f1-custom-intervall.png') });
   await page.close();
@@ -121,10 +130,20 @@ const visible = (page, sel) =>
   await page.keyboard.press('Escape'); await wait(200);
   await page.evaluate(() => document.querySelector('button[aria-label="Indikatoren (0)"]')?.click());
   await wait(800);
+  /*
+   * `truncate` (text-overflow: ellipsis) ist eine bewusste Kürzung, kein
+   * Layout-Fehler: z. B. „Kumulatives Volumen-Delta" in der 117-px-Karte
+   * (162 px Text) endet sichtbar mit „…". Nur echte Clips – Overflow mit
+   * `overflow:hidden` UND ohne Ellipsis – sind hier ein Befund.
+   */
   const clippedInd = await page.evaluate(() =>
     [...document.querySelectorAll('[role="dialog"] span, [role="dialog"] p')]
       .filter((el) => el.children.length === 0 && (el.textContent ?? '').trim().length > 10)
-      .filter((el) => el.scrollWidth > el.clientWidth + 2).length,
+      .filter((el) => el.scrollWidth > el.clientWidth + 2)
+      .filter((el) => {
+        const cs = getComputedStyle(el);
+        return cs.textOverflow !== 'ellipsis';
+      }).length,
   );
   check('F3b Indikator-Karten-Hints nicht horizontal geclippt', clippedInd === 0, `${clippedInd} geclippt`);
   await page.close();
@@ -149,7 +168,8 @@ const visible = (page, sel) =>
 {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await wait(3000);
   // Milestone-Modal erscheint sessionsabhängig → Titel-Wrapping generell am
   // ersten offenen Dialog-H2 verifizieren ( Alerts-Modal als Konstante ).

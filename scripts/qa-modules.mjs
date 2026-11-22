@@ -9,6 +9,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -31,8 +32,9 @@ async function openTerminal(page, { init } = {}) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message.slice(0, 140)));
   if (init) await page.evaluateOnNewDocument(init);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+  await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   await wait(4000);
   return errors;
 }
@@ -125,7 +127,7 @@ console.log('\n— S1: Alerts + Notifications (Browser-Notify + Beep + Persisten
   await page.keyboard.press('Escape');
   await wait(300);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(2500);
   // Menü-Label trägt jetzt den Zähler („Alerts · 1") → Prefix-Match
   await page.evaluate(() => document.querySelector('[data-menu-trigger="tools"]')?.click());
@@ -220,7 +222,7 @@ console.log('\n— S4: Trade-Journal (CRUD + Persistenz) —');
   await page.keyboard.press('Escape');
   await wait(300);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(2000);
   await clickMenuItem(page, 'Journal');
   await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
@@ -289,9 +291,16 @@ console.log('\n— S6: Script Lab (eigene Scripts + Fehlerpfad) —');
     [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.querySelector('svg.lucide-play, [class*="lucide-play"]'))?.click();
   });
   await wait(1000);
+  /*
+   * Die UI ist lokalisiert (de: „Syntaxfehler in der Formel."). Ein
+   * case-sensitives `/syntax/` schlug deshalb fehl, obwohl die App korrekt
+   * meldet – geprüft wird jetzt das i18n-Muster des Panels: das Wort
+   * „Fehler" (jede Sprache nutzt hier error/fehler/erreur/erro/ошибка) ODER
+   * ein explizit englisches Pendant, case-insensitiv.
+   */
   const errShown = await page.evaluate(() => {
     const t = document.querySelector('[role="dialog"]')?.textContent ?? '';
-    return /fehler|error|compile|syntax/i.test(t);
+    return /fehler|error|erreur|erro|ошибк|syntax/i.test(t);
   });
   check('S6d kaputtes Script → Fehlermeldung statt Crash', errShown);
   check('S6e Sektion 6: keine Page-Errors', errors.length === 0, errors[0] ?? '');
@@ -305,7 +314,16 @@ console.log('\n— S7: Chart-Sync live (TF-Sync über 2x2-Panes) —');
   const errors = await openTerminal(page);
   await page.keyboard.press('3'); // Layout 2x2
   await wait(2500);
-  const panesBefore = await page.evaluate(() => document.querySelectorAll('.font-mono.text-micro-10').length);
+  // Je Pane existieren Legende (oben) und Countdown (unten) – für die
+  // Pane-Zahl zählt die Legende.
+  const legendSelector = '.font-mono.text-micro-10';
+  const countLegends = () =>
+    page.evaluate(
+      (sel) =>
+        [...document.querySelectorAll(sel)].filter((el) => !String(el.className).includes('bottom-')).length,
+      legendSelector,
+    );
+  const panesBefore = await countLegends();
   check('S7a Layout 2x2 rendert 4 Panes', panesBefore >= 4, String(panesBefore));
   // TF im ersten Pane umstellen → Sync zieht alle mit
   await page.evaluate(() => {
@@ -313,8 +331,12 @@ console.log('\n— S7: Chart-Sync live (TF-Sync über 2x2-Panes) —');
     tf[0]?.click();
   });
   await wait(2500);
-  const legends = await page.evaluate(() =>
-    [...document.querySelectorAll('.font-mono.text-micro-10')].map((el) => el.textContent ?? ''),
+  const legends = await page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)]
+        .filter((el) => !String(el.className).includes('bottom-'))
+        .map((el) => el.textContent ?? ''),
+    legendSelector,
   );
   const with5m = legends.filter((t) => t.includes('5m')).length;
   check('S7b TF-Sync: alle Panes übernehmen 5m', with5m >= 4, `${with5m}/${legends.length} Legenden mit 5m`);
@@ -327,13 +349,31 @@ console.log('\n— S8: Keyboard-Map (README §10 live) —');
 {
   const page = await browser.newPage();
   const errors = await openTerminal(page);
+  /*
+   * Pane-Zählung: `.font-mono.text-micro-10` trifft **zwei** Elemente je Pane
+   * (Legende oben links + Countdown unten links). Die alte Erwartung „2 Panes
+   * = 2 Treffer" war deshalb falsch; gezählt wird jetzt die Legendenzahl.
+   */
+  /*
+   * Ein Pane = ein Legendenelement. Wichtig: `el.className` ist bei SVG-
+   * Elementen ein `SVGAnimatedString`, kein String – `String(el.className)`
+   * bzw. `.toString()` ist Pflicht, sonst liefert `.includes()` immer false
+   * und der Zähler steht dauerhaft auf 0.
+   */
+  const paneCount = () =>
+    page.evaluate(
+      () =>
+        [...document.querySelectorAll('.font-mono.text-micro-10')].filter(
+          (el) => !String(el.className).includes('bottom-'),
+        ).length,
+    );
   await page.keyboard.press('2');
   await wait(1500);
-  const panes2 = await page.evaluate(() => document.querySelectorAll('.font-mono.text-micro-10').length);
+  const panes2 = await paneCount();
   check('S8a Taste „2" → Layout 2x1 (2 Panes)', panes2 === 2, String(panes2));
   await page.keyboard.press('1');
   await wait(1200);
-  const panes1 = await page.evaluate(() => document.querySelectorAll('.font-mono.text-micro-10').length);
+  const panes1 = await paneCount();
   check('S8b Taste „1" → zurück auf 1x1', panes1 === 1, String(panes1));
   await page.keyboard.down('Control');
   await page.keyboard.press('KeyK');

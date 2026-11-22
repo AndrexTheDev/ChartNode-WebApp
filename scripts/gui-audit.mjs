@@ -9,6 +9,9 @@ import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork, ensureArtifacts } from './qa-helpers.mjs';
+
+ensureArtifacts();
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -75,7 +78,7 @@ async function newPage(vp) {
 
 async function gotoTerminal(page, locale = 'de') {
   await page.goto(`${BASE}/${locale}/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(4500);
 }
 
@@ -159,7 +162,7 @@ console.log('\n=== G2: Terminal Desktop (Layouts, Menüs, Features, Palette, The
         await page.keyboard.press('Escape'); await wait(400);
       } else if (page.url() !== urlBefore) {
         await page.goto(urlBefore, { waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('canvas', { timeout: 30000 }); await wait(2500);
+        await waitForCanvas(page); await wait(2500);
       } else {
         // Toggle-Zustand zurücksetzen: Item noch einmal klicken
         await page.evaluate((id) => document.querySelector(`[data-menu-trigger="${id}"]`)?.click(), trig.id);
@@ -223,7 +226,7 @@ console.log('\n=== G2: Terminal Desktop (Layouts, Menüs, Features, Palette, The
     await shot(page, 'desktop', `t-tb-${slug(label)}`);
     const dlg = await page.evaluate(() => !!document.querySelector('[role="dialog"]'));
     if (dlg) await page.keyboard.press('Escape');
-    else if (page.url() !== before) { await page.goto(before, { waitUntil: 'domcontentloaded' }); await page.waitForSelector('canvas', { timeout: 30000 }); }
+    else if (page.url() !== before) { await page.goto(before, { waitUntil: 'domcontentloaded' }); await waitForCanvas(page); }
     await wait(500);
     // Toggle zurück
     await page.evaluate((l) => [...document.querySelectorAll('button[aria-label]')].find((b) => b.getAttribute('aria-label') === l)?.click(), label);
@@ -238,7 +241,8 @@ console.log('\n=== G2: Terminal Desktop (Layouts, Menüs, Features, Palette, The
 console.log('\n=== G3: Terminal Mobile + Tablet ===');
 for (const vp of ['tablet', 'mobile', 'mini']) {
   const page = await newPage(vp);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await wait(2500);
   await shot(page, vp, `t-${vp}-initial`); // ggf. Mobile-Warnung
   // Force-Enable falls Warnung aktiv

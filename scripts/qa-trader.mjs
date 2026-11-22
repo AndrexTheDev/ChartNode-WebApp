@@ -2,6 +2,7 @@
 // Trader-Simulation: Multi-Börsen-Abfragen, On-Chain-Signale, Token-Security,
 // Rate-Limit-Resilience. Klassifiziert Sandbox-Netzblockaden vs. echte Defekte.
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 import fs from 'node:fs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
@@ -11,17 +12,46 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const VENUES = ['binance', 'okx', 'bybit', 'coinbase', 'kraken', 'gate', 'bitget', 'kucoin', 'bitfinex', 'cryptocom', 'htx', 'coinex'];
 const VENUE_LABEL = { binance: 'Binance', okx: 'OKX', bybit: 'Bybit', coinbase: 'Coinbase Exchange', kraken: 'Kraken', gate: 'Gate', bitget: 'Bitget', kucoin: 'KuCoin', bitfinex: 'Bitfinex', cryptocom: 'Crypto.com', htx: 'HTX', coinex: 'CoinEx' };
+/*
+ * Der Exchange-Picker ist der EINZIGE listbox-Trigger mit einem Börsennamen.
+ * Seit dem Signal-Overhaul tragen auch Skin-/Candle-/Vergleich-Picker
+ * `aria-haspopup="listbox"`; der Skin-Trigger hat gar keinen Text außer „▾"
+ * und war vorher der erste Treffer – dadurch öffnete die Suite das
+ * Skin-Menü und jeder Venue-Check meldete `candles=0`.
+ * Deshalb positiv auf bekannte Börsen-Namen filtern statt negativ auszuschließen.
+ */
+const EXCHANGE_NAMES = /Binance|OKX|Bybit|Coinbase|Kraken|Gate|Bitget|KuCoin|Bitfinex|Crypto\.com|HTX|CoinEx/i;
+// TF-Token-Trigger (z. B. „1h▾"), Token-Picker („BTC/USDT▾"), Locale („DE▾") und Skin („▾")
 const EXCLUDE_TRIGGER = /^(DE|EN|RU|ES|中文)▾$|^[0-9]+[mhdwMHDW]▾$|^[A-Z]+\/[A-Z0-9]+▾$|^▾$/;
 
 const results = [];
 const ok = (name, cond, info = '') => { results.push({ name, pass: !!cond, info }); console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${name}${info ? ` — ${info}` : ''}`); };
+
+
+/*
+ * Sektions-Isolation für schnelle Iteration: `QA_ONLY=1b` führt nur die
+ * DEX-/Smart-Search-Sektion aus (~40 s statt ~8 min für den vollen Lauf).
+ * Ohne die Env-Variable laufen wie bisher alle Sektionen – die CI und
+ * `npm run qa:trader` sind unverändert.
+ */
+const ONLY = (process.env.QA_ONLY ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+const run = (id) => ONLY.length === 0 || ONLY.includes(id);
 
 const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'], defaultViewport: { width: 1600, height: 1000 } });
 
 const openTerminal = async (patch) => {
   const page = await browser.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message.slice(0, 160)));
+  page.on('pageerror', (e) => {
+    errors.push(e.message.slice(0, 160));
+    if (process.env.QA_DEBUG_NET) console.log('  [pageerror]', e.message.slice(0, 160));
+  });
+  page.on('console', (m) => {
+    if (process.env.QA_DEBUG_NET && (m.type() === 'error' || m.type() === 'warning')) console.log('  [console:' + m.type() + ']', m.text().slice(0, 140));
+  });
+  page.on('requestfailed', (r) => {
+    if (process.env.QA_DEBUG_NET) console.log('  [failed]', r.url().slice(0, 90), r.failure()?.errorText);
+  });
   await page.evaluateOnNewDocument(() => {
     window.__ncSockets = [];
     const OrigWS = window.WebSocket;
@@ -36,12 +66,13 @@ const openTerminal = async (patch) => {
     window.WebSocket = Wrapped;
   });
   if (patch) await page.evaluateOnNewDocument(patch);
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+  await waitForCanvas(page);
   // Deterministischer Startzustand: persistierte Venue/Token aus Vor-Sektionen verwerfen.
   await page.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* ignore */ } });
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(2500);
   return { page, errors };
 };
@@ -82,13 +113,18 @@ const feedState = (page) => page.evaluate(() => {
 // picker trigger: listbox-Button mit Kürzel(+ms|Auto), ohne Locale/TF/Token/leer
 const findPicker = `(() => {
   const b = [...document.querySelectorAll('button[aria-haspopup="listbox"]')]
-    .find((x) => { const t = (x.textContent ?? '').trim(); return /▾/.test(t) && !${EXCLUDE_TRIGGER}.test(t); });
+    .find((x) => {
+      const t = (x.textContent ?? '').trim();
+      if (!/▾/.test(t) || ${EXCLUDE_TRIGGER}.test(t)) return false;
+      // Nur echte Börsen-Trigger: Skin/Candles/Vergleich fallen hier heraus.
+      return ${EXCHANGE_NAMES}.test(t);
+    });
   if (b) { b.click(); return true; }
   return false;
 })()`;
 
 console.log('— 1: Multi-CEX-Connectivity (12 Börsen via Exchange-Picker) —');
-{
+if (run('1')) {
   const { page, errors } = await openTerminal();
   const matrix = [];
   for (const venue of VENUES) {
@@ -101,8 +137,17 @@ console.log('— 1: Multi-CEX-Connectivity (12 Börsen via Exchange-Picker) —'
       btn.click();
       return true;
     }, VENUE_LABEL[venue]);
-    await wait(5000);
-    const f = await feedState(page);
+    /*
+     * Der erste Wechsel braucht länger als die folgenden: Historie-Seed und
+     * Venue-Handshake laufen dann kalt (kein Cache). 5 s reichten nur ab dem
+     * zweiten Durchlauf – deshalb hier aktiv nachpollen statt fix zu warten.
+     */
+    await wait(2000);
+    let f = await feedState(page);
+    for (let i = 0; i < 10 && Number(f.candles) === 0; i += 1) {
+      await wait(1200);
+      f = await feedState(page);
+    }
     const graceful = Number(f.candles) > 0 && f.statusLive;
     matrix.push({ venue, opened, picked, ...f });
     ok(`venue ${venue}: Picker-Wahl + Feed kohärent (Candles>0, kein Crash)`, picked && graceful, `candles=${f.candles} ws=${f.wsCount}/${f.wsOpen}open quote=${f.quote} ${f.seedVia}`);
@@ -116,8 +161,22 @@ console.log('— 1: Multi-CEX-Connectivity (12 Börsen via Exchange-Picker) —'
 }
 
 console.log('\n— 1b: DEX-Multichain + CA-Wechsel in der Smart Search —');
-{
+if (run('1b')) {
   const { page, errors } = await openTerminal();
+  // Diagnose: Zustand der Seite beim Start von Sektion 1b.
+  const pre = await page.evaluate(() => ({
+    url: location.href.slice(0, 110),
+    canvases: document.querySelectorAll('canvas').length,
+    listboxes: document.querySelectorAll('[role="listbox"]').length,
+    tokenTrigger: [...document.querySelectorAll('button[aria-haspopup="listbox"]')].map((b) => (b.textContent ?? '').trim().slice(0, 18)),
+  }));
+  console.log('  [1b-start]', JSON.stringify(pre));
+  const netLog = [];
+  page.on('request', (r) => {
+    const u = r.url();
+    if (/gecko|dexscreener|goplus/i.test(u)) netLog.push(u.replace(/^https:\/\//, '').slice(0, 76));
+    if (/goplus/i.test(u)) netLog.push('goplus');
+  });
   const dexPicked = await page.evaluate(() => {
     const t = [...document.querySelectorAll('button[aria-haspopup="listbox"]')].find((b) => /[A-Z]+\/[A-Z0-9]+/.test(b.textContent ?? ''));
     if (!t) return false;
@@ -131,10 +190,98 @@ console.log('\n— 1b: DEX-Multichain + CA-Wechsel in der Smart Search —');
     (opt.querySelector('button') ?? opt).click();
     return true;
   });
+  /*
+   * Der DEX-History-Load hängt an zwei Dingen, die in einem langen Lauf schon
+   * „heiß" sind: dem fetchJson-Cache (60 s TTL, keyed per URL) und dem
+   * GeckoTerminal-Budget (10 Calls/Minute, Stempel in localStorage). Ist das
+   * Budget ausgeschöpft, plant ChartGrid selbst einen Retry (15 s bzw.
+   * retryAfterMs) – deshalb hier bis ~90 s nachpollen statt nach 25 s
+   * aufzugeben. Das ist kein abgeschwächter Check: ohne echte Kerzen bleibt
+   * `candles` dauerhaft 0 und der Test fällt.
+   */
+  /*
+   * Das GeckoTerminal-Budget (8 Calls/Minute, Stempel in localStorage) ist
+   * nach Sektion 1 typischerweise erschöpft – belegt mit
+   * `budget={"geckoterminal":8}` bei candles=0. ChartGrid wartet dann auf
+   * `retryAfterMs`; ein reines Polling auf `candles` half nicht, weil der
+   * Retry erst nach Ablauf des Fensters greift. Also: erst warten, bis das
+   * Minutenfenster leer ist, dann Kerzen nachpollen.
+   */
+  const geckoBudgetFull = async () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('nodechart:api-budget:v1:geckoterminal');
+      if (!raw) return false;
+      try {
+        const stamps = JSON.parse(raw);
+        const now = Date.now();
+        return Array.isArray(stamps) && stamps.filter((s) => now - s.at < 60_000).length >= 8;
+      } catch {
+        return false;
+      }
+    });
   await wait(4000);
+  const diag = await page.evaluate(() => ({
+    url: location.href.slice(0, 120),
+    fixtures: new URLSearchParams(location.search).get('fixtures'),
+    canv: document.querySelectorAll('canvas').length,
+    trig: [...document.querySelectorAll('button[aria-haspopup="listbox"]')].find((x) => /[A-Z]+\/[A-Z0-9]+/.test(x.textContent ?? ''))?.textContent?.trim(),
+    err: [...document.querySelectorAll('[role="alert"], .text-danger')].map((n) => (n.textContent ?? '').slice(0, 60)).slice(0, 3),
+    canv2: document.querySelectorAll('canvas').length,
+    chartArea: (document.querySelector('[aria-label*="Chart"], canvas')?.parentElement?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 100),
+    body: document.body.innerText.replace(/\s+/g, ' ').slice(0, 150),
+  }));
+  console.log('  [dex-diag]', JSON.stringify(diag));
+  console.log('  [dex-net]', JSON.stringify(netLog.slice(0, 10)));
+  const dom = await page.evaluate(() => ({
+    rootChildren: document.getElementById('__next')?.children.length ?? -1,
+    mainHTMLLen: (document.querySelector('main')?.innerHTML ?? '').length,
+    errorBoundary: /Etwas ist schief|Something went wrong|error occurred/i.test(document.body.innerText),
+    gridEls: document.querySelectorAll('[data-pane], [data-chart], .nc-chart').length,
+    svgCount: document.querySelectorAll('svg').length,
+    htmlTail: (document.querySelector('main')?.innerHTML ?? '').slice(-200),
+  }));
+  console.log('  [dex-dom]', JSON.stringify(dom).slice(0, 600));
+  const empty = await page.evaluate(() => {
+    const txt = document.body.innerText.replace(/\s+/g, ' ');
+    const i = txt.search(/KEINE KERZEN|KEINE DATEN|NO DATA|WÄHLE|LADE|CANDLES/);
+    return { hit: i >= 0 ? txt.slice(Math.max(0, i - 60), i + 120) : txt.slice(0, 300) };
+  });
+  console.log('  [dex-empty]', JSON.stringify(empty));
+  const probe = await page.evaluate(async () => {
+    const out = {};
+    const call = async (label, url) => {
+      try {
+        const r = await fetch(url);
+        const j = await r.json();
+        out[label] = { status: r.status, dataLen: Array.isArray(j.data) ? j.data.length : 'n/a', firstId: Array.isArray(j.data) ? j.data[0]?.id : 'n/a' };
+      } catch (e) { out[label] = 'ERR ' + String(e).slice(0, 60); }
+    };
+    await call('pools', 'https://api.geckoterminal.com/api/v2/networks/eth/tokens/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599/pools?page=1');
+    await call('ohlcv', 'https://api.geckoterminal.com/api/v2/networks/eth/pools/0xpoolc02aaa39b223fe8d0a0e5c4f27ea/ohlcv/hour?aggregate=1&limit=300&currency=usd');
+    return out;
+  });
+  console.log('  [dex-probe]', JSON.stringify(probe));
+  const icpt = await page.evaluate(() => ({ stubbed: !!window.__ncStubbed, wsBlocked: Array.isArray(window.__ncBlockedSockets) ? window.__ncBlockedSockets.length : 'none' }));
+  console.log('  [dex-icpt]', JSON.stringify(icpt));
   let f = await feedState(page);
-  for (let i = 0; i < 14 && Number(f.candles) === 0; i++) { await wait(1500); f = await feedState(page); }
-  ok('DEX-Preset (WBTC/ETH) lädt Candles via GeckoTerminal OHLCV', optPicked && Number(f.candles) > 0, `picked=${optPicked} candles=${f.candles}`);
+  for (let i = 0; i < 60 && Number(f.candles) === 0; i++) { await wait(1500); f = await feedState(page); }
+  /*
+   * Diagnose bei Fehlschlag: Wenn hier 0 Kerzen stehen, ist das Warum
+   * entscheidend – Provider-Budget erschöpft (Stempel in localStorage),
+   * Cooldown nach 429, oder wirklich kein Fixture-Treffer. Ohne diese Zeile
+   * kostet jede Eingrenzung einen kompletten 8-Minuten-Lauf.
+   */
+  const budget = await page.evaluate(() => {
+    const out = {};
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key?.includes('api-budget')) continue;
+      const stamps = JSON.parse(localStorage.getItem(key) ?? '[]');
+      out[key.replace('nodechart:api-budget:v1:', '')] = Array.isArray(stamps) ? stamps.length : 'kaputt';
+    }
+    return out;
+  });
+  ok('DEX-Preset (WBTC/ETH) lädt Candles via GeckoTerminal OHLCV', optPicked && Number(f.candles) > 0, `picked=${optPicked} candles=${f.candles} budget=${JSON.stringify(budget)}`);
   await page.screenshot({ path: `${OUT}/qa-trader-dex.png` });
 
   await page.click('header input[type="text"]');
@@ -154,7 +301,14 @@ console.log('\n— 1b: DEX-Multichain + CA-Wechsel in der Smart Search —');
 
   const selected = await page.evaluate(() => {
     const lb = document.querySelector('[role="listbox"]');
-    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => /DEX/i.test(o.textContent ?? ''));
+    /*
+     * Die Option trägt „Ethereum · uniswap · Liq $24.5M" – kein Literal „DEX".
+     * Der alte Filter `/DEX/i` fand deshalb nie eine Option und `selected`
+     * blieb false, obwohl Store und Chart korrekt umgeschaltet hatten.
+     * Jetzt: Optionen, die eine Chain (Ethereum/Base/Solana/…) nennen.
+     */
+    const CHAIN = /Ethereum|Base|Arbitrum|Polygon|BSC|Avalanche|Optimism|Solana/i;
+    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => CHAIN.test(o.textContent ?? ''));
     const opt = opts.find((o) => /^WETH\//.test((o.textContent ?? '').trim())) ?? opts.find((o) => /WETH/.test(o.textContent ?? '')) ?? opts[0];
     if (!opt) return false;
     (opt.querySelector('button') ?? opt).click();
@@ -167,13 +321,40 @@ console.log('\n— 1b: DEX-Multichain + CA-Wechsel in der Smart Search —');
     await wait(1500);
     f2 = await feedState(page);
   }
-  ok('CA-Auswahl wechselt das Terminal auf den DEX-Token (Candles + Kurs)', selected && Number(f2.candles) > 0 && !!f2.quote, `candles=${f2.candles} quote=${f2.quote}`);
+  /*
+   * Der Kurs selbst steht NICHT als DOM-Text im aktiven Pane – er wird im
+   * Canvas gezeichnet (PriceChart) und ist nur im Placeholder (leerer Chart)
+   * als Text sichtbar. Der frühere `$[\d.,]+`-Regex traf daher nur das
+   * Liquiditätslabel („Liq $24.5M") und meldete `quote=$24.5`.
+   * Verlässlich prüfbar ist der Store: der DEX-Quote muss zum gewählten Token
+   * gehören, einen plausiblen Preis haben und die Kerzen müssen da sein.
+   */
+  const quoteInfo = await page.evaluate(() => {
+    const st = window.__NC__?.useMarketStore?.getState?.() ?? {};
+    const q = st.dexQuote ?? null;
+    const candles = st.dexCandles ?? {};
+    const ids = Object.keys(candles);
+    const first = ids[0] ? candles[ids[0]] : null;
+    return {
+      tokenId: q?.tokenId ?? null,
+      priceUsd: q?.priceUsd ?? null,
+      liquidityUsd: q?.liquidityUsd ?? null,
+      chain: q?.chain ?? null,
+      candleKeys: ids.length,
+      candleCount: Array.isArray(first) ? first.length : 0,
+    };
+  });
+  ok(
+    'CA-Auswahl wechselt das Terminal auf den DEX-Token (Candles + Kurs)',
+    selected && Number(f2.candles) > 0 && Number(quoteInfo.candleCount) > 0 && Number(quoteInfo.priceUsd) > 0,
+    `candles=${f2.candles} token=${quoteInfo.tokenId} price=$${quoteInfo.priceUsd} liq=$${quoteInfo.liquidityUsd} storeCandles=${quoteInfo.candleCount}`,
+  );
   ok('Sektion 1b: keine Page-Errors', errors.length === 0, errors[0] || '');
   await page.close();
 }
 
 console.log('\n— 2: On-Chain-Signale & Security-Audits —');
-{
+if (run('2')) {
   const { page, errors } = await openTerminal();
   // erst auf DEX-Token wechseln (Forensik braucht chain:contract).
   // needBadge: Warten, bis das GoPlus-Audit des Treffers durch ist – dann ist
@@ -183,7 +364,8 @@ console.log('\n— 2: On-Chain-Signale & Security-Audits —');
   await awaitDexHits(page, { ms: 30000, needBadge: true });
   await page.evaluate(() => {
     const lb = document.querySelector('[role="listbox"]');
-    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => /DEX/i.test(o.textContent ?? ''));
+    // Chain-Nennung statt Literal „DEX" (siehe Sektion 1b).
+    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => /Ethereum|Base|Arbitrum|Polygon|BSC|Avalanche|Optimism|Solana/i.test(o.textContent ?? ''));
     const opt = opts.find((o) => /^WETH\//.test((o.textContent ?? '').trim())) ?? opts.find((o) => /WETH/.test(o.textContent ?? '')) ?? opts[0];
     if (opt) (opt.querySelector('button') ?? opt).click();
   });
@@ -246,7 +428,7 @@ console.log('\n— 2: On-Chain-Signale & Security-Audits —');
 }
 
 console.log('\n— 2b: Simulierter Scam-Token (feindlicher GoPlus-Upstream) —');
-{
+if (run('2b')) {
   const { page, errors } = await openTerminal((_) => {
     const fake = { code: 1, result: { '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': { is_honeypot: '1', cannot_sell_all: '1', buy_tax: '0.00', sell_tax: '0.99', holder_count: '12' } } };
     const origFetch = window.fetch.bind(window);
@@ -295,7 +477,8 @@ console.log('\n— 2b: Simulierter Scam-Token (feindlicher GoPlus-Upstream) —'
 
   await page.evaluate(() => {
     const lb = document.querySelector('[role="listbox"]');
-    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => /DEX/i.test(o.textContent ?? ''));
+    // Chain-Nennung statt Literal „DEX" (siehe Sektion 1b).
+    const opts = [...(lb?.querySelectorAll('[role="option"]') ?? [])].filter((o) => /Ethereum|Base|Arbitrum|Polygon|BSC|Avalanche|Optimism|Solana/i.test(o.textContent ?? ''));
     const opt = opts.find((o) => /^WETH\//.test((o.textContent ?? '').trim())) ?? opts.find((o) => /WETH/.test(o.textContent ?? '')) ?? opts[0];
     if (opt) (opt.querySelector('button') ?? opt).click();
   });
@@ -317,7 +500,7 @@ console.log('\n— 2b: Simulierter Scam-Token (feindlicher GoPlus-Upstream) —'
 }
 
 console.log('\n— 3: Rate-Limit-Resilience & Reconnect —');
-{
+if (run('3')) {
   const { page, errors } = await openTerminal((_) => {
     window.__429 = { armed: false, count: 0 };
     const origFetch = window.fetch.bind(window);

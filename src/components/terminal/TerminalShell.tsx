@@ -59,6 +59,8 @@ import { compactUsd, pct, usd } from '@/lib/format';
 import { realizedVolPct, sessionStats } from '@/lib/premium';
 import { CHART_LAYOUTS, CHART_TYPES, LAYOUT_IDS } from '@/store/presets';
 import { selectDexQuote, useMarketStore } from '@/store/useMarketStore';
+import { useExchangeStore } from '@/store/useExchangeStore';
+import { qaFixturesRequested } from '@/lib/qa-fixtures';
 import {
   selectActiveToken,
   selectChartType,
@@ -97,7 +99,7 @@ import { useHydrated } from '@/store/useHydrated';
 import { useViralStore } from '@/store/useViralStore';
 import { selectOnChainOpen, useOnChainStore } from '@/store/useOnChainStore';
 import { selectProOpen, useProStore } from '@/store/useProStore';
-import { isCexExchange, useExchangeSelection } from '@/store/useExchangeSelection';
+import { isCexExchange, resolveExchangeSelection, useExchangeSelection } from '@/store/useExchangeSelection';
 import { selectWhaleEnabled, useWhaleStore } from '@/store/useWhaleStore';
 import { feedId, type FeedStatus } from '@/websockets/types';
 import type { ChartLayoutId, ChartType } from '@/store/types';
@@ -221,7 +223,14 @@ export function TerminalShell() {
   const [magnifierOpen, setMagnifierOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
 
-  // QA-Hook: ?qa=1 exponiert die Stores für automatisierte Feature-Tests.
+  /*
+   * QA-Hook: ?qa=1 exponiert die Stores für automatisierte Feature-Tests.
+   *
+   * `useMarketStore` gehört dazu, weil Chart-Tests ohne Provider-Netz (CI,
+   * Sandbox, Offline-Läufe) Kerzen deterministisch seeden müssen – `feeds`
+   * ist der einzige Weg, an dem der Chart Daten liest. Ohne dieses Handle
+   * bliebe `waitForSelector('canvas')` in jeder netzlosen Umgebung hängen.
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !window.location.search.includes('qa=1')) return;
     (window as unknown as Record<string, unknown>).__NC__ = {
@@ -230,9 +239,32 @@ export function TerminalShell() {
       useWhaleStore,
       useProStore,
       useViralStore,
+      useMarketStore,
+      /**
+       * Nur die reine Auswahlfunktion (kein Hook!) – Tests leiten daraus die
+       * feedId ab, ohne in die React-Hook-Regeln zu laufen.
+       */
+      resolveExchangeSelection,
+      useExchangeStore,
     };
   }, []);
   const [patternsOpen, setPatternsOpen] = useState(false);
+
+  /*
+   * QA-Fixtures: nur mit ?qa=1&fixtures=1. Sie seeden deterministische Kerzen
+   * in den Market-Store, damit die Browser-Suiten ohne Provider-Netz ein
+   * echtes Canvas bekommen (CI, Sandbox, regionaler Block). Ohne das Flag
+   * wird nichts installiert – Produktionsverhalten bleibt unberührt.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.location.search.includes('qa=1') || !qaFixturesRequested()) return;
+    let cleanup: (() => void) | undefined;
+    void import('@/lib/qa-fixtures').then((mod) => {
+      cleanup = mod.installQaFixtures();
+    });
+    return () => cleanup?.();
+  }, []);
   const scriptLabOpen = useChartStore((state) => state.scriptLabOpen);
   const setScriptLabOpen = useChartStore((state) => state.setScriptLabOpen);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);

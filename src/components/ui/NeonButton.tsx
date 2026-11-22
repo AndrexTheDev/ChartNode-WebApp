@@ -47,6 +47,12 @@ type VariantProps_ = VariantProps<typeof neonButtonVariants>;
 interface SharedProps extends VariantProps_ {
   children: ReactNode;
   className?: string;
+  /**
+   * Zusatzklassen für den inneren Label-Span. Nötig, weil dieser Span ein
+   * Flex-Item ist und mit `min-width: auto` sonst nie unter seine Textbreite
+   * schrumpft (320-px-Overflow bei langen Übersetzungen).
+   */
+  labelClassName?: string;
   /** Rendered before / after the label (icons, kbd hints, …). */
   leading?: ReactNode;
   trailing?: ReactNode;
@@ -88,6 +94,7 @@ export function NeonButton(props: NeonButtonProps) {
     full,
     className,
     children,
+    labelClassName,
     leading,
     trailing,
     corners = true,
@@ -100,7 +107,7 @@ export function NeonButton(props: NeonButtonProps) {
     <>
       {corners && <Corners />}
       {leading}
-      <span className="relative">{children}</span>
+      <span className={cn('relative', labelClassName)}>{children}</span>
       {trailing}
     </>
   );

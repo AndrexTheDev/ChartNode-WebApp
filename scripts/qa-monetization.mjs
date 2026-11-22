@@ -8,6 +8,7 @@
 //
 // Nutzung: node scripts/qa-monetization.mjs
 import puppeteer from 'puppeteer';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -41,8 +42,9 @@ async function openTerminal(page, { blockAdsJs = false } = {}) {
     await client.send('Network.enable');
     await client.send('Network.setBlockedURLs', { urls: ['*/ads.js*'] });
   }
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForCanvas(page);
   return errors;
 }
 
@@ -147,7 +149,7 @@ console.log('\n— 2: Blocker-Simulation (CDP blockt /ads.js) —');
   check('Dismiss schließt das Modal und persistiert den 7-Tage-Cooldown', dismissed.gone && dismissed.cooldown, JSON.stringify(dismissed));
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(5000);
   const wallAgain = await page.evaluate((btc) =>
     [...document.querySelectorAll('[role="dialog"]')].some((d) => (d.textContent ?? '').includes(btc)), WALLET_BTC,
@@ -226,7 +228,7 @@ console.log('\n— 3: Viral Loop (Share → Unlock → Premium-Theme) —');
 
   // Persistenz über Reload
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(2500);
   const persisted = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme,
@@ -274,7 +276,7 @@ console.log('\n— 4: localStorage-Härtung (XSS + Typ-Korruption) —');
     );
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await waitForCanvas(page);
   await wait(3000);
   const state = await page.evaluate(() => ({
     theme: document.documentElement.dataset.theme,
@@ -289,7 +291,8 @@ console.log('\n— 4: localStorage-Härtung (XSS + Typ-Korruption) —');
   check('Typ-Korruption erzeugt keinen Supporter/Unlock (Wall-Logik intakt)', !state.viral.includes('"supporter":true') && !state.viral.includes('"shareUnlocked":true'), state.viral.slice(0, 120));
 
   // Feindliche Donation-Felder dürfen keine Gnadenfrist faken: adwall muss ziehen
-  await page.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded' });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE) + '&adwall=1', { waitUntil: 'domcontentloaded' });
   let junkWall = false;
   for (let i = 0; i < 15; i += 1) {
     await wait(1000);
@@ -317,8 +320,9 @@ console.log('\n— 5: Donation-Grace (48 h / >$5 → 5 Tage) —');
     }, JSON.stringify({ state, version: 0 }));
 
   const loadForced = async () => {
-    await page.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('canvas', { timeout: 30000 });
+    await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE) + '&adwall=1', { waitUntil: 'domcontentloaded' });
+    await waitForCanvas(page);
     for (let i = 0; i < 8; i += 1) {
       await wait(750);
       const up = await page.evaluate((btc) =>

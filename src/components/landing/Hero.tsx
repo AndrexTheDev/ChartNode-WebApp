@@ -29,9 +29,18 @@ export async function Hero({ locale }: HeroProps) {
     <section className="container relative grid items-center gap-14 py-16 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:py-24">
       {/* ------------------------------ copy ------------------------------ */}
       <div className="flex flex-col gap-7">
-        <span className="nc-clip-sm inline-flex w-fit items-center gap-2 border border-primary/35 bg-primary/8 px-3 py-1.5 font-mono text-2xs uppercase tracking-cyber text-primary">
-          <Radio className="size-3 animate-pulse-glow" aria-hidden />
-          {t('badge')}
+        {/*
+         * Badge mit Umbruch statt `whitespace-nowrap`: der Text ist in
+         * de/es/ru 77–84 Zeichen lang und lief bei 1440 px als 701-px-Zeile
+         * (kein `max-w`, `w-fit` + `tracking-cyber`). Beim Font-Swap wuchs er
+         * von 0 auf 701 px und schob die komplette Hero-Section um 354 px nach
+         * unten – gemessener CLS 0.2352 (Ziel ≤ 0.1) mit genau diesem Element
+         * als Shift-Quelle. `flex-wrap` + `max-w-full` halten das Badge in der
+         * Content-Spalte; das Icon bleibt über `shrink-0` immer sichtbar.
+         */}
+        <span className="nc-clip-sm inline-flex w-fit max-w-full flex-wrap items-center gap-2 border border-primary/35 bg-primary/8 px-3 py-1.5 font-mono text-2xs uppercase leading-snug tracking-cyber text-primary">
+          <Radio className="size-3 shrink-0 animate-pulse-glow" aria-hidden />
+          <span className="min-w-0">{t('badge')}</span>
         </span>
 
         <h1 className="font-display text-[2.6rem] font-black leading-[0.98] tracking-tight [overflow-wrap:anywhere] sm:text-6xl lg:text-display">

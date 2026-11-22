@@ -40,6 +40,7 @@ export function useFixedPopover<T extends HTMLElement, P extends HTMLElement>(
       const h = Math.max(panel.offsetHeight, panel.scrollHeight);
       let left = align === 'end' ? rect.right - w : rect.left;
       left = Math.max(4, Math.min(left, vw - w - 4));
+      // Startpunkt: klassisch unter dem Trigger.
       let top = rect.bottom + gap;
       let maxHeight: number | null = null;
       const spaceBelow = vh - 4 - top;
@@ -48,12 +49,24 @@ export function useFixedPopover<T extends HTMLElement, P extends HTMLElement>(
         // flippen, wenn oben mehr Platz ist – sonst Höhe klemmen + scrollen,
         // damit das Panel immer vollständig in die Ansicht passt
         if (spaceAbove > spaceBelow) {
-          top = Math.max(4, rect.top - h - gap);
-          maxHeight = Math.max(120, rect.top - gap - 8);
+          /*
+           * Wichtig: Ein Trigger kann selbst außerhalb des Viewports liegen
+           * (z. B. mobile Toolbar unter dem Falz – die Suite klickt ohne
+           * Scrollen). `rect.top - h - gap` landet dann weit unterhalb der
+           * Kante; die Klemme unten zieht das Panel anschließend zurück in
+           * die Ansicht. Ohne diese Klemme stand das Menü bei 320×740 komplett
+           * außerhalb (bottom 1011 vs. vh 740).
+           */
+          top = rect.top - h - gap;
+          maxHeight = Math.max(120, spaceAbove);
         } else {
           maxHeight = Math.max(120, spaceBelow);
         }
       }
+      // Vertikale Endklemme: das Panel bleibt immer im Viewport, egal ob der
+      // Trigger oberhalb, unterhalb oder teilweise sichtbar ist.
+      const effectiveHeight = Math.min(h, maxHeight ?? h);
+      top = Math.max(4, Math.min(top, vh - 4 - effectiveHeight));
       setStyle({
         position: 'fixed',
         top: `${Math.round(top)}px`,

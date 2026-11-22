@@ -176,6 +176,11 @@ npm run dev            # http://localhost:3000  (Turbopack)
 | `npm run api:smoke` | best-effort public-provider smoke calls + local rate-limit/whale-filter assertions; availability and quotas vary |
 | `npm run qa:offline` | local release-audit inventory; browser-dependent modules are explicit SKIPs; needs a running production server at `BASE_URL` (default `127.0.0.1:3000`) |
 | `npm run qa:full` | full release audit including browser modules; requires installed Chrome and a compatible local server |
+| `npm run qa:features` / `qa:interaction` / `qa:modules` | browser suites (Chromium + `?qa=1&fixtures=1`); see §6 for the sandbox setup |
+| `npm run qa:i18n` / `qa:responsive` | layout/overflow + dialog fit across 320–3440 px and 5 locales; touch-target audit (≥44 px) |
+| `npm run qa:monetization` / `qa:release` / `qa:trader` / `qa:onboarding` | ads/consent, release battery, 12-venue + DEX/on-chain, routing/metadata |
+| `npm run qa:edge-visual` / `qa:gui` / `qa:gui-verify` | Edge-modal visuals, screenshot matrix (109 shots), regression fixes |
+| `QA_ONLY=1b npm run qa:trader` | run a single section of a suite (faster iteration; all sections run without the variable) |
 | `npm run cf:build` | `opennextjs-cloudflare build` → `.open-next/` |
 | `npm run cf:preview` | build + `wrangler dev` (local Cloudflare runtime) |
 | `npm run cf:deploy` | build + `wrangler deploy` |

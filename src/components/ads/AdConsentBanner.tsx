@@ -73,15 +73,43 @@ export function AdConsentBanner() {
       aria-labelledby="nc-ad-consent-title"
       aria-live="polite"
       tabIndex={-1}
-      className="border-y border-primary/35 bg-surface/95 shadow-neon-sm"
+      /*
+       * Overlay statt Einfluss-Banner: Der Consent-Hinweis hängt an einem
+       * client-only Store (`hydrated` ist vor der Hydration false), wird also
+       * erst ~350 ms nach dem ersten Paint eingefügt. In-flow schob er `main`
+       * um 354 px nach unten – der gemessene Landing-CLS war 0.2352
+       * (Ziel ≤ 0.1) mit genau diesem Element als Shift-Quelle.
+       * Als unten angedocktes Overlay verdrängt er keinen Inhalt mehr
+       * (Standardmuster für Cookie-Hinweise) und bleibt per `role="region"`
+       * voll erreichbar; `bottom-*` weicht Ticker/Dock aus.
+       */
+      className="fixed inset-x-0 bottom-0 z-toast max-h-[70dvh] overflow-y-auto border-t border-primary/35 bg-surface/98 shadow-neon-sm backdrop-blur-sm"
     >
-      <div className="container grid gap-4 py-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      {/*
+       * Kompakt auf Phones: Die Aktionen stehen zuerst, der lange Fließtext
+       * liegt in einem `<details>` und ist standardmäßig zu. Vorher war der
+       * Banner auf 320×640 448 px hoch (70 % des Viewports) und damit laut
+       * `qa-responsive` keine „kompakte Bottom-Leiste"; auf größeren
+       * Viewports bleibt der Text offen, weil dort genug Platz ist.
+       */}
+      <div className="container grid gap-2 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-4 md:py-4">
         <div className="min-w-0">
-          <h2 id="nc-ad-consent-title" className="mb-1 font-mono text-xs font-bold uppercase tracking-cyber text-primary">
+          <h2 id="nc-ad-consent-title" className="mb-0.5 font-mono text-2xs font-bold uppercase tracking-cyber text-primary sm:text-xs">
             {consent === 'unknown' ? t('consentTitle') : t('settingsTitle')}
           </h2>
-          <p className="max-w-4xl text-sm leading-relaxed text-fg">{t('consentBody')}</p>
-          <p className="mt-1 max-w-4xl text-xs leading-relaxed text-muted">{t('consentNote')}</p>
+          {/*
+           * Auf Phones zu, ab `md` offen (`max-md:[&>*]:hidden` blendet die
+           * Kinder aus, solange das `<details>` geschlossen ist). So bleibt der
+           * Banner auf 320 px kompakt, ohne den Wortlaut zu verlieren – die
+           * Datenschutzerklärung verlinkt darunter weiterhin im Klartext.
+           */}
+          <details className="max-md:[&>*]:hidden max-md:open:[&>*]:block md:open md:[&>*]:block md:[&>summary]:hidden">
+            <summary className="cursor-pointer list-none font-mono text-2xs uppercase tracking-cyber text-muted underline decoration-line underline-offset-4 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              {t('consentNote')}
+            </summary>
+            <p className="max-w-4xl text-sm leading-relaxed text-fg">{t('consentBody')}</p>
+            <p className="mt-1 max-w-4xl text-xs leading-relaxed text-muted">{t('consentNote')}</p>
+          </details>
           {consent !== 'unknown' && (
             <p className="mt-1 font-mono text-2xs uppercase tracking-cyber text-faint">
               {consent === 'granted' ? t('currentAllowed') : t('currentDenied')}
@@ -94,13 +122,13 @@ export function AdConsentBanner() {
           )}
           <Link
             href="/legal/privacy"
-            className="mt-2 inline-flex min-h-10 items-center rounded-sm font-mono text-2xs uppercase tracking-cyber text-primary underline decoration-primary/50 underline-offset-4 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="mt-1 inline-flex min-h-11 items-center rounded-sm font-mono text-2xs uppercase tracking-cyber text-primary underline decoration-primary/50 underline-offset-4 hover:text-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {t('privacyLink')}
           </Link>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row md:max-w-[32rem] md:flex-wrap md:justify-end" role="group" aria-label={t('consentActions')}>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row md:max-w-[32rem] md:flex-wrap md:justify-end" role="group" aria-label={t('consentActions')}>
           {settingsOpen && consent !== 'unknown' && (
             <button
               type="button"
@@ -113,14 +141,14 @@ export function AdConsentBanner() {
           <button
             type="button"
             onClick={() => choose('denied')}
-            className="min-h-11 flex-1 rounded-sm border border-primary/60 bg-surface px-4 py-2 font-mono text-2xs font-bold uppercase tracking-cyber text-fg transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="min-h-11 rounded-sm border border-primary/60 bg-surface px-2 py-1.5 sm:flex-1 sm:px-4 sm:py-2 font-mono text-2xs font-bold uppercase tracking-cyber text-fg transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {t('rejectOptional')}
           </button>
           <button
             type="button"
             onClick={() => choose('granted')}
-            className="min-h-11 flex-1 rounded-sm border border-primary/60 bg-surface px-4 py-2 font-mono text-2xs font-bold uppercase tracking-cyber text-primary transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="min-h-11 rounded-sm border border-primary/60 bg-surface px-2 py-1.5 font-mono text-2xs font-bold uppercase tracking-cyber text-primary sm:flex-1 sm:px-4 sm:py-2 transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {t('allowOptional')}
           </button>

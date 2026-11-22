@@ -86,6 +86,22 @@ const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_AUTOMATIC_WAIT_MS = 10_000;
 const MAX_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * QA-/Fixture-Modus: Budgetzählung aussetzen.
+ *
+ * Bewusst hier und nicht in `quota.ts`: die Policy-Tabelle bleibt die
+ * Produktionswahrheit, nur die Buchführung wird im Testmodus übersprungen.
+ * Ohne `?fixtures=1` (echte Nutzer) ändert sich nichts.
+ */
+function qaBudgetBypass(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).get('fixtures') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function pruneMaps(now: number): void {
   for (const [key, entry] of cache) if (entry.expiresAt <= now) cache.delete(key);
   while (cache.size > CACHE_MAX_ENTRIES) {
@@ -369,6 +385,15 @@ function readRequestBudget(source: string): RequestBudgetStamp[] {
  * Weight-Provider (Hyperliquid) wiegen jeden Call mit `weightPerCall`.
  */
 function reserveSourceRequest(source: string): void {
+  /*
+   * Im Fixture-Modus (`?qa=1&fixtures=1`) kommt die Antwort aus der Sandbox,
+   * nicht vom Provider – das Free-Tier-Budget darf den Lauf dann nicht
+   * drosseln. Sonst sättigt ein langer QA-Lauf mit mehreren Panes das
+   * GeckoTerminal-Fenster (8/min) und der DEX-Chart bleibt leer, obwohl die
+   * Fixture-Antwort sofort bereitsteht. Der Schalter ist an dieselbe
+   * URL-Flag-Bedingung gebunden wie die Fixtures selbst.
+   */
+  if (qaBudgetBypass()) return;
   const { policy } = quotaPolicyFor(source);
   const windowMs = policy.windowMs;
   const maxRequests = policy.maxRequests;

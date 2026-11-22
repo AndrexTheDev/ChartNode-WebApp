@@ -3,6 +3,7 @@
 // Modal-/Dropdown-Animationen + Layout-Jitter (CLS), Toast-Feedback.
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
+import { terminalUrl, fixtureMode, waitForCanvas, stubExternalNetwork } from './qa-helpers.mjs';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:3000';
 const OUT = 'artifacts';
@@ -171,11 +172,12 @@ console.log('— 1: Interaktive States auf Landing (/de) —');
   await page.close();
 }
 
-console.log('\n— 1b: Interaktive States im Terminal (/de/terminal) —');
+console.log(`\n— 1b: Interaktive States im Terminal (/de/terminal) — Fixtures: ${fixtureMode()}`);
 {
   const { page, errors } = await newPage();
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+  await waitForCanvas(page);
   await wait(3500);
   const st = await auditStates(page, 'terminal');
   fs.writeFileSync(`${OUT}/qa-interaction-gaps-terminal.json`, JSON.stringify(st.gaps, null, 1));
@@ -258,8 +260,9 @@ console.log('\n— 2: Modal- & Dropdown-Animationen (Jitter/CLS) —');
       for (const e of list.getEntries()) if (!e.hadRecentInput) window.__cls += e.value;
     }).observe({ type: 'layout-shift', buffered: true });
   });
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+  await waitForCanvas(page);
   await wait(3500);
 
   const anchorProbe = () => page.evaluate(() => {
@@ -360,8 +363,9 @@ console.log('\n— 3: Feedback & Toasts (Wallet kopieren) —');
   const context = browser.defaultBrowserContext();
   await context.overridePermissions(BASE, ['clipboard-write', 'clipboard-sanitized-write']);
   const { page, errors } = await newPage();
-  await page.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(page, BASE);
+await page.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+  await waitForCanvas(page);
   await wait(3000);
   const openModal = () => page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find((x) => /TRINKGELD|TIP.?JAR|SPENDEN/i.test((x.getAttribute('aria-label') ?? '') + (x.getAttribute('title') ?? '') + (x.textContent ?? ''))) ?? [...document.querySelectorAll('button')].find((x) => x.querySelector('svg.lucide-heart'));
@@ -402,8 +406,9 @@ console.log('\n— 3: Feedback & Toasts (Wallet kopieren) —');
     try { Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true }); } catch { /* Clipboard-API eben erreichbar – execCommand-Stub greift dann */ }
     try { document.execCommand = () => false; } catch { /* ignore */ }
   });
-  await p2.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
-  await p2.waitForSelector('canvas', { timeout: 30000 });
+  await stubExternalNetwork(p2, BASE);
+  await p2.goto(terminalUrl(BASE), { waitUntil: 'domcontentloaded' });
+  await waitForCanvas(p2);
   await wait(3000);
   await p2.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find((x) => /TRINKGELD|TIP.?JAR|SPENDEN/i.test((x.getAttribute('aria-label') ?? '') + (x.getAttribute('title') ?? '') + (x.textContent ?? ''))) ?? [...document.querySelectorAll('button')].find((x) => x.querySelector('svg.lucide-heart'));
@@ -416,10 +421,16 @@ console.log('\n— 3: Feedback & Toasts (Wallet kopieren) —');
     btn?.click();
   });
   await wait(800);
-  const toast = await p2.evaluate(() => {
-    const host =
-      document.querySelector('[aria-live="polite"].fixed') ??
-      [...document.querySelectorAll('[aria-live]')].find((h) => h.firstElementChild);
+  /*
+   * Wichtig: `[aria-live="polite"].fixed` matcht auch den Ad-Consent-Banner –
+   * der hat dauerhaft Inhalt und ließ „Auto-Expiry" zwangsläufig scheitern.
+   * Der Toast-Host ist der einzige aria-live-Container mit
+   * `pointer-events-none` und z-toast; die Selektor-Kette ist stabil, weil
+   * beide Klassen direkt am Host in ToastHost.tsx stehen.
+   */
+  const TOAST_HOST_SELECTOR = '[aria-live="polite"].pointer-events-none';
+  const toast = await p2.evaluate((hostSel) => {
+    const host = document.querySelector(hostSel) ?? null;
     const t = host?.firstElementChild;
     if (!t) return null;
     const c = getComputedStyle(t);
@@ -432,21 +443,27 @@ console.log('\n— 3: Feedback & Toasts (Wallet kopieren) —');
       shadow: c.boxShadow !== 'none',
       warnTone: /warning|255|2[0-9]{2}/.test(c.borderTopColor),
     };
-  });
+  }, TOAST_HOST_SELECTOR);
   ok('Fehlgeschlagenes Kopieren → Toast-Feedback erscheint', toast && toast.text.length > 0, JSON.stringify(toast));
   ok('Toast im Cyberpunk-Stil (nc-clip, Neon-Border, Glow, Warn-Ton)', toast && toast.clip && toast.shadow, JSON.stringify(toast));
   ok('Toast mit Entry-Animation (toast-in)', toast && toast.anim === 'toast-in' && parseFloat(toast.dur) > 0.1, JSON.stringify(toast && { anim: toast.anim, dur: toast.dur }));
   await p2.screenshot({ path: `${OUT}/qa-interaction-toast.png` });
+  /*
+   * Auto-Expiry: TTL ist 6 s (useToastStore). Wir pollen bis 12 s, prüfen aber
+   * nur den Toast-Host – nicht irgendeinen aria-live-Container.
+   */
   let gone = false;
+  let seenAt = 0;
   for (let i = 0; i < 12; i++) {
     await wait(1000);
-    const still = await p2.evaluate(() => {
-      const host = document.querySelector('[aria-live="polite"].fixed') ?? [...document.querySelectorAll('[aria-live]')].find((h) => h.firstElementChild);
+    const still = await p2.evaluate((hostSel) => {
+      const host = document.querySelector(hostSel);
       return !!host?.firstElementChild;
-    });
+    }, TOAST_HOST_SELECTOR);
+    if (still) seenAt = i + 1;
     if (!still) { gone = true; break; }
   }
-  ok('Toast verschwindet automatisch (Auto-Expiry)', gone, '');
+  ok('Toast verschwindet automatisch (Auto-Expiry)', gone, gone ? `nach ${seenAt + 1}s` : 'nach 12s noch sichtbar');
   ok('3b: keine Page-Errors', e2.length === 0, e2[0] || '');
   await p2.close();
 }

@@ -16,13 +16,19 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { terminalUrl, stubExternalNetwork } from './qa-helpers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const artifacts = join(root, 'artifacts');
 mkdirSync(artifacts, { recursive: true });
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:3000';
-const URL = `${BASE}/de/terminal`;
+/*
+ * Fixture-URL: In der Sandbox ist kein Provider-Netz erreichbar. Ohne
+ * `?qa=1&fixtures=1` bleibt der Chart leer und `waitForSelector('canvas')`
+ * bricht ab – das ist ein Umgebungs-, kein App-Befund.
+ */
+const URL = terminalUrl(BASE, '/de/terminal');
 
 let failures = 0;
 const checks = [];
@@ -74,8 +80,20 @@ const browser = await puppeteer.launch({
   defaultViewport: { width: 1440, height: 900, deviceScaleFactor: 1 },
 });
 
-try {
+/*
+ * Netzsperre zentral für JEDE Page dieses Laufs: der Test öffnet im Verlauf
+ * über ein Dutzend Seiten (DEX, Ads, On-Chain, Landing …). Ohne Sperre hängen
+ * Provider-Requests bis zum Timeout und die Seiten sind beim Messen unfertig.
+ * `stubExternalNetwork` ist idempotent, ein zusätzlicher Aufruf schadet nicht.
+ */
+const openPage = async () => {
   const page = await browser.newPage();
+  await stubExternalNetwork(page, BASE);
+  return page;
+};
+
+try {
+  const page = await openPage();
   const errors = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -328,8 +346,8 @@ check('GET /api/og renders the social card', ogRes.status === 200 && (ogRes.head
 check('og card carries ticker + price + change', ogBody.includes('$SOL') && ogBody.includes('150') && ogBody.includes('+2.40%'));
 
 // deep link + meta tags on a shared URL
-const shared = await browser.newPage();
-await shared.goto(`${BASE}/de/terminal?ticker=SOL&price=150`, { waitUntil: 'domcontentloaded' });
+const shared = await openPage();
+await shared.goto(`${terminalUrl(BASE, '/de/terminal')}&ticker=SOL&price=150`, { waitUntil: 'domcontentloaded' });
 await shared.waitForSelector('canvas', { timeout: 30000 });
 const meta = await shared.evaluate(() => ({
   og: document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? '',
@@ -344,11 +362,11 @@ await shared.close();
 
 // ad-block soft-wall (forced via ?adwall=1) + wallet clipboard
 
-const wall = await browser.newPage();
+const wall = await openPage();
 await wall.evaluateOnNewDocument(() => {
   localStorage.setItem('nc-ad-consent-v1', JSON.stringify({ version: 1, choice: 'granted', decidedAt: Date.now() }));
 });
-await wall.goto(`${BASE}/de/terminal?adwall=1`, { waitUntil: 'domcontentloaded' });
+await wall.goto(`${terminalUrl(BASE, '/de/terminal')}&adwall=1`, { waitUntil: 'domcontentloaded' });
 await wall.waitForSelector('[role="dialog"]', { timeout: 30000 });
 // This puppeteer build has no grantPermissions – stub the clipboard instead
 // (deterministic: we assert the exact string the UI tried to copy).
@@ -427,7 +445,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
 // 8. mobile gate
   console.log('\n— mobile gate —');
-  const mobile = await browser.newPage();
+  const mobile = await openPage();
   const mobileErrors = [];
   mobile.on('pageerror', (error) => mobileErrors.push(error.message));
   await mobile.setUserAgent(
@@ -500,10 +518,10 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   // streaming for minutes; a dedicated page keeps CDP responsive and the
   // section independent from earlier state).
   console.log('\n— on-chain signals panel —');
-  const onchain = await browser.newPage();
+  const onchain = await openPage();
   const onchainErrors = [];
   onchain.on('pageerror', (error) => onchainErrors.push(error.message));
-  await onchain.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded' });
+  await onchain.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded' });
   await onchain.waitForSelector('canvas', { timeout: 30000 });
   const onchainToggle = await onchain.$('[data-testid="onchain-toggle"]');
   check('on-chain toggle present in the toolbar', Boolean(onchainToggle));
@@ -563,10 +581,10 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // 8.6 PRO metrics panel + premium chart tools (fresh page)
   console.log('\n— pro metrics + premium tools —');
-  const pro = await browser.newPage();
+  const pro = await openPage();
   const proErrors = [];
   pro.on('pageerror', (error) => proErrors.push(error.message));
-  await pro.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await pro.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded', timeout: 60000 });
   // stateless section: drop inherited workspace state, start from defaults
   await pro.evaluate(() => localStorage.clear());
   await pro.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -900,14 +918,14 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   await pro.close();
 
   // DEX tokens must render REAL candles (GeckoTerminal OHLCV), not a quote card
-  const dex = await browser.newPage();
+  const dex = await openPage();
   dex.on('response', (r) => {
     if (r.url().includes('geckoterminal') || r.url().includes('dexscreener')) console.log(`        DEX NET ${r.status()} ${r.url().slice(0, 88)}`);
   });
   dex.on('requestfailed', (r) => {
     if (r.url().includes('geckoterminal')) console.log(`        DEX NET FAILED ${r.failure()?.errorText} ${r.url().slice(0, 88)}`);
   });
-  await dex.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await dex.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await dex.waitForSelector('canvas', { timeout: 60000 });
   await dex.evaluate(() => {
     const select = document.querySelector('select[aria-label]');
@@ -928,9 +946,9 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   // 8.8 wave-4 tools: patterns, ratings, heatmap, journal, magnifier, alerts,
   // exotic chart types, custom intervals + the usage-based tip nudge.
   console.log('\n— wave-4 premium tools —');
-  const w4 = await browser.newPage();
+  const w4 = await openPage();
   w4.on('pageerror', (err) => errors.push(`wave4 pageerror: ${err.message}`));
-  await w4.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await w4.goto(terminalUrl(BASE, '/de/terminal'), { waitUntil: 'domcontentloaded', timeout: 60000 });
   await w4.evaluate(() => {
     window.__errs = [];
     window.addEventListener('error', (e) => window.__errs.push(String(e.message).slice(0, 140)));
@@ -1177,7 +1195,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // 8.85 wave-5: watermark, script lab, CUSTOM routing
   console.log('\n— wave-5 watermark & script lab —');
-  const w5 = await browser.newPage();
+  const w5 = await openPage();
   w5.on('pageerror', (err) => errors.push(`wave5 pageerror: ${err.message}`));
   await w5.goto(`${BASE}/de/terminal`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await w5.waitForSelector('canvas', { timeout: 60000 });
@@ -1332,7 +1350,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // 8.86 wave-5: help center documents every indicator + metric + the lab
   console.log('\n— wave-5 help docs —');
-  const w5h = await browser.newPage();
+  const w5h = await openPage();
   w5h.on('pageerror', (err) => errors.push(`wave5help pageerror: ${err.message}`));
   await w5h.goto(`${BASE}/de/help`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await w5h.waitForSelector('input[type="search"]', { timeout: 15000 });
@@ -1387,7 +1405,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // 8.87 wave-7: Edge Suite (Liq Radar, Lag Oracle, Regime Compass, Clock Edge)
   console.log('\n— wave-7 edge suite —');
-  const w7 = await browser.newPage();
+  const w7 = await openPage();
   w7.on('pageerror', (err) => errors.push(`wave7 pageerror: ${err.message}`));
   // ?ticker=BTC pins the active token deterministically: the heatmap-tile test
   // above may have persisted a live-ordered tile (e.g. ETH) as active token,
@@ -1537,7 +1555,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 
   // 8.9 landing: survival section + funding-framed hero (fresh page)
   console.log('\n— landing survival & funding copy —');
-  const land = await browser.newPage();
+  const land = await openPage();
   await land.goto(`${BASE}/de`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await land.waitForSelector('#features', { timeout: 15000 }).catch(() => {});
   const landText = await land.evaluate(() => document.body.innerText);
@@ -1566,7 +1584,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
   check(`browser run completed (${error instanceof Error ? error.message : 'error'})`, false);
 } finally {
     // M5: Help-Deep-Link öffnet das passende Akkordeon
-  const dl = await browser.newPage();
+  const dl = await openPage();
   await dl.goto(`${BASE}/de/help#ind-RSI`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await wait(2500);
   const dlState = await dl.evaluate(() => ({
@@ -1582,7 +1600,7 @@ await page.screenshot({ path: join(artifacts, 'terminal-matrix.png') });
 await dl.close();
 
 // M7: Share-Modal teilt URL mit Ticker+Preis (Card zeigt das echte Setup)
-const sh = await browser.newPage();
+const sh = await openPage();
 await sh.goto(`${BASE}/de/terminal?qa=1&ticker=SOL&price=150`, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sh.waitForSelector('canvas', { timeout: 30000 });
 await wait(3500);

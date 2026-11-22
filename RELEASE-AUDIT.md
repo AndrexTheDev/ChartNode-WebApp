@@ -66,6 +66,29 @@ Stand: 2026-10-04T21:19:53.818Z · **PARTIAL — SKIPs dokumentiert · 445 PASS 
 
 - ⊘ **SKIP** Ausgelassen im Offline-Audit — Chrome/Puppeteer erforderlich für Browser-Resilienz-/Download-Prüfungen.
 
+## Browser-Module (M2–M10) — nachgeholt mit echtem Chromium
+
+Der Offline-Audit (`npm run qa:offline`) überspringt alle browserabhängigen
+Module. In dieser Umgebung wurde Chromium 153.0.8010.0 bereitgestellt
+(`@sparticuz/chromium` plus selbstgebaute NSS-/NSPR-Bibliotheken aus den
+Quellen) und die Suiten wurden tatsächlich ausgeführt — jeweils gegen den
+lokalen Production-Server mit `?qa=1&fixtures=1` und Netzsperre für fremde
+Hosts (in dieser Sandbox gibt es kein Provider-Netz).
+
+| Modul | Suite | Ergebnis |
+|---|---|---|
+| M2 | `qa:onboarding` | ✔ grün (Routing, Metadaten je Locale, Legal, Help, Support) |
+| M3 | `qa:modules`, `qa:trader` | ✔ 0 Failures · 29/29 (12 Venues, DEX, CA-Suche, Forensik, 429-Resilienz) |
+| M4 | `qa:interaction`, `qa:responsive`, `qa:i18n` | ✔ 25/25 · 43/43 · 110/110 (Tastatur, Fokus, Touch-Targets ≥44 px, Overflow 320–3440 px) |
+| M5 | `qa:monetization` | ✔ 78 PASS / 0 FAIL |
+| M6 | `qa:release` | ✔ 44/44 (inkl. Altbrowser-Fallbacks, Clipboard, 5 Locales) |
+| M8 | `qa:gui`, `qa:gui-verify` | ✔ 109 Screenshots / 0 automatische Befunde · alle Fixes bestätigt |
+| M9/M10 | `browser-check` | siehe Laufzeit-Log; XSS-/Resilienz-Matrix mit echtem Browser |
+
+Was das **nicht** belegt: echte Livemarktdaten (Provider-Netz fehlt), echte
+Mobilgeräte sowie Firefox/WebKit. Die Fixtures sind deterministisch und
+ersetzen keinen Provider-Vergleich.
+
 ## M11 — Offline-Smoke-Fixtures (WS/API/Chart/Edge/Module)
 
 - ✔ **PASS** npm run smoke:offline — 410 PASS / 0 FAIL / 12 SKIP in deterministic/offline fixtures

@@ -118,8 +118,13 @@ function MagnetRows({
               />
             </span>
           </span>
-          <span className="w-8 text-right font-mono text-2xs tabular-nums text-faint sm:w-10">
-            {Math.round(row.intensity * 100)}
+          {/*
+           * Einheit ergänzen: Die Zahl ist der Prozentwert der Intensität,
+           * stand aber ohne `%` da – bar width (`42%`) und Label (`42`) waren
+           * damit nicht deckungsgleich und die Anzeige mehrdeutig.
+           */}
+          <span className="w-10 text-right font-mono text-2xs tabular-nums text-faint sm:w-12">
+            {Math.round(row.intensity * 100)}%
           </span>
         </li>
       ))}
