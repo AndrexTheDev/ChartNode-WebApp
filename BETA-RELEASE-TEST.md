@@ -119,6 +119,21 @@ Das verwendete Record-Schema enthält Version, Wahl und Zeitstempel. Die 180-Tag
 | Public API/Proxy/Rate-Limits | **Offen** | Lokal begrenzte Budgets und Source-Cooldowns sind getestet; sie koordinieren nicht alle Nutzer hinter geteilten Provider-/IP-Limits und ersetzen kein öffentliches Abuse-/Rate-Limit-Hardening. |
 | Cloudflare/Node-Warnung | **Offen** | OpenNext-Build erfolgreich, aber Node-Middleware-Unterstützung experimentell. Ziel-Worker, Kompatibilitätsdatum, Kosten-/Quotas und echte Edge-Header sind nicht deployed/getestet. |
 
+## Crawl-/Index-Hygiene (kein Entwurfs- oder Testzustand)
+
+Der Produktionsbuild liefert **keinen** noindex und sperrt Googlebot nicht aus:
+
+| Prüfung | Ergebnis |
+|---|---|
+| `robots.txt` | `User-Agent: *` → `Allow: /`; **kein** `Disallow` (0 Treffer in der Build-Ausgabe). Social-Crawler (Twitterbot, facebookexternalhit, TelegramBot, LinkedInBot, Discordbot, WhatsApp, Slackbot) explizit erlaubt, damit Share-Cards weiter funktionieren. `Host` + `Sitemap` gesetzt. |
+| Landing, Terminal-Basis, Help, Legal (privacy/terms/disclaimer), alle 5 Locales | HTTP 200, `<meta name="robots" content="index, follow">` **und** `<meta name="googlebot" content="index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1">` |
+| `?qa=1`, `?fixtures=1`, `?preview=1`, `?draft=1`, `?test=1` | identisch `index, follow` — der QA-/Fixture-Modus hinterlässt keine Spur im HTML |
+| `X-Robots-Tag` | wird nicht gesetzt |
+| 404-Seiten (`/de/privacy` statt `/de/legal/privacy` usw.) | `noindex` — korrekt, das sind Fehlerseiten |
+| `?ticker=`/`?price=`-Varianten | `noindex, follow` + canonical auf den Basispfad (Duplicate-Content-Doktrin, kein Draft-Zustand) |
+
+Belegt mit `node scripts/seo-check.mjs`: **578 PASS / 0 FAIL** (enthält die Crawl-Hygiene-Checks: robots.txt ohne Terminal-Disallow, Social-Bots erlaubt, Edge-Cache 1 h, kanonisierte Parameter-Varianten).
+
 ## Screenshot- und Browser-Matrix
 
 **Status der automatisierten Screenshot-Matrix: DURCHGEFÜHRT — 109 Screenshots, 0 automatische Befunde.** Der Browser wurde in dieser Umgebung ohne Paketmanager bereitgestellt: `@sparticuz/chromium@153.0.0` liefert das Binary (`/tmp/chromium`, HeadlessChrome 153.0.8010.0), die fehlenden NSS-/NSPR-Bibliotheken wurden aus den Quellen gebaut (`mozilla/nspr` `NSPR_4_36_BRANCH`, `nss-dev/nss` `NSS_3_101_RTM`) und per `LD_LIBRARY_PATH` eingebunden. Allein der `signtool`-Teil des NSS-Builds scheitert an fehlendem `zlib.h`; die für den Browser relevanten Bibliotheken (`libnss3`, `libnssutil3`, `libsmime3`, `libfreebl3`, `libsoftokn3`, `libnspr4`, `libplc4`, `libplds4`) entstehen vollständig.
