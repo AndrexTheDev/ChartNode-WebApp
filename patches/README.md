@@ -23,6 +23,61 @@ npm ci && npm run typecheck && npm run qa:venue
 
 Der Patch bringt `npm run qa:venue` mit (Regressionstest der Prüf-Reihenfolge).
 
+## `chartnode-webapp2-live-robots-audit.patch`
+
+**Lücke:** `check:live` prüfte `robots.txt` nur auf `Allow: /` und die
+Sitemap-Zeile. Damit wäre eine der wenigen Stellen unbemerkt geblieben, an
+denen die Produktion anders aussieht als der Code: Cloudflare stellt der
+ausgelieferten Datei einen verwalteten Block voran
+(`# BEGIN Cloudflare Managed content`) — der taucht in keinem lokalen Build
+auf. Auf `nodechart.cc` stehen dort rund zwei Dutzend `Disallow: /`-Zeilen für
+KI-/Trainings-Crawler; Googlebot ist frei. Eine Googlebot-Sperre hätte der
+alte Check trotzdem durchgelassen, weil irgendwo in der Datei `Allow: /` steht.
+
+**Fix:** `robots.txt` wird nach RFC 9309 in (agents, rules)-Gruppen zerlegt.
+Geprüft wird `Disallow: /` für `*`, `googlebot`, `bingbot` sowie explizit
+`googlebot-news` und `googlebot-image`. KI-/Trainings-Crawler werden nur als
+Hinweis ausgegeben, nicht als Fehler — `Google-Extended` betrifft
+Gemini-Training, nicht die Websuche.
+
+**Gegengetestet mit drei Fixtures:**
+
+| Fixture | Ergebnis |
+|---|---|
+| live (Cloudflare-Block + KI-Regeln) | alle grün, 4 KI-Crawler als Hinweis |
+| bad (`User-agent: *` / `Disallow: /`) | FAIL für `*` und `googlebot` |
+| sneaky (nur `Googlebot` gesperrt) | FAIL — genau der Fall, den der alte Check durchgelassen hätte |
+
+Beide Patches zusammen: `git am patches/*.patch` gegen einen frischen Clone
+getestet, wendet ohne Konflikt an; danach `tsc --noEmit` sauber, ESLint 0
+Fehler, `next build` grün, `qa:venue` grün, `check:live` 45/1 (der eine Fail
+ist der vorbestehende Befund oben).
+
+## Bekannter, vorbestehender Befund in `ChartNode-WebApp2`
+
+`npm run check:live` meldet dort **1 FAIL**:
+
+```
+FAIL  unbekannte Sprache endet im 404 — 307 → /en → 200
+```
+
+`/xx` wird per 307 auf `/en` umgeleitet und liefert dort 200, statt im 404 zu
+enden. Das ist **nicht** durch die Patches verursacht — gegen einen frischen
+Clone ohne Patches nachgestellt:
+
+| Stand | Ergebnis |
+|---|---|
+| ungepatcht | 41 PASS / 1 FAIL / 2 SKIP |
+| mit beiden Patches | 45 PASS / 1 FAIL / 2 SKIP |
+
+Der Fail ist in beiden Fällen identisch; die vier zusätzlichen PASS sind die
+neuen robots-Checks. Die Ursache liegt in `src/proxy.ts`: locale-förmige
+Präfixe werden bewusst auf die Default-Locale umgeschrieben, und danach
+existiert die Route — die 404-Erwartung des Checks passt nicht zu dieser
+bewussten Entscheidung. Entweder ist der Check zu streng oder die Umleitung
+sollte für unbekannte Sprachen nicht greifen; das ist eine Produktentscheidung
+und wurde hier nicht eigenmächtig geändert.
+
 ## `chartnode-webapp2-venue-hysteresis.patch`
 
 **Bug:** `pickExchange` nahm einfach den besten Ranglisteneintrag. Die
