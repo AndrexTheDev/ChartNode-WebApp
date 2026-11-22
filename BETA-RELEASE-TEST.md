@@ -134,6 +134,42 @@ Der Produktionsbuild liefert **keinen** noindex und sperrt Googlebot nicht aus:
 
 Belegt mit `node scripts/seo-check.mjs`: **578 PASS / 0 FAIL** (enthält die Crawl-Hygiene-Checks: robots.txt ohne Terminal-Disallow, Social-Bots erlaubt, Edge-Cache 1 h, kanonisierte Parameter-Varianten).
 
+## Live-Domain nachgeprüft (nodechart.cc)
+
+Ergänzend zum lokalen Build wurde die **echte Produktionsdomain** über einen
+Host mit Internetzugang abgefragt (die Arbeits-Sandbox hat kein ausgehendes
+Netz zu nodechart.cc; `curl` endet dort mit `SSL_ERROR_SYSCALL`).
+
+| Prüfung | Live-Ergebnis |
+|---|---|
+| `robots.txt` | erreichbar, HTTP 200. Cloudflare stellt einen verwalteten Block voran (`# BEGIN Cloudflare Managed content`) mit 24 `Disallow: /`-Einträgen — **ausschließlich KI-/Training-Crawler**. |
+| **Googlebot** | **nicht ausgesperrt.** `User-agent: *` → `Allow: /`, kein `Disallow`. Kein Googlebot-spezifischer Block. Ebenso frei: `googlebot-news`, `bingbot`. |
+| `Google-Extended` | `Disallow: /` — das ist Gemini-**Training**, nicht die Websuche. Eine Sperre dort nimmt NodeChart NICHT aus den Google-Suchergebnissen. |
+| `Sitemap:` | vorhanden, `https://nodechart.cc/sitemap.xml`, erreichbar, 35 URLs, alle 200. |
+| Landing, Terminal, `/cluster`, Legal | 200, für Crawler abrufbar, kein `noindex`. |
+| Live-Terminal | funktioniert mit echten Providerdaten: BTC/USDT 60.795,14 $, Binance 650 ms, 300 Candles, Chart rendert. |
+
+**Wichtige Einordnung:** Die Live-Domain fährt einen **neueren Stand als dieses
+Repository**. Belege: `/de/cluster` existiert live („NodeCluster —
+Token-Holder-Cluster"), die Landing trägt neue Texte („Kern-Charts ohne Abo",
+Pro über verifizierte On-Chain-Unterstützung) und der Sitemap listet 35 URLs
+gegen 30 hier. `git log --all -- '*cluster*'` ist leer — dieser Code liegt in
+keinem Branch dieses Repos. Die Live-Prüfung bezieht sich also auf den
+deployten Stand, nicht auf diesen Branch.
+
+### Gate für Live-Instanzen
+
+`scripts/live-crawl-check.mjs` prüft eine beliebige erreichbare Instanz
+(Produktion oder Preview) und schließt damit genau die Lücke, die der lokale
+`seo-check` nicht sehen kann: Edge-/Host-Injektion in `robots.txt`,
+vorgeschaltete Content-Signals-Seiten, 404er im Sitemap.
+
+    QA_LIVE_URL=https://nodechart.cc npm run qa:live-crawl
+
+Geprüft wird: kein `Disallow: /` für `*`/`Googlebot` (KI-Blöcke werden nur
+gelistet), `Sitemap:`-Direktive + Erreichbarkeit, alle Sitemap-URLs = 200,
+keine `noindex`-Seite im Sitemap. Gegen den lokalen Build: 8/8 PASS.
+
 ## Screenshot- und Browser-Matrix
 
 **Status der automatisierten Screenshot-Matrix: DURCHGEFÜHRT — 109 Screenshots, 0 automatische Befunde.** Der Browser wurde in dieser Umgebung ohne Paketmanager bereitgestellt: `@sparticuz/chromium@153.0.0` liefert das Binary (`/tmp/chromium`, HeadlessChrome 153.0.8010.0), die fehlenden NSS-/NSPR-Bibliotheken wurden aus den Quellen gebaut (`mozilla/nspr` `NSPR_4_36_BRANCH`, `nss-dev/nss` `NSS_3_101_RTM`) und per `LD_LIBRARY_PATH` eingebunden. Allein der `signtool`-Teil des NSS-Builds scheitert an fehlendem `zlib.h`; die für den Browser relevanten Bibliotheken (`libnss3`, `libnssutil3`, `libsmime3`, `libfreebl3`, `libsoftokn3`, `libnspr4`, `libplc4`, `libplds4`) entstehen vollständig.

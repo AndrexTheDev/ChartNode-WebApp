@@ -42,6 +42,7 @@
     "qa:gui": "node scripts/gui-audit.mjs",
     "qa:gui-verify": "node scripts/gui-verify.mjs",
     "setup:chromium": "bash scripts/setup-chromium.sh",
+    "qa:live-crawl": "node scripts/live-crawl-check.mjs",
     "qa:modules": "node scripts/qa-modules.mjs",
     "qa:features": "node scripts/qa-features.mjs",
     "verify": "npm run typecheck && npm run lint && npm run check:i18n && node scripts/seo-check.mjs && node scripts/cwv-check.mjs && node scripts/fit-check.mjs && npm run qa:features && node scripts/browser-check.mjs",

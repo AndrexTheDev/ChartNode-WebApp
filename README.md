@@ -184,6 +184,7 @@ npm run dev            # http://localhost:3000  (Turbopack)
 | `npm run setup:chromium` | provision Chromium + NSS/NSPR for the browser suites in environments without a package manager |
 | `node scripts/browser-check.mjs` | 152 structural/interaction checks incl. screenshots; provider-dependent checks report SKIP unless `QA_LIVE=1` |
 | `node scripts/fit-check.mjs` · `node scripts/cwv-check.mjs` | dropdown/menu fit across viewports · landing LCP/CLS/TBT |
+| `QA_LIVE_URL=https://… npm run qa:live-crawl` | live crawl hygiene: no `Disallow: /` for Googlebot, sitemap reachable, all sitemap URLs 200, no noindex page in the sitemap |
 | `npm run cf:build` | `opennextjs-cloudflare build` → `.open-next/` |
 | `npm run cf:preview` | build + `wrangler dev` (local Cloudflare runtime) |
 | `npm run cf:deploy` | build + `wrangler deploy` |
