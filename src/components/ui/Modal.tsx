@@ -122,6 +122,7 @@ export function Modal({
 
   if (!open) return null;
 
+
   return (
     <div
       className={cn(

@@ -107,6 +107,12 @@ ersetzen keinen Provider-Vergleich.
 - **KuCoin-Token im Fixture-Modus**: `/api/kucoin/public-token` antwortete in
   der Sandbox korrekt mit 503 und `retry-after`; da der Socket im QA-Lauf
   ohnehin gestubbt ist, wird der Token dort gar nicht mehr angefragt.
+- **Consent-Banner blockierte Dialoge**: Banner lagen auf `z-toast` (110) über
+  dem Modal-Backdrop (70). Auf 390 × 844 waren im Spenden-Modal „Ausblenden“
+  und „Ich habe gespendet“ nicht klickbar, obwohl das Modal vollständig im
+  Viewport lag (`elementFromPoint` traf den Banner). Fix: ambos Banner tragen
+  `data-nc-ambient-banner`, und unter `body.nc-modal-open` rücken sie unter den
+  Backdrop (z-index 65) – dasselbe Muster wie für die Adsterra-Socialbar.
 
 ## M11 — Offline-Smoke-Fixtures (WS/API/Chart/Edge/Module)
 

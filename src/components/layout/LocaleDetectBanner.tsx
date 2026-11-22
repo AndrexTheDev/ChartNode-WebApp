@@ -90,6 +90,7 @@ export function LocaleDetectBanner() {
      */
     <div
       role="status"
+      data-nc-ambient-banner=""
       className="pointer-events-none fixed inset-x-0 bottom-0 z-toast flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
       <div className="nc-clip pointer-events-auto flex w-full max-w-lg animate-fade-up flex-col gap-3 border border-primary/45 bg-elevated/95 p-4 shadow-neon-lg backdrop-blur-md sm:flex-row sm:items-center">

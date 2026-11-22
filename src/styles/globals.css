@@ -509,6 +509,19 @@ body.nc-modal-open [data-nc-socialbar="1"] {
   visibility: hidden;
 }
 
+/* ── Ambiente Banner unter offenen Dialogen ────────────────────────────────
+   Consent-Hinweis und Locale-Frage sitzen auf `z-toast` (110) und damit über
+   dem Modal-Backdrop (70). Auf kleinen Viewports verdeckten sie die unteren
+   Aktionsflächen eines offenen Dialogs: im Spenden-Modal auf 390×844 waren
+   „Ausblenden“ und „Ich habe gespendet“ nicht klickbar (elementFromPoint traf
+   den Banner), obwohl das Modal vollständig im Viewport lag. Banner sind
+   ambient – sie dürfen Bedienung nie blockieren. Unter dem Backdrop bleiben
+   sie im DOM (kein State-Verlust, Screenreader-Reihenfolge unverändert) und
+   treten nach dem Schließen des Dialogs sofort wieder hervor. */
+body.nc-modal-open [data-nc-ambient-banner] {
+  z-index: 65;
+}
+
 /* ── Sponsored-Strip: auf Mobile einzeiliger Scroller ──────────────────────
    Das Kit setzt .nc-sl-strip (flex-wrap). In der Header-Zone darf der Strip
    auf Phones nicht dreizeilig ins First-View ragen (Toast-/Dock-Bereich),

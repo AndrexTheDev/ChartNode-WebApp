@@ -83,6 +83,7 @@ export function AdConsentBanner() {
        * (Standardmuster für Cookie-Hinweise) und bleibt per `role="region"`
        * voll erreichbar; `bottom-*` weicht Ticker/Dock aus.
        */
+      data-nc-ambient-banner=""
       className="fixed inset-x-0 bottom-0 z-toast max-h-[70dvh] overflow-y-auto border-t border-primary/35 bg-surface/98 shadow-neon-sm backdrop-blur-sm"
     >
       {/*
